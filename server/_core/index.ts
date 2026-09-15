@@ -137,6 +137,14 @@ async function startServer() {
       createContext,
     })
   );
+
+  // Unmatched API requests must always return JSON and never fall through to HTML SPA fallback
+  app.all("/api/*", (req, res) => {
+    res.status(404).json({
+      error: "Not Found",
+      message: `API endpoint not found: ${req.method} ${req.originalUrl}`,
+    });
+  });
   // development mode uses Vite, production mode uses static files
   if (process.env.NODE_ENV !== "production") {
     await setupVite(app, server);
