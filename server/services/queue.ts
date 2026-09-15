@@ -1,0 +1,162 @@
+import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
+import { aiModelRoutes, aiUsage, automationQueue, candidateDocuments, workspaceSettings } from "../../drizzle/schema";
+import { createId, recordAudit, requireDb } from "../db";
+import { OpenRouterConfigurationError, OpenRouterTransientError, OpenRouterValidationError, type AiTaskType } from "./openrouter";
+import { runControlledAiTask } from "./aiRouting";
+import { scanCandidateDocument } from "./documentScanner";
+
+const AI_JOB_TYPES = new Set<AiTaskType>(["classify_reply", "draft_outreach", "parse_cv", "score_match", "send_reminder", "reconcile_invoice"]);
+const calculateBackoff = (attempts: number) => Math.min(60 * 60 * 1000, 30_000 * 2 ** Math.max(0, attempts - 1));
+export const withinDailyAiBudget = (used: number, limit: number) => used < limit;
+
+export async function processOneQueuedJob(ownerId: number) {
+  const db = await requireDb();
+  const workspace = (await db.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, ownerId)).limit(1))[0];
+  if (workspace?.emergencyStop) return { status: "skipped" as const, reason: "Emergency stop is enabled." };
+
+  const now = new Date();
+  const candidates = await db
+    .select()
+    .from(automationQueue)
+    .where(and(eq(automationQueue.ownerId, ownerId), inArray(automationQueue.status, ["queued", "retryable_failed"]), lte(automationQueue.scheduledAt, now)))
+    .orderBy(asc(automationQueue.priority), asc(automationQueue.scheduledAt))
+    .limit(1);
+  const job = candidates[0];
+  if (!job) return { status: "empty" as const };
+
+  // AI daily budget applies only to AI inference job types, not deterministic security scans
+  if (job.jobType !== "scan_document") {
+    const budget = Number((workspace?.policyConfig as { aiDailyLimit?: number } | null)?.aiDailyLimit ?? 45);
+    const todayUsage = await db.select({ count: sql<number>`count(*)` }).from(aiUsage).where(and(eq(aiUsage.ownerId, ownerId), sql`date(${aiUsage.createdAt}) = curdate()`));
+    if (!withinDailyAiBudget(todayUsage[0]?.count ?? 0, budget)) return { status: "skipped" as const, reason: `The daily AI budget of ${budget} requests has been reached.` };
+  }
+
+  const lockToken = createId("lock_");
+  const claimed = await db.update(automationQueue).set({ status: "running", lockToken, lockedAt: now, attempts: job.attempts + 1 }).where(and(eq(automationQueue.id, job.id), inArray(automationQueue.status, ["queued", "retryable_failed"])));
+  if (!claimed[0]?.affectedRows) return { status: "contended" as const };
+
+  if (job.jobType === "scan_document") {
+    const payload = (job.payload ?? {}) as { documentId?: string; candidateId?: string };
+    if (!payload.documentId) {
+      await db.update(automationQueue).set({ status: "permanently_failed", lastError: "Missing documentId in scan payload.", lockToken: null, lockedAt: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
+      return { status: "permanently_failed" as const, jobId: job.id };
+    }
+    try {
+      const scanResult = await scanCandidateDocument(payload.documentId, ownerId);
+      await db.update(automationQueue).set({ status: "completed", result: scanResult, completedAt: new Date(), lockToken: null, lockedAt: null, lastError: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
+      await recordAudit({ ownerId, actorType: "system", action: "automation.completed", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: "completed", metadata: { taskType: "scan_document", scanStatus: scanResult.status, findings: scanResult.findings } });
+      return { status: "completed" as const, jobId: job.id };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Document scan failed.";
+      const isRetryable = job.attempts + 1 < job.maxAttempts;
+      const nextStatus = isRetryable ? "retryable_failed" : "permanently_failed";
+      const nextRun = isRetryable ? new Date(Date.now() + calculateBackoff(job.attempts + 1)) : now;
+      await db.update(automationQueue).set({ status: nextStatus, scheduledAt: nextRun, lastError: message.slice(0, 4000), lockToken: null, lockedAt: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
+      await recordAudit({ ownerId, actorType: "system", action: "automation.failed", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: nextStatus, metadata: { taskType: "scan_document", error: message } });
+      return { status: nextStatus as "retryable_failed" | "permanently_failed", jobId: job.id };
+    }
+  }
+
+  if (job.jobType === "parse_cv" && (job.payload as Record<string, unknown>)?.documentId) {
+    const documentId = String((job.payload as Record<string, unknown>).documentId);
+    const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, documentId), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];
+    if (doc && doc.scanState === "flagged") {
+      await db.update(automationQueue).set({ status: "blocked", lastError: "CV parsing blocked: document was flagged by security scan.", lockToken: null, lockedAt: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
+      await recordAudit({ ownerId, actorType: "system", action: "automation.blocked", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: "blocked", metadata: { taskType: "parse_cv", reason: "document_flagged" } });
+      return { status: "blocked" as const, jobId: job.id };
+    }
+  }
+
+  if (!AI_JOB_TYPES.has(job.jobType as AiTaskType)) {
+    await db.update(automationQueue).set({ status: "blocked", lastError: "Unsupported automation job type.", lockToken: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
+    return { status: "blocked" as const, jobId: job.id };
+  }
+  const route = (await db.select().from(aiModelRoutes).where(and(eq(aiModelRoutes.ownerId, ownerId), eq(aiModelRoutes.taskType, job.jobType), eq(aiModelRoutes.isActive, true))).limit(1))[0];
+  const usageId = createId("aiu_");
+  try {
+    const response = await runControlledAiTask({
+      taskType: job.jobType as AiTaskType,
+      input: (job.payload ?? {}) as Record<string, unknown>,
+      primaryModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite",
+      fallbackModels: (route?.fallbackModels as string[] | null) ?? [],
+      maxOutputTokens: route?.maxOutputTokens ?? 1200,
+    });
+    await db.insert(aiUsage).values({ id: usageId, ownerId, routeId: route?.id ?? null, queueJobId: job.id, taskType: job.jobType, requestedModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite", selectedModel: response.selectedModel, status: "succeeded", latencyMs: response.latencyMs });
+    await db.update(automationQueue).set({ status: "completed", result: response.result, completedAt: new Date(), lockToken: null, lockedAt: null, lastError: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
+    await recordAudit({ ownerId, actorType: "ai", actorId: response.selectedModel, action: "automation.completed", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: "completed", metadata: { taskType: job.jobType, latencyMs: response.latencyMs } });
+    return { status: "completed" as const, jobId: job.id, selectedModel: response.selectedModel };
+  } catch (error) {
+    const isConfig = error instanceof OpenRouterConfigurationError;
+    const isRetryable = error instanceof OpenRouterTransientError;
+    const nextStatus = isConfig ? "blocked" : isRetryable && job.attempts + 1 < job.maxAttempts ? "retryable_failed" : "permanently_failed";
+    const nextRun = isRetryable ? new Date(Date.now() + calculateBackoff(job.attempts + 1)) : now;
+    const message = error instanceof Error ? error.message : "Unknown automation error.";
+    await db.insert(aiUsage).values({ id: usageId, ownerId, routeId: route?.id ?? null, queueJobId: job.id, taskType: job.jobType, requestedModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite", status: nextStatus, errorCode: error instanceof OpenRouterValidationError ? "invalid_output" : isConfig ? "configuration" : "provider" });
+    await db.update(automationQueue).set({ status: nextStatus, scheduledAt: nextRun, lastError: message.slice(0, 4000), lockToken: null, lockedAt: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
+    await recordAudit({ ownerId, actorType: "system", action: "automation.failed", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: nextStatus, metadata: { taskType: job.jobType, error: message } });
+    return { status: nextStatus as "blocked" | "retryable_failed" | "permanently_failed", jobId: job.id };
+  }
+}
+
+export type ProcessBatchResult = {
+  processed: number;
+  completed: number;
+  failed: number;
+  skipped: number;
+  results: Array<{
+    status: string;
+    jobId?: string;
+    reason?: string;
+    selectedModel?: string;
+  }>;
+};
+
+export async function processDueAutomationBatch(ownerId?: number, limit = 5): Promise<ProcessBatchResult> {
+  const boundedLimit = Math.min(Math.max(limit, 1), 25);
+  const results: Array<{ status: string; jobId?: string; reason?: string; selectedModel?: string }> = [];
+
+  for (let i = 0; i < boundedLimit; i++) {
+    let targetOwnerId = ownerId;
+    if (typeof targetOwnerId !== "number") {
+      const db = await requireDb();
+      const now = new Date();
+      const candidate = (
+        await db
+          .select({ id: automationQueue.id, ownerId: automationQueue.ownerId })
+          .from(automationQueue)
+          .where(
+            and(
+              inArray(automationQueue.status, ["queued", "retryable_failed"]),
+              lte(automationQueue.scheduledAt, now)
+            )
+          )
+          .orderBy(asc(automationQueue.priority), asc(automationQueue.scheduledAt))
+          .limit(1)
+      )[0];
+      if (!candidate) break;
+      targetOwnerId = candidate.ownerId;
+    }
+
+    const outcome = await processOneQueuedJob(targetOwnerId);
+    if (outcome.status === "empty") {
+      break;
+    }
+    results.push(outcome);
+    if (outcome.status === "skipped") {
+      break;
+    }
+  }
+
+  const completed = results.filter(r => r.status === "completed").length;
+  const failed = results.filter(r => ["blocked", "retryable_failed", "permanently_failed"].includes(r.status)).length;
+  const skipped = results.filter(r => r.status === "skipped").length;
+
+  return {
+    processed: results.length,
+    completed,
+    failed,
+    skipped,
+    results,
+  };
+}
+

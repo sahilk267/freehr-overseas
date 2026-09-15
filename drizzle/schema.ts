@@ -1,0 +1,678 @@
+import {
+  boolean,
+  index,
+  int,
+  json,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  varchar,
+} from "drizzle-orm/mysql-core";
+
+const id = (name: string) => varchar(name, { length: 36 });
+const state = (name: string, length = 48) => varchar(name, { length });
+const createdAt = timestamp("createdAt").defaultNow().notNull();
+const updatedAt = timestamp("updatedAt").defaultNow().onUpdateNow().notNull();
+
+export const users = mysqlTable("users", {
+  id: int("id").autoincrement().primaryKey(),
+  openId: varchar("openId", { length: 64 }).notNull().unique(),
+  name: text("name"),
+  email: varchar("email", { length: 320 }),
+  loginMethod: varchar("loginMethod", { length: 64 }),
+  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  createdAt,
+  updatedAt,
+  lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
+});
+
+export const workspaceSettings = mysqlTable(
+  "workspaceSettings",
+  {
+    id: int("id").autoincrement().primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    businessName: varchar("businessName", { length: 160 }).notNull().default("FreelanceHR"),
+    businessTimezone: varchar("businessTimezone", { length: 64 }).notNull().default("Asia/Kolkata"),
+    automationMode: mysqlEnum("automationMode", ["safe", "controlled", "autopilot"]).notNull().default("safe"),
+    emergencyStop: boolean("emergencyStop").notNull().default(false),
+    dailyOutboundLimit: int("dailyOutboundLimit").notNull().default(20),
+    quietHoursStart: varchar("quietHoursStart", { length: 5 }).notNull().default("20:00"),
+    quietHoursEnd: varchar("quietHoursEnd", { length: 5 }).notNull().default("08:00"),
+    policyConfig: json("policyConfig"),
+    scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
+    automationCronTaskUid: varchar("automationCronTaskUid", { length: 65 }),
+    createdAt,
+    updatedAt,
+  },
+  table => [
+    uniqueIndex("workspace_owner_unique").on(table.ownerId),
+    index("workspace_schedule_cron_idx").on(table.scheduleCronTaskUid),
+    index("workspace_automation_cron_idx").on(table.automationCronTaskUid),
+  ],
+);
+
+export const policyVersions = mysqlTable(
+  "policyVersions",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    version: int("version").notNull(),
+    status: mysqlEnum("status", ["draft", "active", "archived"]).notNull().default("draft"),
+    name: varchar("name", { length: 160 }).notNull(),
+    content: json("content").notNull(),
+    createdById: int("createdById").notNull().references(() => users.id),
+    activatedAt: timestamp("activatedAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [uniqueIndex("policy_owner_version_unique").on(table.ownerId, table.version), index("policy_status_idx").on(table.ownerId, table.status)],
+);
+
+export const companies = mysqlTable(
+  "companies",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    name: varchar("name", { length: 255 }).notNull(),
+    domain: varchar("domain", { length: 255 }),
+    companyType: mysqlEnum("companyType", ["prospect", "client"]).notNull().default("prospect"),
+    pipelineState: state("pipelineState").notNull().default("new"),
+    sector: varchar("sector", { length: 120 }),
+    sizeBand: varchar("sizeBand", { length: 64 }),
+    location: varchar("location", { length: 160 }),
+    sourceUrl: text("sourceUrl"),
+    sourceType: varchar("sourceType", { length: 64 }).notNull().default("manual"),
+    sourceCollectedAt: timestamp("sourceCollectedAt"),
+    hiringSignal: text("hiringSignal"),
+    confidence: int("confidence").notNull().default(0),
+    verificationState: state("verificationState").notNull().default("pending"),
+    onboardingApprovedAt: timestamp("onboardingApprovedAt"),
+    onboardingApprovedById: int("onboardingApprovedById").references(() => users.id),
+    notes: text("notes"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("company_owner_state_idx").on(table.ownerId, table.pipelineState), uniqueIndex("company_owner_domain_unique").on(table.ownerId, table.domain)],
+);
+
+export const contacts = mysqlTable(
+  "contacts",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    companyId: id("companyId").notNull().references(() => companies.id),
+    name: varchar("name", { length: 160 }).notNull(),
+    title: varchar("title", { length: 160 }),
+    email: varchar("email", { length: 320 }),
+    phone: varchar("phone", { length: 64 }),
+    contactPermission: state("contactPermission").notNull().default("unknown"),
+    optedOutAt: timestamp("optedOutAt"),
+    sourceType: varchar("sourceType", { length: 64 }).notNull().default("manual"),
+    sourceUrl: text("sourceUrl"),
+    lastVerifiedAt: timestamp("lastVerifiedAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("contact_company_idx").on(table.companyId), index("contact_owner_permission_idx").on(table.ownerId, table.contactPermission)],
+);
+
+export const feeProposals = mysqlTable(
+  "feeProposals",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    companyId: id("companyId").notNull().references(() => companies.id),
+    version: int("version").notNull().default(1),
+    state: state("state").notNull().default("draft"),
+    feeType: mysqlEnum("feeType", ["percentage", "fixed"]).notNull().default("percentage"),
+    feeValue: varchar("feeValue", { length: 32 }).notNull(),
+    currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+    guaranteeDays: int("guaranteeDays").notNull().default(90),
+    paymentTermsDays: int("paymentTermsDays").notNull().default(30),
+    ownershipDays: int("ownershipDays").notNull().default(180),
+    termsText: text("termsText"),
+    termsHash: varchar("termsHash", { length: 128 }),
+    sentAt: timestamp("sentAt"),
+    acceptedAt: timestamp("acceptedAt"),
+    acceptedBy: varchar("acceptedBy", { length: 320 }),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("proposal_company_state_idx").on(table.companyId, table.state)],
+);
+
+export const jobs = mysqlTable(
+  "jobs",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    companyId: id("companyId").notNull().references(() => companies.id),
+    feeProposalId: id("feeProposalId").references(() => feeProposals.id),
+    title: varchar("title", { length: 200 }).notNull(),
+    department: varchar("department", { length: 120 }),
+    employmentType: varchar("employmentType", { length: 64 }).notNull().default("full_time"),
+    pipelineState: state("pipelineState").notNull().default("draft"),
+    location: varchar("location", { length: 160 }),
+    workModel: varchar("workModel", { length: 48 }),
+    compensationMin: int("compensationMin"),
+    compensationMax: int("compensationMax"),
+    currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+    experienceMinYears: int("experienceMinYears"),
+    experienceMaxYears: int("experienceMaxYears"),
+    mustHaveSkills: json("mustHaveSkills"),
+    niceToHaveSkills: json("niceToHaveSkills"),
+    scorecard: json("scorecard"),
+    intake: json("intake"),
+    requirementQuality: int("requirementQuality").notNull().default(0),
+    clientConfirmedAt: timestamp("clientConfirmedAt"),
+    clientConfirmedBy: varchar("clientConfirmedBy", { length: 320 }),
+    targetJoiningAt: timestamp("targetJoiningAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("job_owner_state_idx").on(table.ownerId, table.pipelineState), index("job_company_idx").on(table.companyId)],
+);
+
+export const candidates = mysqlTable(
+  "candidates",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    fullName: varchar("fullName", { length: 160 }).notNull(),
+    email: varchar("email", { length: 320 }),
+    emailHash: varchar("emailHash", { length: 128 }),
+    phone: varchar("phone", { length: 64 }),
+    phoneHash: varchar("phoneHash", { length: 128 }),
+    headline: varchar("headline", { length: 255 }),
+    location: varchar("location", { length: 160 }),
+    workAuthorization: varchar("workAuthorization", { length: 120 }),
+    availability: varchar("availability", { length: 120 }),
+    compensationExpectation: int("compensationExpectation"),
+    currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+    profileState: state("profileState").notNull().default("imported"),
+    sourceType: varchar("sourceType", { length: 64 }).notNull().default("manual"),
+    sourceUrl: text("sourceUrl"),
+    sourceCollectedAt: timestamp("sourceCollectedAt"),
+    lastConfirmedAt: timestamp("lastConfirmedAt"),
+    doNotContactAt: timestamp("doNotContactAt"),
+    withdrawnAt: timestamp("withdrawnAt"),
+    deletedAt: timestamp("deletedAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("candidate_owner_state_idx").on(table.ownerId, table.profileState), index("candidate_owner_email_hash_idx").on(table.ownerId, table.emailHash)],
+);
+
+export const candidateDocuments = mysqlTable(
+  "candidateDocuments",
+  {
+    id: id("id").primaryKey(),
+    candidateId: id("candidateId").notNull().references(() => candidates.id),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    documentType: mysqlEnum("documentType", ["cv", "portfolio", "offer", "identity", "other"]).notNull().default("cv"),
+    storageKey: varchar("storageKey", { length: 512 }).notNull(),
+    storageUrl: text("storageUrl").notNull(),
+    originalName: varchar("originalName", { length: 255 }).notNull(),
+    mimeType: varchar("mimeType", { length: 128 }).notNull(),
+    sizeBytes: int("sizeBytes").notNull(),
+    sha256: varchar("sha256", { length: 128 }),
+    scanState: state("scanState").notNull().default("pending"),
+    parseState: state("parseState").notNull().default("not_requested"),
+    parsedData: json("parsedData"),
+    provenance: json("provenance"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("candidate_doc_candidate_idx").on(table.candidateId), index("candidate_doc_parse_idx").on(table.parseState)],
+);
+
+export const consents = mysqlTable(
+  "consents",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    candidateId: id("candidateId").notNull().references(() => candidates.id),
+    jobId: id("jobId").references(() => jobs.id),
+    companyId: id("companyId").references(() => companies.id),
+    consentType: mysqlEnum("consentType", ["platform_processing", "recruitment_communication", "client_sharing", "interview_processing", "recording", "background_check", "marketing"]).notNull(),
+    status: mysqlEnum("status", ["granted", "withdrawn", "expired", "denied"]).notNull(),
+    dataScope: json("dataScope"),
+    noticeVersion: varchar("noticeVersion", { length: 64 }).notNull(),
+    method: varchar("method", { length: 64 }).notNull().default("portal"),
+    grantedAt: timestamp("grantedAt"),
+    withdrawnAt: timestamp("withdrawnAt"),
+    expiresAt: timestamp("expiresAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("consent_candidate_type_idx").on(table.candidateId, table.consentType, table.status), index("consent_share_idx").on(table.candidateId, table.jobId, table.companyId)],
+);
+
+export const conversations = mysqlTable(
+  "conversations",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    companyId: id("companyId").references(() => companies.id),
+    contactId: id("contactId").references(() => contacts.id),
+    candidateId: id("candidateId").references(() => candidates.id),
+    jobId: id("jobId").references(() => jobs.id),
+    channel: mysqlEnum("channel", ["email", "whatsapp", "sms", "portal", "manual"]).notNull().default("email"),
+    status: state("status").notNull().default("not_started"),
+    classification: varchar("classification", { length: 64 }),
+    lastMessageAt: timestamp("lastMessageAt"),
+    nextActionAt: timestamp("nextActionAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("conversation_owner_status_idx").on(table.ownerId, table.status), index("conversation_candidate_idx").on(table.candidateId)],
+);
+
+export const messages = mysqlTable(
+  "messages",
+  {
+    id: id("id").primaryKey(),
+    conversationId: id("conversationId").notNull().references(() => conversations.id),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    direction: mysqlEnum("direction", ["inbound", "outbound"]).notNull(),
+    status: state("status").notNull().default("draft"),
+    body: text("body").notNull(),
+    subject: varchar("subject", { length: 255 }),
+    providerMessageId: varchar("providerMessageId", { length: 255 }),
+    idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+    aiGenerated: boolean("aiGenerated").notNull().default(false),
+    sentAt: timestamp("sentAt"),
+    deliveredAt: timestamp("deliveredAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [uniqueIndex("message_idempotency_unique").on(table.idempotencyKey), index("message_conversation_idx").on(table.conversationId)],
+);
+
+export const screenings = mysqlTable(
+  "screenings",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    candidateId: id("candidateId").notNull().references(() => candidates.id),
+    jobId: id("jobId").notNull().references(() => jobs.id),
+    status: state("status").notNull().default("not_started"),
+    answers: json("answers"),
+    evidence: json("evidence"),
+    aiSummary: json("aiSummary"),
+    confidence: int("confidence").notNull().default(0),
+    recommendation: varchar("recommendation", { length: 64 }),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("screening_job_status_idx").on(table.jobId, table.status), uniqueIndex("screening_candidate_job_unique").on(table.candidateId, table.jobId)],
+);
+
+export const matches = mysqlTable(
+  "matches",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    candidateId: id("candidateId").notNull().references(() => candidates.id),
+    jobId: id("jobId").notNull().references(() => jobs.id),
+    status: state("status").notNull().default("candidate_found"),
+    ruleScore: int("ruleScore").notNull().default(0),
+    semanticScore: int("semanticScore").notNull().default(0),
+    confidence: int("confidence").notNull().default(0),
+    evidence: json("evidence"),
+    missingEvidence: json("missingEvidence"),
+    lowConfidence: boolean("lowConfidence").notNull().default(false),
+    modelRoute: varchar("modelRoute", { length: 120 }),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("match_job_status_idx").on(table.jobId, table.status), uniqueIndex("match_candidate_job_unique").on(table.candidateId, table.jobId)],
+);
+
+export const shortlists = mysqlTable(
+  "shortlists",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    companyId: id("companyId").notNull().references(() => companies.id),
+    jobId: id("jobId").notNull().references(() => jobs.id),
+    candidateId: id("candidateId").notNull().references(() => candidates.id),
+    matchId: id("matchId").references(() => matches.id),
+    status: state("status").notNull().default("prepared"),
+    consentId: id("consentId").references(() => consents.id),
+    shareExpiresAt: timestamp("shareExpiresAt"),
+    sharedAt: timestamp("sharedAt"),
+    viewedAt: timestamp("viewedAt"),
+    clientFeedback: text("clientFeedback"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("shortlist_job_status_idx").on(table.jobId, table.status), uniqueIndex("shortlist_candidate_job_unique").on(table.candidateId, table.jobId)],
+);
+
+export const interviews = mysqlTable(
+  "interviews",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    companyId: id("companyId").notNull().references(() => companies.id),
+    candidateId: id("candidateId").notNull().references(() => candidates.id),
+    jobId: id("jobId").notNull().references(() => jobs.id),
+    shortlistId: id("shortlistId").references(() => shortlists.id),
+    status: state("status").notNull().default("proposed"),
+    scheduledAt: timestamp("scheduledAt"),
+    durationMinutes: int("durationMinutes").notNull().default(45),
+    timezone: varchar("timezone", { length: 64 }).notNull().default("Asia/Kolkata"),
+    meetingUrl: text("meetingUrl"),
+    calendarProvider: varchar("calendarProvider", { length: 64 }).notNull().default("ics"),
+    calendarEventId: varchar("calendarEventId", { length: 255 }),
+    calendarSequence: int("calendarSequence").notNull().default(0),
+    calendarStatus: mysqlEnum("calendarStatus", ["tentative", "confirmed", "cancelled"]).notNull().default("tentative"),
+    rescheduleCount: int("rescheduleCount").notNull().default(0),
+    reminderAt: timestamp("reminderAt"),
+    reminderSentAt: timestamp("reminderSentAt"),
+    completedAt: timestamp("completedAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("interview_owner_status_idx").on(table.ownerId, table.status), index("interview_scheduled_idx").on(table.scheduledAt)],
+);
+
+export const feedback = mysqlTable(
+  "feedback",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    interviewId: id("interviewId").notNull().references(() => interviews.id),
+    authorName: varchar("authorName", { length: 160 }).notNull(),
+    rawFeedback: text("rawFeedback").notNull(),
+    scorecard: json("scorecard"),
+    aiSummary: json("aiSummary"),
+    finalDecision: varchar("finalDecision", { length: 64 }),
+    submittedAt: timestamp("submittedAt").defaultNow().notNull(),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("feedback_interview_idx").on(table.interviewId)],
+);
+
+export const placements = mysqlTable(
+  "placements",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    companyId: id("companyId").notNull().references(() => companies.id),
+    candidateId: id("candidateId").notNull().references(() => candidates.id),
+    jobId: id("jobId").notNull().references(() => jobs.id),
+    status: state("status").notNull().default("offer_pending"),
+    annualCompensation: int("annualCompensation"),
+    currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+    offerIssuedAt: timestamp("offerIssuedAt"),
+    offerAcceptedAt: timestamp("offerAcceptedAt"),
+    joiningConfirmedAt: timestamp("joiningConfirmedAt"),
+    joiningEvidence: json("joiningEvidence"),
+    guaranteeStartAt: timestamp("guaranteeStartAt"),
+    guaranteeEndAt: timestamp("guaranteeEndAt"),
+    replacementRequestedAt: timestamp("replacementRequestedAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("placement_owner_status_idx").on(table.ownerId, table.status), uniqueIndex("placement_candidate_job_unique").on(table.candidateId, table.jobId)],
+);
+
+export const invoices = mysqlTable(
+  "invoices",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    companyId: id("companyId").notNull().references(() => companies.id),
+    placementId: id("placementId").notNull().references(() => placements.id),
+    invoiceNumber: varchar("invoiceNumber", { length: 64 }).notNull(),
+    status: state("status").notNull().default("draft"),
+    currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+    amount: int("amount").notNull(),
+    taxAmount: int("taxAmount").notNull().default(0),
+    dueAt: timestamp("dueAt"),
+    issuedAt: timestamp("issuedAt"),
+    paidAt: timestamp("paidAt"),
+    disputeReason: text("disputeReason"),
+    createdAt,
+    updatedAt,
+  },
+  table => [uniqueIndex("invoice_number_unique").on(table.invoiceNumber), index("invoice_owner_status_idx").on(table.ownerId, table.status), index("invoice_placement_idx").on(table.placementId)],
+);
+
+export const payments = mysqlTable(
+  "payments",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    invoiceId: id("invoiceId").notNull().references(() => invoices.id),
+    provider: varchar("provider", { length: 64 }),
+    providerEventId: varchar("providerEventId", { length: 255 }),
+    amount: int("amount").notNull(),
+    currency: varchar("currency", { length: 8 }).notNull().default("INR"),
+    status: state("status").notNull().default("pending"),
+    paidAt: timestamp("paidAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [uniqueIndex("payment_provider_event_unique").on(table.provider, table.providerEventId), index("payment_invoice_idx").on(table.invoiceId)],
+);
+
+export const automationQueue = mysqlTable(
+  "automationQueue",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    jobType: varchar("jobType", { length: 96 }).notNull(),
+    status: state("status").notNull().default("queued"),
+    payload: json("payload").notNull(),
+    priority: int("priority").notNull().default(100),
+    scheduledAt: timestamp("scheduledAt").defaultNow().notNull(),
+    lockedAt: timestamp("lockedAt"),
+    lockToken: varchar("lockToken", { length: 96 }),
+    attempts: int("attempts").notNull().default(0),
+    maxAttempts: int("maxAttempts").notNull().default(3),
+    idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
+    lastError: text("lastError"),
+    result: json("result"),
+    completedAt: timestamp("completedAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [uniqueIndex("queue_idempotency_unique").on(table.idempotencyKey), index("queue_ready_idx").on(table.ownerId, table.status, table.scheduledAt)],
+);
+
+export const aiModelRoutes = mysqlTable(
+  "aiModelRoutes",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    taskType: varchar("taskType", { length: 96 }).notNull(),
+    primaryModel: varchar("primaryModel", { length: 200 }).notNull(),
+    fallbackModels: json("fallbackModels"),
+    schemaVersion: varchar("schemaVersion", { length: 64 }).notNull().default("v1"),
+    maxInputChars: int("maxInputChars").notNull().default(12000),
+    maxOutputTokens: int("maxOutputTokens").notNull().default(1200),
+    isActive: boolean("isActive").notNull().default(true),
+    createdAt,
+    updatedAt,
+  },
+  table => [uniqueIndex("ai_route_owner_task_unique").on(table.ownerId, table.taskType)],
+);
+
+export const aiUsage = mysqlTable(
+  "aiUsage",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    routeId: id("routeId").references(() => aiModelRoutes.id),
+    queueJobId: id("queueJobId").references(() => automationQueue.id),
+    taskType: varchar("taskType", { length: 96 }).notNull(),
+    requestedModel: varchar("requestedModel", { length: 200 }),
+    selectedModel: varchar("selectedModel", { length: 200 }),
+    status: state("status").notNull(),
+    latencyMs: int("latencyMs"),
+    errorCode: varchar("errorCode", { length: 64 }),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("ai_usage_owner_created_idx").on(table.ownerId, table.createdAt)],
+);
+
+export const approvals = mysqlTable(
+  "approvals",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    requestedBy: varchar("requestedBy", { length: 96 }).notNull().default("ai"),
+    actionType: varchar("actionType", { length: 96 }).notNull(),
+    resourceType: varchar("resourceType", { length: 96 }).notNull(),
+    resourceId: varchar("resourceId", { length: 64 }).notNull(),
+    status: mysqlEnum("status", ["pending", "approved", "rejected", "cancelled"]).notNull().default("pending"),
+    reason: text("reason"),
+    payload: json("payload"),
+    decidedById: int("decidedById").references(() => users.id),
+    decidedAt: timestamp("decidedAt"),
+    actionedAt: timestamp("actionedAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("approval_owner_status_idx").on(table.ownerId, table.status), index("approval_resource_idx").on(table.resourceType, table.resourceId)],
+);
+
+export const auditEvents = mysqlTable(
+  "auditEvents",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    actorType: mysqlEnum("actorType", ["user", "ai", "system", "cron", "provider"]).notNull(),
+    actorId: varchar("actorId", { length: 96 }),
+    action: varchar("action", { length: 120 }).notNull(),
+    resourceType: varchar("resourceType", { length: 96 }).notNull(),
+    resourceId: varchar("resourceId", { length: 64 }).notNull(),
+    previousState: varchar("previousState", { length: 64 }),
+    nextState: varchar("nextState", { length: 64 }),
+    metadata: json("metadata"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("audit_owner_created_idx").on(table.ownerId, table.createdAt), index("audit_resource_idx").on(table.resourceType, table.resourceId)],
+);
+
+export const suppressionList = mysqlTable(
+  "suppressionList",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    channel: varchar("channel", { length: 32 }).notNull(),
+    valueHash: varchar("valueHash", { length: 128 }).notNull(),
+    reason: varchar("reason", { length: 160 }).notNull(),
+    source: varchar("source", { length: 96 }).notNull(),
+    active: boolean("active").notNull().default(true),
+    createdAt,
+    updatedAt,
+  },
+  table => [uniqueIndex("suppression_owner_channel_value_unique").on(table.ownerId, table.channel, table.valueHash)],
+);
+
+export const rightsRequests = mysqlTable(
+  "rightsRequests",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    candidateId: id("candidateId").notNull().references(() => candidates.id),
+    requestType: mysqlEnum("requestType", ["access", "correction", "withdrawal", "deletion", "complaint"]).notNull(),
+    status: state("status").notNull().default("received"),
+    details: text("details"),
+    receivedAt: timestamp("receivedAt").defaultNow().notNull(),
+    resolvedAt: timestamp("resolvedAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("rights_owner_status_idx").on(table.ownerId, table.status)],
+);
+
+export const emailIdentities = mysqlTable(
+  "emailIdentities",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    email: varchar("email", { length: 320 }).notNull(),
+    purpose: mysqlEnum("purpose", ["owner", "clients", "talent", "interviews", "finance", "privacy"]).notNull(),
+    status: mysqlEnum("status", ["draft", "active", "disabled", "unverified"]).notNull().default("draft"),
+    displayName: varchar("displayName", { length: 160 }).notNull().default("FreelanceHR"),
+    replyTo: varchar("replyTo", { length: 320 }),
+    lastHealthCheckAt: timestamp("lastHealthCheckAt"),
+    lastHealthStatus: varchar("lastHealthStatus", { length: 64 }),
+    createdAt,
+    updatedAt,
+  },
+  table => [uniqueIndex("email_identity_owner_email_unique").on(table.ownerId, table.email), index("email_identity_owner_status_idx").on(table.ownerId, table.status)],
+);
+
+export const incidents = mysqlTable(
+  "incidents",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    incidentType: varchar("incidentType", { length: 96 }).notNull(),
+    severity: mysqlEnum("severity", ["low", "medium", "high", "critical"]).notNull().default("medium"),
+    status: state("status").notNull().default("detected"),
+    affectedResourceType: varchar("affectedResourceType", { length: 96 }),
+    affectedResourceId: varchar("affectedResourceId", { length: 64 }),
+    summary: text("summary").notNull(),
+    containmentNotes: text("containmentNotes"),
+    detectedAt: timestamp("detectedAt").defaultNow().notNull(),
+    resolvedAt: timestamp("resolvedAt"),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("incident_owner_status_idx").on(table.ownerId, table.status)],
+);
+
+export const teamMembers = mysqlTable(
+  "teamMembers",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    memberUserId: int("memberUserId").references(() => users.id),
+    email: varchar("email", { length: 320 }).notNull(),
+    displayName: varchar("displayName", { length: 160 }),
+    role: mysqlEnum("role", ["owner", "recruiter", "coordinator", "finance", "viewer"]).notNull().default("recruiter"),
+    status: mysqlEnum("status", ["invited", "active", "revoked"]).notNull().default("invited"),
+    permissionOverrides: json("permissionOverrides"),
+    joinedAt: timestamp("joinedAt"),
+    revokedAt: timestamp("revokedAt"),
+    createdById: int("createdById").notNull().references(() => users.id),
+    createdAt,
+    updatedAt,
+  },
+  table => [uniqueIndex("team_member_owner_email_unique").on(table.ownerId, table.email), index("team_member_owner_status_idx").on(table.ownerId, table.status)],
+);
+
+export const teamInvitations = mysqlTable(
+  "teamInvitations",
+  {
+    id: id("id").primaryKey(),
+    ownerId: int("ownerId").notNull().references(() => users.id),
+    memberId: id("memberId").notNull().references(() => teamMembers.id),
+    email: varchar("email", { length: 320 }).notNull(),
+    role: mysqlEnum("role", ["owner", "recruiter", "coordinator", "finance", "viewer"]).notNull(),
+    tokenHash: varchar("tokenHash", { length: 128 }).notNull().unique(),
+    status: mysqlEnum("status", ["pending", "accepted", "revoked", "expired"]).notNull().default("pending"),
+    expiresAt: timestamp("expiresAt").notNull(),
+    acceptedAt: timestamp("acceptedAt"),
+    revokedAt: timestamp("revokedAt"),
+    createdById: int("createdById").notNull().references(() => users.id),
+    createdAt,
+    updatedAt,
+  },
+  table => [index("team_invite_owner_status_idx").on(table.ownerId, table.status), index("team_invite_member_idx").on(table.memberId)],
+);
+
+export type User = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;

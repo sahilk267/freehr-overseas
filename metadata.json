@@ -1,0 +1,6 @@
+{
+  "name": "Freelance HR",
+  "description": "Freelance HR management and recruitment platform",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

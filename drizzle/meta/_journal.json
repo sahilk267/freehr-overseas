@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1787793421878,
+      "tag": "0000_massive_shinobi_shaw",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1787793626452,
+      "tag": "0001_daffy_katie_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1787807360786,
+      "tag": "0002_white_firelord",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1787811853502,
+      "tag": "0003_soft_blindfold",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1787880452913,
+      "tag": "0004_abandoned_hulk",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1787880831936,
+      "tag": "0005_talented_gauntlet",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787881000000,
+      "tag": "0006_drop_invoice_placement_unique",
+      "breakpoints": true
+    }
+  ]
+}
