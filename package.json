@@ -9,7 +9,7 @@
     "start": "node dist/server.cjs",
     "lint": "tsc --noEmit",
     "check": "tsc --noEmit",
-    "test": "vitest run server/hostinger.test.ts",
+    "test": "vitest run",
     "test:hostinger": "tsx scripts/verify-hostinger.ts"
   },
   "dependencies": {

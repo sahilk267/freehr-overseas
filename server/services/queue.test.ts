@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { automationQueue, aiUsage, workspaceSettings } from "../../drizzle/schema";
 import { createId, requireDb } from "../db";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 
 vi.mock("./aiRouting", () => ({
   runControlledAiTask: vi.fn().mockResolvedValue({
@@ -140,6 +140,88 @@ describe("automation queue processing", () => {
       // Job remains queued, never started
       const row = (await db.select().from(automationQueue).where(eq(automationQueue.id, id)).limit(1))[0];
       expect(row?.status).toBe("queued");
+    });
+
+    it("processes other owners' due jobs when one owner has emergencyStop enabled in global batch mode", async () => {
+      const db = await requireDb();
+      const ownerA = 991;
+      const ownerB = 992;
+
+      // Clean up test data for both owners
+      await db.delete(automationQueue).where(inArray(automationQueue.ownerId, [ownerA, ownerB]));
+
+      // Set up workspace settings: Owner A has emergencyStop: true, Owner B has emergencyStop: false
+      const settingsA = (await db.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, ownerA)).limit(1))[0];
+      if (!settingsA) {
+        await db.insert(workspaceSettings).values({
+          id: 991,
+          ownerId: ownerA,
+          businessName: "Owner A Workspace",
+          automationMode: "controlled",
+          emergencyStop: true,
+          policyConfig: { aiDailyLimit: 45 },
+        });
+      } else {
+        await db.update(workspaceSettings).set({ emergencyStop: true }).where(eq(workspaceSettings.ownerId, ownerA));
+      }
+
+      const settingsB = (await db.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, ownerB)).limit(1))[0];
+      if (!settingsB) {
+        await db.insert(workspaceSettings).values({
+          id: 992,
+          ownerId: ownerB,
+          businessName: "Owner B Workspace",
+          automationMode: "controlled",
+          emergencyStop: false,
+          policyConfig: { aiDailyLimit: 45 },
+        });
+      } else {
+        await db.update(workspaceSettings).set({ emergencyStop: false }).where(eq(workspaceSettings.ownerId, ownerB));
+      }
+
+      // Insert due job for Owner A with priority 1 so candidate query picks it first
+      const jobAId = createId("que_");
+      await db.insert(automationQueue).values({
+        id: jobAId,
+        ownerId: ownerA,
+        jobType: "classify_reply",
+        status: "queued",
+        payload: { text: "Reply for Owner A" },
+        priority: 1,
+        scheduledAt: new Date(Date.now() - 10000),
+        maxAttempts: 3,
+        idempotencyKey: `multi-owner-${jobAId}`,
+      });
+
+      // Insert due job for Owner B with priority 2
+      const jobBId = createId("que_");
+      await db.insert(automationQueue).values({
+        id: jobBId,
+        ownerId: ownerB,
+        jobType: "draft_outreach",
+        status: "queued",
+        payload: { text: "Outreach for Owner B" },
+        priority: 2,
+        scheduledAt: new Date(Date.now() - 5000),
+        maxAttempts: 3,
+        idempotencyKey: `multi-owner-${jobBId}`,
+      });
+
+      // Execute global batch call (ownerId = undefined)
+      const result = await processDueAutomationBatch(undefined, 5);
+
+      // Verify that Owner A was skipped and Owner B was completed
+      expect(result.skipped).toBeGreaterThanOrEqual(1);
+      expect(result.completed).toBeGreaterThanOrEqual(1);
+
+      const jobARow = (await db.select().from(automationQueue).where(eq(automationQueue.id, jobAId)).limit(1))[0];
+      expect(jobARow?.status).toBe("queued");
+
+      const jobBRow = (await db.select().from(automationQueue).where(eq(automationQueue.id, jobBId)).limit(1))[0];
+      expect(jobBRow?.status).toBe("completed");
+
+      // Cleanup
+      await db.delete(automationQueue).where(inArray(automationQueue.ownerId, [ownerA, ownerB]));
     });
   });
 

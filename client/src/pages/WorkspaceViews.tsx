@@ -29,6 +29,19 @@ function StateBadge({ value }: { value: string | null | undefined }) {
   return <Badge className={`border-0 px-2.5 py-1 text-[11px] font-semibold capitalize ${stateTone(value)}`}>{friendly(value)}</Badge>;
 }
 
+function DecisionSourceBadge({ source }: { source: "manual" | "policy" | string | null | undefined }) {
+  const isPolicy = source === "policy";
+  return (
+    <Badge
+      className={`border-0 px-2 py-0.5 text-[10px] font-semibold ${
+        isPolicy ? "bg-[#e0ecff] text-[#1c3d73]" : "bg-slate-100 text-slate-600"
+      }`}
+    >
+      {isPolicy ? "Auto (Policy)" : "Manual"}
+    </Badge>
+  );
+}
+
 function PageShell({ eyebrow, title, description, children, action }: { eyebrow: string; title: string; description: string; children: ReactNode; action?: ReactNode }) {
   return <div className="mx-auto max-w-[1480px] space-y-6"><section className="flex flex-col justify-between gap-4 border-b border-slate-200 pb-6 lg:flex-row lg:items-end"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#a47d2c]">{eyebrow}</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#10213d]">{title}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{description}</p></div>{action}</section>{children}</div>;
 }
@@ -68,7 +81,7 @@ export function ProspectsPage() {
   return <PageShell eyebrow="Client acquisition" title="Prospects & client onboarding" description="Keep lead provenance, outreach status, hiring discovery, fee proposals, and controlled client activation in one auditable pipeline." action={<HeaderAction><Button onClick={() => setShowForm(v => !v)} className="bg-[#10213d] hover:bg-[#1a3156]"><Plus className="mr-2 h-4 w-4" />Add prospect</Button></HeaderAction>}>
     {showForm && <FormCard title="Create a source-linked prospect" detail="Only add leads from approved sources. Every record retains its collection route and confidence."><form onSubmit={submit} className="grid gap-3 sm:grid-cols-2"><div><Label>Company name</Label><Input name="name" required placeholder="Example Technologies" /></div><div><Label>Domain</Label><Input name="domain" placeholder="example.com" /></div><div><Label>Sector</Label><Input name="sector" placeholder="SaaS, healthcare, logistics…" /></div><div><Label>Location</Label><Input name="location" placeholder="Bengaluru, India" /></div><div><Label>Source type</Label><Input name="sourceType" defaultValue="manual" /></div><div><Label>Confidence (0–100)</Label><Input name="confidence" type="number" min="0" max="100" defaultValue="60" /></div><div className="sm:col-span-2"><Label>Source URL</Label><Input name="sourceUrl" type="url" placeholder="https://…" /></div><div className="sm:col-span-2"><Label>Hiring signal / notes</Label><Textarea name="signal" placeholder="Hiring activity, referral context, or discovery signal." /></div><div className="sm:col-span-2 flex justify-end gap-2"><Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancel</Button><Button type="submit" disabled={create.isPending} className="bg-[#10213d]">Save prospect</Button></div></form></FormCard>}
     <Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={Building2} title="CRM pipeline" detail="Move qualified companies deliberately. Client activation creates an owner approval record." /><div className="mt-5 overflow-x-auto">{isLoading ? <p className="py-8 text-sm text-slate-500">Loading prospects…</p> : companies.length === 0 ? <Empty title="Your prospect pipeline is ready" detail="Add a source-linked company to begin controlled client acquisition." icon={Building2} /> : <table className="w-full min-w-[880px] text-left"><thead className="border-b border-slate-100 text-[11px] uppercase tracking-[0.1em] text-slate-400"><tr><th className="pb-3 font-semibold">Company</th><th className="pb-3 font-semibold">Pipeline</th><th className="pb-3 font-semibold">Provenance</th><th className="pb-3 font-semibold">Signal</th><th className="pb-3 font-semibold">Action</th></tr></thead><tbody className="divide-y divide-slate-100">{companies.map(company => <tr key={company.id}><td className="py-4"><p className="font-semibold text-[#10213d]">{company.name}</p><p className="mt-1 text-xs text-slate-500">{company.domain || company.sector || "Domain to be verified"}</p></td><td className="py-4"><StateBadge value={company.pipelineState} /></td><td className="py-4 text-xs text-slate-500"><p className="capitalize">{company.sourceType}</p><p className="mt-1">Confidence {company.confidence}%</p></td><td className="max-w-[260px] py-4 text-xs text-slate-500">{company.hiringSignal || "No discovery signal recorded"}</td><td className="py-4"><div className="flex gap-2">{company.pipelineState === "new" && <Button size="sm" variant="outline" onClick={() => transition.mutate({ id: company.id, state: "researched" })}>Mark researched</Button>}{company.pipelineState === "converted" && <Button size="sm" onClick={() => requestOnboarding.mutate({ id: company.id })} className="bg-[#10213d]">Request approval</Button>}{company.pipelineState === "active" && <Badge className="bg-[#dcefe8] text-[#174d3b]">Client active</Badge>}</div></td></tr>)}</tbody></table>}</div></CardContent></Card>
-    <div className="grid gap-6 xl:grid-cols-2"><Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={Mail} title="Hostinger Mail conversations" detail="Inbound API events remain linked to the existing client or candidate thread." /><div className="mt-4 space-y-2">{emailConversations.length === 0 ? <p className="text-xs text-slate-500">No inbound email conversations recorded yet.</p> : emailConversations.map(conversation => <div className="flex items-center justify-between rounded-xl bg-[#f7f5f0] px-3 py-2" key={conversation.id}><button className="min-w-0 text-left" onClick={() => setSelectedConversationId(conversation.id)}><p className="text-xs font-medium text-[#10213d]">Thread {conversation.id.slice(-6)} · {friendly(conversation.channel)}</p><p className="mt-1 text-[11px] text-slate-500">{dateTime(conversation.lastMessageAt)}</p></button><StateBadge value={conversation.status} /></div>)}</div>{selectedConversationId && <div className="mt-4 rounded-2xl border border-slate-100 p-3"><p className="text-xs font-semibold text-[#10213d]">Message history</p><div className="mt-2 space-y-2">{messageHistory.length === 0 ? <p className="text-xs text-slate-500">No message records for this thread.</p> : messageHistory.map(message => <div key={message.id} className="rounded-lg bg-slate-50 p-2 text-xs"><div className="flex justify-between gap-2"><span className="font-medium text-[#10213d]">{friendly(message.direction)} · {friendly(message.status)}</span><span className="text-slate-400">{dateTime(message.createdAt)}</span></div><p className="mt-1 truncate text-slate-600">{message.subject || "No subject"}</p><p className="mt-1 truncate text-[11px] text-slate-400">{message.providerMessageId || "Local controlled record"}</p></div>)}</div></div>}</CardContent></Card><Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={FileCheck2} title="Outbound approval queue" detail="No client or candidate email leaves the workspace until its owner approval is recorded." /><div className="mt-4 space-y-2">{recentApprovals.filter(item => item.actionType === "email_send").length === 0 ? <p className="text-xs text-slate-500">No email approvals pending or recently decided.</p> : recentApprovals.filter(item => item.actionType === "email_send").map(approval => <div className="flex items-center justify-between rounded-xl bg-[#f7f5f0] px-3 py-2" key={approval.id}><button className="min-w-0 text-left" onClick={() => setSelectedApprovalId(approval.id)}><p className="text-xs font-medium text-[#10213d]">Message {approval.resourceId.slice(-6)}</p><p className="mt-1 truncate text-[11px] text-slate-500">{approval.reason}</p></button><StateBadge value={approval.status} /></div>)}</div>{approvalDetail && <div className="mt-4 rounded-2xl border border-slate-100 p-3 text-xs"><p className="font-semibold text-[#10213d]">Approval details</p><p className="mt-2 text-slate-500">Reason: {approvalDetail.approval.reason}</p><p className="mt-1 text-slate-500">Status: {friendly(approvalDetail.approval.status)} · Message: {approvalDetail.message?.subject || "record unavailable"}</p><p className="mt-1 text-slate-500">Thread: {approvalDetail.conversation?.id.slice(-6) || "not linked"}</p><pre className="mt-2 max-h-24 overflow-auto rounded-lg bg-slate-50 p-2 text-[11px] text-slate-600">{JSON.stringify(approvalDetail.approval.payload ?? {}, null, 2)}</pre></div>}</CardContent></Card></div>
+    <div className="grid gap-6 xl:grid-cols-2"><Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={Mail} title="Hostinger Mail conversations" detail="Inbound API events remain linked to the existing client or candidate thread." /><div className="mt-4 space-y-2">{emailConversations.length === 0 ? <p className="text-xs text-slate-500">No inbound email conversations recorded yet.</p> : emailConversations.map(conversation => <div className="flex items-center justify-between rounded-xl bg-[#f7f5f0] px-3 py-2" key={conversation.id}><button className="min-w-0 text-left" onClick={() => setSelectedConversationId(conversation.id)}><p className="text-xs font-medium text-[#10213d]">Thread {conversation.id.slice(-6)} · {friendly(conversation.channel)}</p><p className="mt-1 text-[11px] text-slate-500">{dateTime(conversation.lastMessageAt)}</p></button><StateBadge value={conversation.status} /></div>)}</div>{selectedConversationId && <div className="mt-4 rounded-2xl border border-slate-100 p-3"><p className="text-xs font-semibold text-[#10213d]">Message history</p><div className="mt-2 space-y-2">{messageHistory.length === 0 ? <p className="text-xs text-slate-500">No message records for this thread.</p> : messageHistory.map(message => <div key={message.id} className="rounded-lg bg-slate-50 p-2 text-xs"><div className="flex justify-between gap-2"><span className="font-medium text-[#10213d]">{friendly(message.direction)} · {friendly(message.status)}</span><span className="text-slate-400">{dateTime(message.createdAt)}</span></div><p className="mt-1 truncate text-slate-600">{message.subject || "No subject"}</p><p className="mt-1 truncate text-[11px] text-slate-400">{message.providerMessageId || "Local controlled record"}</p></div>)}</div></div>}</CardContent></Card><Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={FileCheck2} title="Outbound approval queue" detail="No client or candidate email leaves the workspace until its owner approval is recorded." /><div className="mt-4 space-y-2">{recentApprovals.filter(item => item.actionType === "email_send").length === 0 ? <p className="text-xs text-slate-500">No email approvals pending or recently decided.</p> : recentApprovals.filter(item => item.actionType === "email_send").map(approval => <div className="flex items-center justify-between rounded-xl bg-[#f7f5f0] px-3 py-2" key={approval.id}><button className="min-w-0 text-left" onClick={() => setSelectedApprovalId(approval.id)}><p className="text-xs font-medium text-[#10213d]">Message {approval.resourceId.slice(-6)}</p><p className="mt-1 truncate text-[11px] text-slate-500">{approval.reason}</p></button><div className="flex items-center gap-1.5"><DecisionSourceBadge source={approval.decisionSource} /><StateBadge value={approval.status} /></div></div>)}</div>{approvalDetail && <div className="mt-4 rounded-2xl border border-slate-100 p-3 text-xs"><p className="font-semibold text-[#10213d]">Approval details</p><p className="mt-2 text-slate-500">Reason: {approvalDetail.approval.reason}</p><div className="mt-1 flex flex-wrap items-center gap-1.5 text-slate-500"><span>Status: {friendly(approvalDetail.approval.status)}</span><span>·</span><span>Source:</span><DecisionSourceBadge source={approvalDetail.approval.decisionSource} /><span>·</span><span>Message: {approvalDetail.message?.subject || "record unavailable"}</span></div><p className="mt-1 text-slate-500">Thread: {approvalDetail.conversation?.id.slice(-6) || "not linked"}</p><pre className="mt-2 max-h-24 overflow-auto rounded-lg bg-slate-50 p-2 text-[11px] text-slate-600">{JSON.stringify(approvalDetail.approval.payload ?? {}, null, 2)}</pre></div>}</CardContent></Card></div>
   </PageShell>;
 }
 
@@ -217,11 +230,145 @@ export function FinancePage() {
 export function ExceptionsPage() {
   const utils = trpc.useUtils();
   const { data, isLoading } = trpc.operations.exceptions.list.useQuery({ limit: 100 });
-  const decide = trpc.recruitment.approvals.decide.useMutation({ onSuccess: () => { utils.operations.exceptions.list.invalidate(); toast.success("Owner decision recorded in audit trail."); } });
-  const retry = trpc.operations.queue.retry.useMutation({ onSuccess: () => { utils.operations.exceptions.list.invalidate(); toast.success("Automation job returned to the queue."); } });
+  const { data: allApprovals = [] } = trpc.operations.approvals.list.useQuery({ limit: 50 });
+  const decide = trpc.recruitment.approvals.decide.useMutation({
+    onSuccess: () => {
+      utils.operations.exceptions.list.invalidate();
+      utils.operations.approvals.list.invalidate();
+      toast.success("Owner decision recorded in audit trail.");
+    },
+  });
+  const retry = trpc.operations.queue.retry.useMutation({
+    onSuccess: () => {
+      utils.operations.exceptions.list.invalidate();
+      toast.success("Automation job returned to the queue.");
+    },
+  });
   return <PageShell eyebrow="Operational safety" title="Exception center" description="Resolve approval decisions, blocked automation, data-rights requests, and incidents before they become silent operational risk.">
-    {isLoading || !data ? <p className="py-10 text-sm text-slate-500">Loading controlled exceptions…</p> : <div className="grid gap-6 xl:grid-cols-2"><Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={Gavel} title="Owner approvals" detail="Consequential actions are held here until you approve or reject them." /><div className="mt-5 space-y-3">{data.pendingApprovals.length === 0 ? <Empty title="No pending approvals" detail="The platform will hold consequential client, candidate, placement, and invoice actions here." icon={BadgeCheck} /> : data.pendingApprovals.map(item => <div className="rounded-2xl border border-[#f5d77b] bg-[#fffdf7] p-4" key={item.id}><div className="flex justify-between gap-3"><div><p className="font-semibold text-[#10213d]">{friendly(item.actionType)}</p><p className="mt-1 text-xs text-slate-500">{item.resourceType} · {item.reason}</p></div><StateBadge value={item.status} /></div><div className="mt-4 flex gap-2"><Button size="sm" className="bg-[#10213d]" onClick={() => decide.mutate({ id: item.id, decision: "approved" })}><Check className="mr-1 h-3.5 w-3.5" />Approve</Button><Button size="sm" variant="outline" onClick={() => decide.mutate({ id: item.id, decision: "rejected" })}><X className="mr-1 h-3.5 w-3.5" />Reject</Button></div></div>)}</div></CardContent></Card>
-      <Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={AlertTriangle} title="Automation & incident failures" detail="Retries remain explicit; the queue never repeats a side effect without an idempotency key." /><div className="mt-5 space-y-3">{data.queueFailures.length === 0 && data.openIncidents.length === 0 ? <Empty title="No open queue failures" detail="Queue stalls, policy blocks, provider errors, and incidents become visible here." icon={CheckCircle2} /> : <>{data.queueFailures.map(item => <div className="rounded-2xl border border-slate-100 p-4" key={item.id}><div className="flex justify-between gap-3"><div><p className="font-semibold text-[#10213d]">{friendly(item.jobType)}</p><p className="mt-1 text-xs text-slate-500">{item.lastError || "Awaiting owner review"}</p></div><StateBadge value={item.status} /></div><Button size="sm" variant="outline" className="mt-3" onClick={() => retry.mutate({ id: item.id })}><RefreshCcw className="mr-1 h-3.5 w-3.5" />Retry safely</Button></div>)}{data.openIncidents.map(item => <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4" key={item.id}><div className="flex justify-between gap-3"><div><p className="font-semibold text-[#8f3021]">{friendly(item.incidentType)}</p><p className="mt-1 text-xs text-rose-700">{item.summary}</p></div><StateBadge value={item.severity} /></div></div>)}</>}</div></CardContent></Card></div>}
+    {isLoading || !data ? <p className="py-10 text-sm text-slate-500">Loading controlled exceptions…</p> : <>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Card className="border-slate-200 bg-white">
+          <CardContent className="p-5">
+            <SectionTitle icon={Gavel} title="Owner approvals" detail="Consequential actions are held here until you approve or reject them." />
+            <div className="mt-5 space-y-3">
+              {data.pendingApprovals.length === 0 ? (
+                <Empty title="No pending approvals" detail="The platform will hold consequential client, candidate, placement, and invoice actions here." icon={BadgeCheck} />
+              ) : (
+                data.pendingApprovals.map(item => (
+                  <div className="rounded-2xl border border-[#f5d77b] bg-[#fffdf7] p-4" key={item.id}>
+                    <div className="flex justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-[#10213d]">{friendly(item.actionType)}</p>
+                        <p className="mt-1 text-xs text-slate-500">{item.resourceType} · {item.reason}</p>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <DecisionSourceBadge source={item.decisionSource} />
+                        <StateBadge value={item.status} />
+                      </div>
+                    </div>
+                    <div className="mt-4 flex gap-2">
+                      <Button size="sm" className="bg-[#10213d]" onClick={() => decide.mutate({ id: item.id, decision: "approved" })}><Check className="mr-1 h-3.5 w-3.5" />Approve</Button>
+                      <Button size="sm" variant="outline" onClick={() => decide.mutate({ id: item.id, decision: "rejected" })}><X className="mr-1 h-3.5 w-3.5" />Reject</Button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-slate-200 bg-white">
+          <CardContent className="p-5">
+            <SectionTitle icon={AlertTriangle} title="Automation & incident failures" detail="Retries remain explicit; the queue never repeats a side effect without an idempotency key." />
+            <div className="mt-5 space-y-3">
+              {data.queueFailures.length === 0 && data.openIncidents.length === 0 ? (
+                <Empty title="No open queue failures" detail="Queue stalls, policy blocks, provider errors, and incidents become visible here." icon={CheckCircle2} />
+              ) : (
+                <>
+                  {data.queueFailures.map(item => (
+                    <div className="rounded-2xl border border-slate-100 p-4" key={item.id}>
+                      <div className="flex justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-[#10213d]">{friendly(item.jobType)}</p>
+                          <p className="mt-1 text-xs text-slate-500">{item.lastError || "Awaiting owner review"}</p>
+                        </div>
+                        <StateBadge value={item.status} />
+                      </div>
+                      <Button size="sm" variant="outline" className="mt-3" onClick={() => retry.mutate({ id: item.id })}><RefreshCcw className="mr-1 h-3.5 w-3.5" />Retry safely</Button>
+                    </div>
+                  ))}
+                  {data.openIncidents.map(item => (
+                    <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4" key={item.id}>
+                      <div className="flex justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-[#8f3021]">{friendly(item.incidentType)}</p>
+                          <p className="mt-1 text-xs text-rose-700">{item.summary}</p>
+                        </div>
+                        <StateBadge value={item.severity} />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="mt-6 border-slate-200 bg-white">
+        <CardContent className="p-5">
+          <SectionTitle
+            icon={Gavel}
+            title="Approvals audit & decision log"
+            detail="Audit recent consequential approvals. Spot-check whether decisions were automatic via workspace policy or manual owner interventions."
+          />
+          <div className="mt-5 overflow-x-auto">
+            {allApprovals.length === 0 ? (
+              <Empty
+                title="No approval history recorded"
+                detail="Consequential actions and policy-decided approvals will be logged here for audit and spot-checking."
+                icon={BadgeCheck}
+              />
+            ) : (
+              <table className="w-full min-w-[760px] text-left">
+                <thead className="border-b border-slate-100 text-[11px] uppercase tracking-[0.1em] text-slate-400">
+                  <tr>
+                    <th className="pb-3">Action</th>
+                    <th className="pb-3">Resource</th>
+                    <th className="pb-3">Decision source</th>
+                    <th className="pb-3">Status</th>
+                    <th className="pb-3">Reason</th>
+                    <th className="pb-3">Decided / Requested</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {allApprovals.map((approval) => (
+                    <tr key={approval.id} className="hover:bg-slate-50/50">
+                      <td className="py-3 font-semibold text-[#10213d]">{friendly(approval.actionType)}</td>
+                      <td className="py-3 text-slate-600">
+                        <span className="font-mono text-[11px]">{approval.resourceType}</span>
+                        <span className="ml-1 font-mono text-slate-400">({approval.resourceId.slice(-6)})</span>
+                      </td>
+                      <td className="py-3">
+                        <DecisionSourceBadge source={approval.decisionSource} />
+                      </td>
+                      <td className="py-3">
+                        <StateBadge value={approval.status} />
+                      </td>
+                      <td className="max-w-[280px] py-3 text-slate-500 truncate" title={approval.reason}>
+                        {approval.reason}
+                      </td>
+                      <td className="py-3 text-slate-400 whitespace-nowrap">
+                        {dateTime(approval.decidedAt || approval.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </>}
   </PageShell>;
 }
 
@@ -236,17 +383,140 @@ export function ControlPlanePage() {
   const { data: emailIdentities = [] } = trpc.email.identities.list.useQuery();
   const update = trpc.operations.settings.update.useMutation({ onSuccess: () => { utils.operations.settings.get.invalidate(); toast.success("Control settings saved."); } });
   const stop = trpc.operations.settings.setEmergencyStop.useMutation({ onSuccess: () => { utils.operations.settings.get.invalidate(); toast.success("Automation safety state updated."); } });
-  const createPolicy = trpc.operations.policies.create.useMutation({ onSuccess: () => { utils.operations.policies.list.invalidate(); toast.success("Policy version saved as draft."); } });
-  const activatePolicy = trpc.operations.policies.activate.useMutation({ onSuccess: () => { utils.operations.policies.list.invalidate(); toast.success("Policy version activated."); } });
+  const createPolicy = trpc.operations.policies.create.useMutation({ onSuccess: () => { utils.operations.policies.list.invalidate(); } });
+  const activatePolicy = trpc.operations.policies.activate.useMutation({ onSuccess: () => { utils.operations.policies.list.invalidate(); } });
   const runNext = trpc.operations.queue.runNext.useMutation({ onSuccess: data => toast.success(data.status === "completed" ? "One controlled automation job completed." : data.status === "empty" ? "No queued automation jobs." : "Automation stopped safely: " + ("reason" in data ? data.reason : data.status)) });
+  const cancelJob = trpc.operations.queue.cancel.useMutation({
+    onSuccess: () => {
+      utils.operations.settings.get.invalidate();
+      utils.recruitment.approvals.list.invalidate();
+      toast.success("Queued job cancelled.");
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to cancel job.");
+    },
+  });
   const saveEmailIdentity = trpc.email.identities.save.useMutation({ onSuccess: () => { utils.email.identities.list.invalidate(); toast.success("Sender identity registered as unverified."); } });
   const verifyEmailIdentity = trpc.email.identities.verify.useMutation({ onSuccess: result => { utils.email.identities.list.invalidate(); result.ok ? toast.success("Hostinger Mail API verified and sender activated.") : toast.error(`Sender remains inactive: ${result.status.replaceAll("_", " ")}`); } });
+
+  const [showPolicyForm, setShowPolicyForm] = useState(false);
+  const [policyName, setPolicyName] = useState("");
+  const [policyJson, setPolicyJson] = useState("");
+  const [inspectedPolicyId, setInspectedPolicyId] = useState<string | null>(null);
+
+  const defaultPolicyTemplate = JSON.stringify({
+    aiDailyLimit: 45,
+    outboundRequiresOwnerApproval: true,
+    candidateSharingRequiresConsent: true,
+    noAutonomousFinalRejection: true,
+    delayedActions: {
+      invoice_issue: 15,
+      candidate_share: 10
+    },
+    autoApprovalRules: [
+      {
+        id: "rule_prospect_onboarding",
+        name: "Auto-approve prospect onboarding (confidence >= 50)",
+        actionType: "client_onboarding",
+        conditions: [
+          { field: "confidence", op: "gte", value: 50 }
+        ]
+      },
+      {
+        id: "rule_invoice_issue_small",
+        name: "Auto-approve invoice issue under 100,000",
+        actionType: "invoice_issue",
+        conditions: [
+          { field: "amount", op: "lte", value: 100000 }
+        ]
+      }
+    ]
+  }, null, 2);
+
+  const openNewPolicyForm = () => {
+    setPolicyName(`Operations policy v${policies.length + 1}`);
+    setPolicyJson(defaultPolicyTemplate);
+    setShowPolicyForm(true);
+  };
+
+  const handleSavePolicy = async (activateImmediately: boolean) => {
+    let content: Record<string, unknown>;
+    try {
+      content = JSON.parse(policyJson);
+    } catch {
+      toast.error("Invalid JSON format in policy configuration.");
+      return;
+    }
+    const name = policyName.trim() || `Operations policy v${policies.length + 1}`;
+    try {
+      const created = await createPolicy.mutateAsync({ name, content });
+      if (activateImmediately) {
+        await activatePolicy.mutateAsync({ id: created.id });
+        toast.success("Policy version created and activated with auto-approval rules.");
+      } else {
+        toast.success("Policy version saved as draft.");
+      }
+      setShowPolicyForm(false);
+      setPolicyName("");
+      setPolicyJson("");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to save policy version.");
+    }
+  };
+
   if (!settings) return <div className="py-10 text-sm text-slate-500">Loading control plane…</div>;
   return <PageShell eyebrow="Automation governance" title="Control plane & audit trail" description="Configure safe automation boundaries, monitor queued jobs, and retain a complete record of consequential workflow changes.">
     <div className="grid gap-6 xl:grid-cols-[0.78fr_1.22fr]"><div className="space-y-6"><Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={SlidersHorizontal} title="Operating boundaries" detail="Start in safe mode; enable controlled autopilot only after your policy, consent, and deliverability checks pass." /><div className="mt-5 space-y-4"><div><Label>Automation mode</Label><select value={settings.automationMode} onChange={event => update.mutate({ automationMode: event.target.value as "safe" | "controlled" | "autopilot" })} className="mt-2 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="safe">Safe — AI drafts, owner decides</option><option value="controlled">Controlled — routine actions within policy</option><option value="autopilot">Autopilot — restricted routine automation</option></select></div><div><Label>Daily outbound cap</Label><Input className="mt-2" type="number" min="1" max="500" value={settings.dailyOutboundLimit} onChange={event => update.mutate({ dailyOutboundLimit: Number(event.target.value) })} /></div><div><Label>Business timezone</Label><Input className="mt-2" value={settings.businessTimezone} onChange={event => update.mutate({ businessTimezone: event.target.value })} /></div><div className={`flex items-center justify-between rounded-2xl p-4 ${settings.emergencyStop ? "bg-rose-50" : "bg-[#f7f5f0]"}`}><div><p className="text-sm font-semibold text-[#10213d]">Emergency stop</p><p className="mt-1 text-xs leading-5 text-slate-500">Immediately blocks outbound and external automation actions.</p></div><Switch checked={settings.emergencyStop} onCheckedChange={enabled => stop.mutate({ enabled, reason: enabled ? "Owner activated emergency stop" : "Owner resumed controlled automation" })} /></div></div></CardContent></Card>
       <Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={BrainCircuit} title="OpenRouter readiness" detail="The backend keeps all API keys server-side and records selected model, errors, quota state, and validated result." /><div className="mt-4 rounded-2xl bg-[#10213d] p-4 text-white"><div className="flex items-center gap-2 text-sm font-semibold"><LockKeyhole className="h-4 w-4 text-[#f5d77b]" />Structured-output policy</div><p className="mt-2 text-xs leading-5 text-slate-300">Invalid JSON, low-confidence results, quota errors, and provider failures route to queue retry or owner review. They never trigger an unvalidated client-facing action.</p></div></CardContent></Card><Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={CheckCircle2} title="Platform readiness" detail="A non-secret view of what is ready locally and what still depends on deployment configuration." /><div className="mt-4 grid gap-2 sm:grid-cols-2">{readiness ? <><div className="rounded-xl bg-[#f7f5f0] p-3"><p className="text-xs font-semibold text-[#10213d]">Authentication</p><StateBadge value={readiness.runtime.oidcConfigured ? "ready" : "configuration needed"} /><p className="mt-1 text-[11px] text-slate-500">{readiness.runtime.oidcConfigured ? "OIDC boundary configured" : "Development login remains available"}</p></div><div className="rounded-xl bg-[#f7f5f0] p-3"><p className="text-xs font-semibold text-[#10213d]">Private documents</p><StateBadge value={readiness.runtime.privateStorage.configured ? readiness.runtime.privateStorage.mode : "configuration needed"} /><p className="mt-1 text-[11px] text-slate-500">Local storage is allowed before optional S3 backup.</p></div><div className="rounded-xl bg-[#f7f5f0] p-3"><p className="text-xs font-semibold text-[#10213d]">Mail operations</p><StateBadge value={readiness.mail.configured && readiness.mail.configuredMailboxCount === 6 ? "ready" : "configuration needed"} /><p className="mt-1 text-[11px] text-slate-500">{readiness.mail.configuredSenderAddressCount}/6 sender identities configured · webhook {readiness.mail.webhookSecretConfigured ? "ready" : "pending"}</p></div><div className="rounded-xl bg-[#f7f5f0] p-3"><p className="text-xs font-semibold text-[#10213d]">Controlled automation</p><StateBadge value="owner approval" /><p className="mt-1 text-[11px] text-slate-500">ICS calendar, structured AI, and no autonomous final rejection.</p></div></> : <p className="text-xs text-slate-500">Loading readiness status…</p>}</div></CardContent></Card></div>
-      <div className="space-y-6"><Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={Clock3} title="Automation queue" detail="Idempotent work items remain visible with their processing status." /><div className="mt-5 space-y-3">{queue.length === 0 ? <Empty title="No queued work" detail="AI classification, draft outreach, CV parsing, matching, reminders, and reconciliation appear here after they are safely enqueued." icon={BrainCircuit} /> : queue.map(item => <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 p-4" key={item.id}><div><p className="text-sm font-semibold text-[#10213d]">{friendly(item.jobType)}</p><p className="mt-1 text-xs text-slate-500">Attempts {item.attempts}/{item.maxAttempts} · scheduled {dateTime(item.scheduledAt)}</p></div><StateBadge value={item.status} /></div>)}</div></CardContent></Card>
-      <Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={ShieldAlert} title="Policy versions" detail="A policy controls AI daily budget and operating boundaries. Activate only a reviewed version." action={<Button size="sm" variant="outline" onClick={() => createPolicy.mutate({ name: `Operations policy ${policies.length + 1}`, content: { aiDailyLimit: 45, outboundRequiresOwnerApproval: true, candidateSharingRequiresConsent: true, noAutonomousFinalRejection: true } })}>Create draft</Button>} /><div className="mt-4 space-y-2">{policies.length === 0 ? <p className="text-xs text-slate-500">No policy version saved yet. Create a controlled baseline before leaving safe mode.</p> : policies.slice(0, 3).map(policy => <div key={policy.id} className="flex items-center justify-between rounded-xl bg-[#f7f5f0] px-3 py-2"><span className="text-xs font-medium text-[#10213d]">v{policy.version} · {policy.name}</span><div className="flex items-center gap-2"><StateBadge value={policy.status} />{policy.status !== "active" && <Button size="sm" variant="ghost" onClick={() => activatePolicy.mutate({ id: policy.id })}>Activate</Button>}</div></div>)}</div><Button className="mt-4 w-full bg-[#10213d]" disabled={runNext.isPending || settings.emergencyStop} onClick={() => runNext.mutate()}>Process next controlled job</Button></CardContent></Card>
+      <div className="space-y-6"><Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={Clock3} title="Automation queue" detail="Idempotent work items remain visible with their processing status." /><div className="mt-5 space-y-3">{queue.length === 0 ? <Empty title="No queued work" detail="AI classification, draft outreach, CV parsing, matching, reminders, and reconciliation appear here after they are safely enqueued." icon={BrainCircuit} /> : queue.map(item => <div className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 p-4" key={item.id}><div><p className="text-sm font-semibold text-[#10213d]">{friendly(item.jobType)}</p><p className="mt-1 text-xs text-slate-500">Attempts {item.attempts}/{item.maxAttempts} · scheduled {dateTime(item.scheduledAt)}</p></div><div className="flex items-center gap-2"><StateBadge value={item.status} />{item.status === "queued" && <Button size="sm" variant="outline" className="h-7 text-xs border-rose-200 text-rose-700 hover:bg-rose-50" disabled={cancelJob.isPending} onClick={() => cancelJob.mutate({ id: item.id })}>Cancel</Button>}</div></div>)}</div></CardContent></Card>
+      <Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={ShieldAlert} title="Policy versions & auto-approvals" detail="Policies control AI operating boundaries and automated approval rules. Activate only a reviewed version." action={<Button size="sm" variant="outline" onClick={() => showPolicyForm ? setShowPolicyForm(false) : openNewPolicyForm()}><Plus className="mr-1.5 h-3.5 w-3.5" />{showPolicyForm ? "Cancel" : "Define policy & rules"}</Button>} />
+        {showPolicyForm && (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-[#fcfbf8] p-4 text-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-[#10213d]">Define Auto-Approval Policy</p>
+              <div className="flex gap-1.5">
+                <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setPolicyJson(defaultPolicyTemplate)}>Reset to template</Button>
+              </div>
+            </div>
+            <div>
+              <Label className="text-[11px]">Policy Name</Label>
+              <Input className="mt-1 h-8 text-xs bg-white" value={policyName} onChange={e => setPolicyName(e.target.value)} placeholder="e.g. Operations auto-approval policy" />
+            </div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label className="text-[11px]">Policy & Auto-Approval Rules (JSON)</Label>
+                <span className="text-[10px] text-slate-400">Contains autoApprovalRules array with actionType & conditions</span>
+              </div>
+              <Textarea className="h-44 font-mono text-[11px] bg-white leading-relaxed" value={policyJson} onChange={e => setPolicyJson(e.target.value)} />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button size="sm" variant="outline" onClick={() => setShowPolicyForm(false)}>Cancel</Button>
+              <Button size="sm" variant="outline" disabled={createPolicy.isPending} onClick={() => handleSavePolicy(false)}>Save Draft</Button>
+              <Button size="sm" className="bg-[#10213d]" disabled={createPolicy.isPending || activatePolicy.isPending} onClick={() => handleSavePolicy(true)}>Save & Activate</Button>
+            </div>
+          </div>
+        )}
+        <div className="mt-4 space-y-2">{policies.length === 0 ? <p className="text-xs text-slate-500">No policy version saved yet. Create a controlled baseline before leaving safe mode.</p> : policies.slice(0, 5).map(policy => {
+          const ruleCount = Array.isArray((policy.content as any)?.autoApprovalRules) ? (policy.content as any).autoApprovalRules.length : 0;
+          return <div key={policy.id} className="rounded-xl bg-[#f7f5f0] px-3 py-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-[#10213d]">v{policy.version} · {policy.name}</span>
+                {ruleCount > 0 && <span className="rounded bg-[#e0ecff] px-1.5 py-0.5 text-[10px] font-medium text-[#1c3d73]">{ruleCount} auto-rule{ruleCount === 1 ? "" : "s"}</span>}
+              </div>
+              <div className="flex items-center gap-2">
+                <StateBadge value={policy.status} />
+                <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setInspectedPolicyId(inspectedPolicyId === policy.id ? null : policy.id)}>{inspectedPolicyId === policy.id ? "Hide rules" : "View rules"}</Button>
+                {policy.status !== "active" && <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => activatePolicy.mutate({ id: policy.id })}>Activate</Button>}
+              </div>
+            </div>
+            {inspectedPolicyId === policy.id && (
+              <pre className="mt-2 max-h-36 overflow-auto rounded-lg bg-white p-2 text-[10px] font-mono text-slate-700 border border-slate-200">
+                {JSON.stringify(policy.content, null, 2)}
+              </pre>
+            )}
+          </div>;
+        })}</div><Button className="mt-4 w-full bg-[#10213d]" disabled={runNext.isPending || settings.emergencyStop} onClick={() => runNext.mutate()}>Process next controlled job</Button></CardContent></Card>
       <Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={Mail} title="Domain sender identities" detail={mailApiStatus?.configured ? "Hostinger Mail API is configured; activate only verified mailboxes." : "Hostinger Mail API is not yet configured. You can register identities now, but live sending remains disabled."} /><div className="mt-4 grid gap-2 sm:grid-cols-2">{(["clients", "talent", "interviews", "finance", "privacy", "owner"] as const).map(purpose => { const address = mailboxAddresses[purpose]; const identity = emailIdentities.find(item => item.email === address); return <div className="flex items-center justify-between rounded-xl bg-[#f7f5f0] px-3 py-2" key={purpose}><div><p className="text-xs font-semibold text-[#10213d]">{address}</p><p className="text-[11px] text-slate-500">{identity ? `${friendly(identity.status)} · ${friendly(identity.lastHealthStatus)}` : "not registered"}</p></div>{identity ? <Button size="sm" variant="ghost" disabled={verifyEmailIdentity.isPending} onClick={() => verifyEmailIdentity.mutate({ id: identity.id })}>Verify</Button> : <Button size="sm" variant="ghost" onClick={() => saveEmailIdentity.mutate({ email: address, purpose, displayName: "FreelanceHR", replyTo: mailboxAddresses.owner })}>Register</Button>}</div>; })}</div></CardContent></Card>
         <Card className="border-slate-200 bg-white"><CardContent className="p-5"><SectionTitle icon={FileCheck2} title="Immutable audit history" detail="Every state change, approval, consent event, and operational decision leaves an evidence record." /><div className="mt-5 divide-y divide-slate-100">{audits.length === 0 ? <Empty title="Audit trail will grow automatically" detail="Start working through the pipelines and each controlled state change will appear here." icon={FileCheck2} /> : audits.map(item => <div className="flex items-center justify-between gap-4 py-3" key={item.id}><div><p className="text-sm font-medium text-[#10213d]">{item.action.replaceAll(".", " · ")}</p><p className="mt-1 text-xs text-slate-500">{item.resourceType} · {dateTime(item.createdAt)}</p></div><StateBadge value={item.actorType} /></div>)}</div></CardContent></Card></div>
     </div>

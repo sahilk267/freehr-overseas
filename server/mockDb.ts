@@ -36,6 +36,7 @@ function createFilter(expr: any): (item: any) => boolean {
       .replace(/\s+or\s+/gi, " || ")
       .replace(/\s+is\s+null/gi, " == null")
       .replace(/\s+is\s+not\s+null/gi, " != null")
+      .replace(/(item\.[a-zA-Z0-9_]+)\s+not\s+in\s*\(([^)]+)\)/gi, "(![$2].includes($1))")
       .replace(/(item\.[a-zA-Z0-9_]+)\s+in\s*\(([^)]+)\)/gi, "([$2].includes($1))");
 
     return new Function(
@@ -164,6 +165,7 @@ export function createMockDrizzle(store: StoreData) {
             if (!copy.createdAt) copy.createdAt = new Date();
             if (!copy.updatedAt) copy.updatedAt = new Date();
             if (!copy.status && tableName === "approvals") copy.status = "pending";
+            if (!copy.decisionSource && tableName === "approvals") copy.decisionSource = "manual";
             tableMap.set(copy.id, copy);
             inserted.push(copy);
           }

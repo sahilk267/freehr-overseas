@@ -145,6 +145,57 @@ export const operationsRouter = router({
       await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "automation.retried", resourceType: "automation_job", resourceId: input.id, previousState: job.status, nextState: "queued" });
       return { success: true };
     }),
+    cancel: protectedProcedure.input(z.object({ id: z.string().min(4) })).mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+      const rows = await db.select().from(automationQueue).where(and(eq(automationQueue.id, input.id), eq(automationQueue.ownerId, ctx.user.id))).limit(1);
+      const job = rows[0];
+      if (!job) throw new Error("Automation job was not found.");
+      assertTransition("automation_job", job.status, "cancelled");
+      await db.update(automationQueue).set({ status: "cancelled", lockToken: null, lockedAt: null, completedAt: new Date() }).where(eq(automationQueue.id, input.id));
+      await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "automation.cancelled", resourceType: "automation_job", resourceId: input.id, previousState: job.status, nextState: "cancelled" });
+
+      if (job.jobType === "execute_policy_decision") {
+        const payload = (job.payload ?? {}) as { approvalId?: string };
+        if (payload.approvalId) {
+          const approvalRows = await db
+            .select()
+            .from(approvals)
+            .where(
+              and(
+                eq(approvals.id, payload.approvalId),
+                eq(approvals.ownerId, ctx.user.id),
+                eq(approvals.status, "approved"),
+              ),
+            )
+            .limit(1);
+          const approval = approvalRows[0];
+          if (approval) {
+            const newReason = `${approval.reason || ""} [Cancelled by owner during grace period]`.trim();
+            await db
+              .update(approvals)
+              .set({
+                status: "cancelled",
+                reason: newReason,
+              })
+              .where(eq(approvals.id, approval.id));
+
+            await recordAudit({
+              ownerId: ctx.user.id,
+              actorType: "user",
+              actorId: String(ctx.user.id),
+              action: "approval.cancelled",
+              resourceType: "approval",
+              resourceId: payload.approvalId,
+              previousState: "approved",
+              nextState: "cancelled",
+              metadata: { queueJobId: input.id, reason: "Owner cancelled during grace period" },
+            });
+          }
+        }
+      }
+
+      return { success: true };
+    }),
     runNext: protectedProcedure.mutation(async ({ ctx }) => {
       return processOneQueuedJob(ctx.user.id);
     }),

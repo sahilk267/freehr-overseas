@@ -33,6 +33,7 @@ import { getPrivateDocumentUrl, putPrivateDocument } from "../services/privateSt
 import { createInterviewEventUid, createInterviewIcs } from "../services/calendar";
 import { scanCandidateDocument } from "../services/documentScanner";
 import { assertTransition, ensureSafeAiText, isConsequentialAction } from "../workflow";
+import { applyApprovalDecision, requestOrAutoDecide } from "../services/approvalEngine";
 import { consequentialRouter } from "./consequential";
 import { candidateWorkflowsRouter } from "./candidateWorkflows";
 import { agreementsRouter, outreachRouter } from "./outreach";
@@ -50,28 +51,6 @@ async function requireOwned<T extends { ownerId: number }>(
     throw new TRPCError({ code: "NOT_FOUND", message: `${label} was not found.` });
   }
   return record;
-}
-
-async function createApproval(input: {
-  ownerId: number;
-  actionType: string;
-  resourceType: string;
-  resourceId: string;
-  reason: string;
-  payload?: Record<string, unknown>;
-}) {
-  const db = await requireDb();
-  const id = createId("apr_");
-  await db.insert(approvals).values({ id, ...input, status: "pending", requestedBy: "system" });
-  await recordAudit({
-    ownerId: input.ownerId,
-    actorType: "system",
-    action: "approval.requested",
-    resourceType: input.resourceType,
-    resourceId: input.resourceId,
-    metadata: { actionType: input.actionType, reason: input.reason },
-  });
-  return id;
 }
 
 export const prospectsRouter = router({
@@ -126,8 +105,15 @@ export const prospectsRouter = router({
     const rows = await db.select().from(companies).where(eq(companies.id, input.id)).limit(1);
     const company = await requireOwned(rows[0], ctx.user.id, "Company");
     if (company.pipelineState !== "converted") throw new TRPCError({ code: "BAD_REQUEST", message: "Only converted prospects can enter controlled client onboarding." });
-    const approvalId = await createApproval({ ownerId: ctx.user.id, actionType: "client_onboarding", resourceType: "company", resourceId: company.id, reason: "Client onboarding requires owner confirmation." });
-    return { approvalId };
+    const result = await requestOrAutoDecide(
+      ctx,
+      "client_onboarding",
+      "company",
+      company.id,
+      "Client onboarding requires owner confirmation.",
+      { companyId: company.id, name: company.name, companyType: company.companyType },
+    );
+    return { approvalId: result.approvalId, autoDecided: result.autoDecided };
   }),
   addContact: protectedProcedure.input(z.object({
     companyId: z.string().min(4), name: z.string().trim().min(2).max(160), title: z.string().trim().max(160).optional(), email: z.string().email().optional(), phone: z.string().trim().max(64).optional(), sourceUrl: z.string().url().optional(),
@@ -416,8 +402,15 @@ export const matchingRouter = router({
     if (!consentRows[0]) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Explicit candidate client-sharing consent is required before a shortlist can be shared." });
     const shortlistId = createId("shl_");
     await db.insert(shortlists).values({ id: shortlistId, ownerId: ctx.user.id, companyId: input.companyId, jobId: input.jobId, candidateId: input.candidateId, matchId: input.matchId ?? null, status: "prepared", consentId: consentRows[0].id });
-    const approvalId = await createApproval({ ownerId: ctx.user.id, actionType: "candidate_share", resourceType: "shortlist", resourceId: shortlistId, reason: "Candidate profile sharing requires owner approval and verified consent." });
-    return { shortlistId, approvalId };
+    const result = await requestOrAutoDecide(
+      ctx,
+      "candidate_share",
+      "shortlist",
+      shortlistId,
+      "Candidate profile sharing requires owner approval and verified consent.",
+      { candidateId: input.candidateId, jobId: input.jobId, companyId: input.companyId, matchId: input.matchId ?? null, shortlistId },
+    );
+    return { shortlistId, approvalId: result.approvalId, autoDecided: result.autoDecided };
   }),
 });
 
@@ -535,8 +528,15 @@ export const placementsRouter = router({
     assertTransition("placement", placement.status, input.state);
     if (["joining_confirmed", "invoice_eligible"].includes(input.state) && (!input.joiningEvidence || input.joiningEvidence.length === 0)) throw new TRPCError({ code: "BAD_REQUEST", message: "Joining evidence is required before confirming placement or invoice eligibility." });
     if (isConsequentialAction("placement_confirmation") && input.state === "joining_confirmed") {
-      const approvalId = await createApproval({ ownerId: ctx.user.id, actionType: "placement_confirmation", resourceType: "placement", resourceId: placement.id, reason: "Placement confirmation is consequential and requires owner approval.", payload: { requestedState: input.state, joiningEvidence: input.joiningEvidence ?? [] } });
-      return { approvalId, approvalRequired: true };
+      const result = await requestOrAutoDecide(
+        ctx,
+        "placement_confirmation",
+        "placement",
+        placement.id,
+        "Placement confirmation is consequential and requires owner approval.",
+        { requestedState: input.state, joiningEvidence: input.joiningEvidence ?? [] },
+      );
+      return { approvalId: result.approvalId, approvalRequired: !result.autoDecided, autoDecided: result.autoDecided };
     }
     await db.update(placements).set({ status: input.state, joiningEvidence: input.joiningEvidence ?? placement.joiningEvidence, joiningConfirmedAt: input.state === "joining_confirmed" ? new Date() : placement.joiningConfirmedAt, guaranteeStartAt: input.state === "guarantee_active" ? new Date() : placement.guaranteeStartAt }).where(eq(placements.id, placement.id));
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "placement.state_changed", resourceType: "placement", resourceId: placement.id, previousState: placement.status, nextState: input.state });
@@ -576,8 +576,15 @@ export const invoicesRouter = router({
     const invoice = await requireOwned(rows[0], ctx.user.id, "Invoice");
     if (!["draft", "validation", "approval_pending"].includes(invoice.status)) throw new TRPCError({ code: "BAD_REQUEST", message: "Only a draft invoice can be submitted for issue approval." });
     await db.update(invoices).set({ status: "approval_pending" }).where(eq(invoices.id, invoice.id));
-    const approvalId = await createApproval({ ownerId: ctx.user.id, actionType: "invoice_issue", resourceType: "invoice", resourceId: invoice.id, reason: "Invoice issuance requires owner approval.", payload: { amount: invoice.amount, taxAmount: invoice.taxAmount } });
-    return { approvalId };
+    const result = await requestOrAutoDecide(
+      ctx,
+      "invoice_issue",
+      "invoice",
+      invoice.id,
+      "Invoice issuance requires owner approval.",
+      { amount: invoice.amount, taxAmount: invoice.taxAmount },
+    );
+    return { approvalId: result.approvalId, autoDecided: result.autoDecided };
   }),
 });
 
@@ -591,21 +598,7 @@ export const approvalsRouter = router({
     const rows = await db.select().from(approvals).where(eq(approvals.id, input.id)).limit(1);
     const approval = await requireOwned(rows[0], ctx.user.id, "Approval");
     if (approval.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "This approval has already been decided." });
-    await db.update(approvals).set({ status: input.decision, decidedById: ctx.user.id, decidedAt: new Date(), reason: input.note ?? approval.reason }).where(eq(approvals.id, approval.id));
-    if (input.decision === "approved" && approval.actionType === "client_onboarding") {
-      await db.update(companies).set({ pipelineState: "active", companyType: "client", verificationState: "verified", onboardingApprovedAt: new Date(), onboardingApprovedById: ctx.user.id }).where(and(eq(companies.id, approval.resourceId), eq(companies.ownerId, ctx.user.id)));
-    }
-    if (input.decision === "approved" && approval.actionType === "candidate_share") {
-      await db.update(shortlists).set({ status: "shared", sharedAt: new Date(), shareExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 14) }).where(and(eq(shortlists.id, approval.resourceId), eq(shortlists.ownerId, ctx.user.id)));
-    }
-    if (input.decision === "approved" && approval.actionType === "placement_confirmation") {
-      await db.update(placements).set({ status: "joining_confirmed", joiningConfirmedAt: new Date(), joiningEvidence: (approval.payload as { joiningEvidence?: string[] } | null)?.joiningEvidence ?? null }).where(and(eq(placements.id, approval.resourceId), eq(placements.ownerId, ctx.user.id)));
-    }
-    if (input.decision === "approved" && approval.actionType === "invoice_issue") {
-      await db.update(invoices).set({ status: "issued", issuedAt: new Date() }).where(and(eq(invoices.id, approval.resourceId), eq(invoices.ownerId, ctx.user.id)));
-    }
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: `approval.${input.decision}`, resourceType: approval.resourceType, resourceId: approval.resourceId, metadata: { actionType: approval.actionType, approvalId: approval.id } });
-    return { success: true };
+    return applyApprovalDecision(db, approval, input.decision, ctx.user.id, input.note, "manual");
   }),
 });
 

@@ -538,6 +538,7 @@ export const approvals = mysqlTable(
     decidedById: int("decidedById").references(() => users.id),
     decidedAt: timestamp("decidedAt"),
     actionedAt: timestamp("actionedAt"),
+    decisionSource: mysqlEnum("decisionSource", ["manual", "policy"]).default("manual"),
     createdAt,
     updatedAt,
   },

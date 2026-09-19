@@ -50,6 +50,20 @@
       "when": 1787881000000,
       "tag": "0006_drop_invoice_placement_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1787881100000,
+      "tag": "0007_add_automation_cron_task_uid",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1787881200000,
+      "tag": "0008_add_approval_decision_source",
+      "breakpoints": true
     }
   ]
 }

@@ -96,7 +96,7 @@ const transitions: Record<string, StateMap> = {
   automation_job: {
     queued: ["running", "blocked", "cancelled"],
     running: ["completed", "retryable_failed", "permanently_failed", "blocked"],
-    retryable_failed: ["queued", "permanently_failed", "blocked"],
+    retryable_failed: ["queued", "permanently_failed", "blocked", "cancelled"],
     blocked: ["queued", "cancelled"],
   },
   rights_request: {

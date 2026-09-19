@@ -94,10 +94,12 @@ async function runVerification() {
     candidateId: "cand_aarav",
     originalName: "resume.pdf",
     mimeType: "application/pdf",
-    byteSize: 38,
+    sizeBytes: 38,
     storageKey: `local/${fileKey}`,
+    storageUrl: `/api/private-storage/${fileKey}`,
     documentType: "cv",
     sha256: "test-hash",
+    scanState: "clean",
     extractedText: "Test CV",
     createdAt: new Date(),
   });
@@ -120,10 +122,12 @@ async function runVerification() {
     candidateId: "cand_other",
     originalName: "secret.pdf",
     mimeType: "application/pdf",
-    byteSize: 30,
+    sizeBytes: 30,
     storageKey: `local/${otherFileKey}`,
+    storageUrl: `/api/private-storage/${otherFileKey}`,
     documentType: "cv",
     sha256: "test-hash-other",
+    scanState: "clean",
     createdAt: new Date(),
   });
 
