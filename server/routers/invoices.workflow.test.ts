@@ -128,4 +128,61 @@ describe("invoice state machine and re-invoicing workflow", () => {
       })
     ).rejects.toThrow(/Only one non-terminal invoice is allowed per placement at a time/);
   });
+
+  it("generates invoice documents, creates payment links, and records payment receipt", async () => {
+    const db = await requireDb();
+    const placementId = `plc_pay_${Date.now()}`;
+    await db.insert(placements).values({
+      id: placementId,
+      ownerId: 1,
+      companyId: "cmp_acme",
+      jobId: "job_backend",
+      candidateId: "cand_priya",
+      status: "invoice_eligible",
+      annualCompensation: 2000000,
+    });
+
+    const invNum = `INV-PAY-${Date.now()}`;
+    const { id: invoiceId } = await caller.invoices.draft({
+      placementId,
+      companyId: "cmp_acme",
+      invoiceNumber: invNum,
+      amount: 180000,
+      taxAmount: 32400,
+    });
+
+    // Generate document
+    const doc = await caller.invoices.generateDocument({ id: invoiceId });
+    expect(doc.invoiceNumber).toBe(invNum);
+    expect(doc.totalAmount).toBe(212400);
+    expect(doc.html).toContain(invNum);
+    expect(doc.html).toContain("INVOICE");
+
+    // Approve issuance
+    const { approvalId } = await caller.invoices.requestIssueApproval({ id: invoiceId });
+    await caller.approvals.decide({ id: approvalId, decision: "approved" });
+
+    // Create payment link
+    const linkResult = await caller.invoices.createPaymentLink({ id: invoiceId, provider: "stripe" });
+    expect(linkResult.paymentId).toBeTruthy();
+    expect(linkResult.amount).toBe(212400);
+
+    // Verify invoice transitioned to payment_pending
+    const [pendingInv] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+    expect(pendingInv.status).toBe("payment_pending");
+
+    // Record payment receipt
+    const payResult = await caller.invoices.recordPayment({
+      id: invoiceId,
+      provider: "stripe",
+      providerEventId: `ch_${Date.now()}`,
+      note: "Full settlement received via card checkout",
+    });
+    expect(payResult.success).toBe(true);
+    expect(payResult.status).toBe("paid");
+
+    const [paidInv] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+    expect(paidInv.status).toBe("paid");
+    expect(paidInv.paidAt).toBeInstanceOf(Date);
+  });
 });

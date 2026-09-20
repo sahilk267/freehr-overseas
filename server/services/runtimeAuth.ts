@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { Express } from "express";
 import { SignJWT, createRemoteJWKSet, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
-import { getUserByOpenId, upsertUser } from "../db";
+import { getUserByOpenId, recordAudit, upsertUser } from "../db";
 import { getPrivateStorageStatus } from "./privateStorage";
 import { canUseApplication } from "./workspaceAccess";
 import { getConfiguredPrimaryOwner } from "./primaryOwner";
@@ -185,6 +185,21 @@ export async function completeOidcLogin(input: { code?: string; state?: string; 
   await upsertUser({ openId, email, name, loginMethod: "oidc", lastSignedIn: new Date() });
   const user = await getUserByOpenId(openId);
   if (!user) throw new Error("OIDC user provisioning failed.");
+  await recordAudit({
+    ownerId: user.id,
+    actorType: "user",
+    actorId: String(user.id),
+    action: "auth.login",
+    resourceType: "session",
+    resourceId: user.openId,
+    metadata: {
+      email: user.email,
+      loginMethod: "oidc",
+      role: user.role,
+    },
+  }).catch(err => {
+    console.warn("[Auth] Failed to record login audit:", err);
+  });
   return { user, sessionCookie: sessionCookie(await signSession(openId, config.sessionSecret), SESSION_DURATION_SECONDS), clearStateCookie: emptyCookie(STATE_COOKIE) };
 }
 

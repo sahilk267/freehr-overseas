@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInterviewEventUid, createInterviewIcs, escapeIcsText, formatUtc } from "./calendar";
+import { createInterviewEventUid, createInterviewIcs, escapeIcsText, formatUtc, generateCalendarFeedIcs } from "./calendar";
 
 describe("provider-free interview calendar", () => {
   it("escapes ICS text and emits CRLF-terminated UTC fields", () => {
@@ -22,5 +22,32 @@ describe("provider-free interview calendar", () => {
 
   it("rejects an invalid event range", () => {
     expect(() => createInterviewIcs({ uid: "int_bad", sequence: 0, start: new Date("2026-09-01T10:00:00Z"), end: new Date("2026-09-01T10:00:00Z"), summary: "Interview" })).toThrow("end must be after start");
+  });
+
+  it("generates a multi-event RFC 5545 subscription feed", () => {
+    const feed = generateCalendarFeedIcs([
+      {
+        uid: createInterviewEventUid("feed_1"),
+        sequence: 1,
+        start: new Date("2026-10-01T09:00:00Z"),
+        end: new Date("2026-10-01T09:45:00Z"),
+        summary: "First Round Interview",
+        status: "CONFIRMED",
+      },
+      {
+        uid: createInterviewEventUid("feed_2"),
+        sequence: 2,
+        start: new Date("2026-10-02T14:00:00Z"),
+        end: new Date("2026-10-02T15:00:00Z"),
+        summary: "Final Technical Interview",
+        status: "CONFIRMED",
+      },
+    ]);
+
+    expect(feed).toContain("X-WR-CALNAME:FreelanceHR Interviews");
+    expect(feed).toContain("REFRESH-INTERVAL;VALUE=DURATION:PT15M");
+    expect(feed).toContain("SUMMARY:First Round Interview");
+    expect(feed).toContain("SUMMARY:Final Technical Interview");
+    expect(feed.endsWith("END:VCALENDAR\r\n")).toBe(true);
   });
 });

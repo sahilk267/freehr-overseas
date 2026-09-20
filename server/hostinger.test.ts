@@ -347,4 +347,49 @@ describe("Fastify production server (server/hostinger.ts)", () => {
     expect(rejectRes.statusCode).toBe(413);
     expect(rejectRes.json()?.code).toBe("FST_ERR_CTP_BODY_TOO_LARGE");
   });
+
+  it("verifies CRON_SECRET header authentication without OAuth dependency (GAP-02)", async () => {
+    const originalSecret = process.env.CRON_SECRET;
+    process.env.CRON_SECRET = "test_cron_secret_32_characters_long";
+    const app = await buildFastifyServer({ logger: false });
+    const originalAuthenticateRequest = sdk.authenticateRequest;
+    sdk.authenticateRequest = vi.fn().mockRejectedValue(new Error("Should not call OAuth when CRON_SECRET is valid"));
+
+    // 1. Valid X-Cron-Key header
+    const cronKeyRes = await app.inject({
+      method: "POST",
+      url: "/api/scheduled/interview-reminders",
+      headers: {
+        "x-cron-key": "test_cron_secret_32_characters_long",
+        "x-cron-task-uid": "global",
+      },
+    });
+    expect(cronKeyRes.statusCode).toBe(200);
+    expect(cronKeyRes.json()?.ok).toBe(true);
+
+    // 2. Valid Authorization: Bearer <CRON_SECRET> header
+    const bearerRes = await app.inject({
+      method: "POST",
+      url: "/api/scheduled/automation-queue",
+      headers: {
+        authorization: "Bearer test_cron_secret_32_characters_long",
+      },
+      query: { taskUid: "global" },
+    });
+    expect(bearerRes.statusCode).toBe(200);
+    expect(bearerRes.json()?.ok).toBe(true);
+
+    // 3. Invalid cron secret falls back to sdk.authenticateRequest which fails
+    const invalidRes = await app.inject({
+      method: "POST",
+      url: "/api/scheduled/interview-reminders",
+      headers: {
+        "x-cron-key": "wrong_secret",
+      },
+    });
+    expect(invalidRes.statusCode).toBe(500);
+
+    sdk.authenticateRequest = originalAuthenticateRequest;
+    process.env.CRON_SECRET = originalSecret;
+  });
 });

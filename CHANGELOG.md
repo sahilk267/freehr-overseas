@@ -79,4 +79,24 @@ This changelog maps each implemented fix back to the specific audit numbering an
 - **Fix Implemented**:
   1. Created `server/e2eHappyPath.workflow.test.ts` verifying the end-to-end lifecycle: prospect creation -> conversion -> onboarding approval -> job creation -> candidate addition -> consent grant -> candidate transition -> matching -> share approval -> interview scheduling -> feedback -> placement -> joining approval -> invoice drafting -> issue approval -> payment status update.
   2. Implemented client-side non-JSON response interception in `client/src/main.tsx` and Express `/api/*` fallback to guarantee all API responses return valid JSON.
-- **Verification**: All 135 unit and integration tests passing (`npm test`).
+- **Verification**: All 190 unit and integration tests passing across 34 test files (`npm test`), with 2 skipped due to missing live API credentials.
+
+---
+
+### Audit 11: Enterprise Production Hardening & Gap Resolution (GAPs 01-21)
+- **Gaps Addressed**:
+  1. **GAP-01 [P0] (Production DB Guard)**: Strict error throwing in production when `DATABASE_URL` is missing or fails connection.
+  2. **GAP-02 [P0] (Hostinger Cron Auth)**: Implemented `authenticateCronRequest` supporting `X-Cron-Key` / Bearer token via `CRON_SECRET` for `/api/scheduled/*`.
+  3. **GAP-03 [P0] (Multi-Adapter Storage & Scanner)**: Unified `privateStorage` to support `local`, `s3`, and `managed` across both reads and writes.
+  4. **GAP-04 [P0] (GDPR Deletion)**: Verified and tested `deletePrivateDocument` across all storage modes.
+  5. **GAP-05 [P0] (Right-to-Erasure Deletion Fulfillment)**: Added physical file deletion, document row redaction, suppression indexing, and audit logging during candidate deletion cascades.
+  6. **GAP-07 / 08 / 09 [P1] (AI Persistence)**: Centralized post-processing of AI outreach, scoring, and classification tasks into conversation and message stores via `handleAiTaskResult`.
+  7. **GAP-11 [P1] (Team Invitation Acceptance)**: Wired Hostinger Mail invite delivery and added public `/team/accept` accept invite UI route.
+  8. **GAP-12 [P2] (Invoicing & Payments)**: Implemented automated HTML invoice document generation (`invoices.generateDocument`), payment link creation (`invoices.createPaymentLink`), and payment recording (`invoices.recordPayment`).
+  9. **GAP-13 [P2] (Two-Way Calendar Sync)**: Added RFC 5545 multi-event subscription feed generator (`generateCalendarFeedIcs`), tRPC query (`interviews.calendarFeed`), and public calendar feed endpoint (`/api/calendar/feed/:userId`).
+  10. **GAP-15 [P2] (Seed Script)**: Confirmed `seed:demo` script presence and operational readiness.
+  11. **GAP-16 [P3] (Client KYB Verification)**: Added `prospects.attachKybDocument` and `prospects.verifyKyb` for compliance verification.
+  12. **GAP-18 [P3] (Granular UI RBAC)**: Enforced role-based route access guards and warning view in `DashboardLayout.tsx`.
+  13. **GAP-20 [P5] (Heartbeat Fallback)**: Documented non-preview mock heartbeat fallback behavior for Linux crontabs.
+  14. **GAP-21 [P5] (Test Count Drift)**: Synchronized test counts to current test suite metrics.
+- **Verification**: 190 tests passing across 34 test files.

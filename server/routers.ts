@@ -7,13 +7,25 @@ import { recruitmentRouter } from "./routers/recruitment";
 import { emailRouter } from "./routers/email";
 import { teamRouter } from "./routers/team";
 import { getRuntimeLogoutCookie } from "./services/runtimeAuth";
+import { recordAudit } from "./db";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: publicProcedure.mutation(async ({ ctx }) => {
+      if (ctx.user) {
+        await recordAudit({
+          ownerId: ctx.user.id,
+          actorType: "user",
+          actorId: String(ctx.user.id),
+          action: "auth.logout",
+          resourceType: "session",
+          resourceId: ctx.user.openId,
+          metadata: { email: ctx.user.email },
+        }).catch(() => {});
+      }
       const oidcLogoutCookie = getRuntimeLogoutCookie();
       const response = ctx.res as unknown as { clearCookie?: (name: string, options: Record<string, unknown>) => void; append?: (name: string, value: string) => void; setHeader?: (name: string, value: string) => void };
       if (oidcLogoutCookie) {

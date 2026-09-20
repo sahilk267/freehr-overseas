@@ -5,7 +5,7 @@ const storageGetSignedUrl = vi.fn(async (key: string) => `https://signed.example
 
 vi.mock("../storage", () => ({ storagePut, storageGetSignedUrl }));
 
-const { getPrivateDocumentUrl, getPrivateStorageStatus, putPrivateDocument, readPrivateDocument } = await import("./privateStorage");
+const { deletePrivateDocument, getPrivateDocumentUrl, getPrivateStorageStatus, putPrivateDocument, readPrivateDocument } = await import("./privateStorage");
 const originalEnv = { ...process.env };
 
 describe("private document storage adapter", () => {
@@ -36,6 +36,17 @@ describe("private document storage adapter", () => {
     await expect(putPrivateDocument("private/17/local.txt", Buffer.from("private-data"), "text/plain")).resolves.toEqual({ key: "local/private/17/local.txt", url: "/api/private-storage/private%2F17%2Flocal.txt" });
     await expect(readPrivateDocument("local/private/17/local.txt")).resolves.toEqual(Buffer.from("private-data"));
     await expect(getPrivateDocumentUrl("local/private/17/local.txt")).resolves.toBe("/api/private-storage/private%2F17%2Flocal.txt");
+  });
+
+  it("deletes private files in explicit local mode for GDPR right to erasure", async () => {
+    process.env.NODE_ENV = "production";
+    process.env.PRIVATE_STORAGE_MODE = "local";
+    process.env.PRIVATE_LOCAL_STORAGE_PATH = `/tmp/freelancehr-storage-test-${process.pid}`;
+    await putPrivateDocument("private/17/delete-me.txt", Buffer.from("to-be-deleted"), "text/plain");
+    await expect(readPrivateDocument("local/private/17/delete-me.txt")).resolves.toEqual(Buffer.from("to-be-deleted"));
+    const deleted = await deletePrivateDocument("local/private/17/delete-me.txt");
+    expect(deleted).toBe(true);
+    await expect(readPrivateDocument("local/private/17/delete-me.txt")).rejects.toThrow();
   });
 
   it("fails closed in explicit S3 mode when S3-compatible private storage is incomplete", () => {

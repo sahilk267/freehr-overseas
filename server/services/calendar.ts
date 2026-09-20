@@ -60,6 +60,42 @@ export function createInterviewEventUid(interviewId: string) {
   return `interview-${interviewId}@freelancehr.overseasjob.in`;
 }
 
+export function generateCalendarFeedIcs(events: CalendarEventInput[], calendarName = "FreelanceHR Interviews") {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "PRODID:-//FreelanceHR//Interview Calendar Feed//EN",
+    "VERSION:2.0",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    `X-WR-CALNAME:${escapeIcsText(calendarName)}`,
+    "X-WR-TIMEZONE:UTC",
+    "REFRESH-INTERVAL;VALUE=DURATION:PT15M",
+    "X-PUBLISHED-TTL:PT15M",
+  ];
+
+  for (const event of events) {
+    if (event.end.getTime() <= event.start.getTime()) continue;
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${escapeIcsText(event.uid)}`,
+      `DTSTAMP:${formatUtc(new Date())}`,
+      `DTSTART:${formatUtc(event.start)}`,
+      `DTEND:${formatUtc(event.end)}`,
+      `SEQUENCE:${Math.max(0, Math.floor(event.sequence))}`,
+      `STATUS:${event.status ?? "CONFIRMED"}`,
+      property("SUMMARY", event.summary),
+      property("DESCRIPTION", event.description),
+      property("LOCATION", event.location),
+      event.organizerEmail ? `ORGANIZER:mailto:${event.organizerEmail.trim()}` : null,
+      event.attendeeEmail ? `ATTENDEE;RSVP=TRUE:mailto:${event.attendeeEmail.trim()}` : null,
+      "END:VEVENT"
+    );
+  }
+
+  lines.push("END:VCALENDAR");
+  return `${lines.filter((line): line is string => Boolean(line)).join("\r\n")}\r\n`;
+}
+
 export function calendarContentDisposition(interviewId: string) {
   return `attachment; filename="freelancehr-interview-${interviewId}.ics"`;
 }

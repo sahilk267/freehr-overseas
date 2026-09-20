@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
+  candidateDocuments,
   candidates,
   consents,
   interviews,
@@ -15,6 +16,7 @@ import {
 import { createId, recordAudit, requireDb } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 import { assertTransition, ensureSafeAiText } from "../workflow";
+import { deletePrivateDocument } from "../services/privateStorage";
 
 function validateSafeTextValue(val: unknown) {
   if (typeof val === "string") {
@@ -226,7 +228,38 @@ export const candidateWorkflowsRouter = router({
         }).onDuplicateKeyUpdate({ set: { active: true, reason: suppressionReason } });
       }
 
-      // 9. Update candidate record with redacted PII and terminal deleted state
+      // 9. Delete candidate documents physically and redact document records for statutory right-to-erasure
+      const docs = await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.candidateId, candidate.id), eq(candidateDocuments.ownerId, ctx.user.id)));
+      let documentsDeletedCount = 0;
+      for (const doc of docs) {
+        try {
+          await deletePrivateDocument(doc.storageKey);
+        } catch (err) {
+          console.warn(`[Privacy] Failed to physically delete document file ${doc.storageKey}:`, err);
+        }
+        await db.update(candidateDocuments).set({
+          storageKey: `deleted/${doc.id}`,
+          storageUrl: "",
+          originalName: "redacted.bin",
+          parsedData: null,
+          scanState: "redacted",
+          parseState: "redacted",
+        }).where(eq(candidateDocuments.id, doc.id));
+        await recordAudit({
+          ownerId: ctx.user.id,
+          actorType: "user",
+          actorId: String(ctx.user.id),
+          action: "document.deleted",
+          resourceType: "candidate_document",
+          resourceId: doc.id,
+          previousState: doc.scanState,
+          nextState: "redacted",
+          metadata: { reason: "candidate_privacy_erasure", candidateId: candidate.id },
+        });
+        documentsDeletedCount++;
+      }
+
+      // 10. Update candidate record with redacted PII and terminal deleted state
       await db.update(candidates).set({
         fullName: "Deleted candidate",
         email: null,
@@ -240,7 +273,7 @@ export const candidateWorkflowsRouter = router({
         deletedAt: new Date(),
       }).where(and(eq(candidates.id, candidate.id), eq(candidates.ownerId, ctx.user.id)));
 
-      // 10. Update rights request to resolved
+      // 11. Update rights request to resolved
       assertTransition("rights_request", request.status, "resolved");
       await db.update(rightsRequests).set({
         status: "resolved",
@@ -248,7 +281,7 @@ export const candidateWorkflowsRouter = router({
         details: `${request.details}\nResolution: ${input.resolutionNote}`,
       }).where(eq(rightsRequests.id, request.id));
 
-      // 11. Record audit entries
+      // 12. Record audit entries
       await recordAudit({
         ownerId: ctx.user.id,
         actorType: "user",
@@ -263,6 +296,7 @@ export const candidateWorkflowsRouter = router({
           piiRedacted: true,
           emailSuppressed: Boolean(emailHash),
           phoneSuppressed: Boolean(phoneHash),
+          documentsDeletedCount,
           cascaded: {
             interviewsCount: candidateInterviews.length,
             shortlistsCount: candidateShortlists.length,

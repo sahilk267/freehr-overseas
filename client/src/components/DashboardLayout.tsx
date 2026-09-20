@@ -108,6 +108,7 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
   const activeMenuItem = menuItems.find(item => item.path === location);
   const permittedMemberPaths = memberAccess && memberAccess.role !== "owner" ? memberPaths[memberAccess.role] : null;
   const visibleMenuItems = user?.role === "admin" || memberAccess?.role === "owner" ? menuItems : permittedMemberPaths ? menuItems.filter(item => permittedMemberPaths.has(item.path)) : menuItems.filter(item => item.path === "/team");
+  const isPermitted = user?.role === "admin" || memberAccess?.role === "owner" || (permittedMemberPaths ? permittedMemberPaths.has(location) : location === "/team" || location === "/");
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -164,7 +165,24 @@ function DashboardLayoutContent({ children, setSidebarWidth }: { children: React
       </div>
       <SidebarInset className="min-h-screen bg-[#f7f5f0] text-slate-950">
         {isMobile && <div className="sticky top-0 z-40 flex h-14 items-center gap-3 border-b border-slate-200 bg-[#f7f5f0]/95 px-4 backdrop-blur"><SidebarTrigger className="rounded-lg" /><span className="text-sm font-semibold text-[#10213d]">{activeMenuItem?.label ?? "FreelanceHR"}</span></div>}
-        <main className="min-h-screen p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="min-h-screen p-4 sm:p-6 lg:p-8">
+          {isPermitted ? (
+            children
+          ) : (
+            <div className="mx-auto mt-12 max-w-lg rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                <CircleAlert className="h-5 w-5" />
+              </div>
+              <h2 className="text-base font-semibold text-[#10213d]">Section Restricted</h2>
+              <p className="mt-2 text-xs leading-5 text-slate-600">
+                Your assigned role ({memberAccess?.role || "unassigned"}) does not have permission to view or manage this operational section.
+              </p>
+              <Button onClick={() => setLocation("/")} className="mt-5 bg-[#10213d] text-white">
+                Return to Command Center
+              </Button>
+            </div>
+          )}
+        </main>
       </SidebarInset>
     </>
   );

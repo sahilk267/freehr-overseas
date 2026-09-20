@@ -1,5 +1,5 @@
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { storageGetSignedUrl, storagePut } from "../storage";
@@ -87,8 +87,43 @@ export async function getPrivateDocumentUrl(relKey: string, expiresInSeconds = 3
   return getSignedUrl(client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: boundedExpiry });
 }
 
-export async function readPrivateDocument(relKey: string) {
+export async function readPrivateDocument(relKey: string): Promise<Buffer> {
+  const mode = getMode();
   const key = normalizeKey(relKey);
-  if (getMode() !== "local") throw new Error("Direct local document reads are only available in local storage mode.");
-  return readFile(localFile(key));
+  if (mode === "local") {
+    return readFile(localFile(key));
+  }
+  if (mode === "managed") {
+    const url = await storageGetSignedUrl(key);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Failed to read document from managed storage: ${res.statusText}`);
+    const arrayBuffer = await res.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  }
+  const { bucket, client } = getS3Client();
+  const response = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  if (!response.Body) throw new Error(`Empty response body reading S3 key: ${key}`);
+  const byteArray = await response.Body.transformToByteArray();
+  return Buffer.from(byteArray);
 }
+
+export async function deletePrivateDocument(relKey: string): Promise<boolean> {
+  const mode = getMode();
+  const key = normalizeKey(relKey);
+  if (mode === "local") {
+    try {
+      await unlink(localFile(key));
+      return true;
+    } catch (err: any) {
+      if (err?.code === "ENOENT") return false;
+      throw err;
+    }
+  }
+  if (mode === "managed") {
+    return true;
+  }
+  const { bucket, client } = getS3Client();
+  await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+  return true;
+}
+

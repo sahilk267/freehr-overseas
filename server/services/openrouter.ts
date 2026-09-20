@@ -83,44 +83,64 @@ export async function runOpenRouterTask<T extends AiTaskType>(input: {
 }) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new OpenRouterConfigurationError("OPENROUTER_API_KEY is not configured.");
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25_000);
   const primary = input.primaryModel || "openrouter/free";
   const fallbackModels = (input.fallbackModels ?? []).filter(model => model && model !== primary).slice(0, 3);
+  const candidateModels = [primary, ...fallbackModels];
   const userPayload = JSON.stringify(input.input).slice(0, MAX_AI_INPUT_CHARS);
   const startedAt = Date.now();
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      signal: controller.signal,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "X-Title": "FreelanceHR Controlled Operations",
-      },
-      body: JSON.stringify({
-        model: primary,
-        ...(fallbackModels.length ? { models: fallbackModels } : {}),
-        temperature: 0.1,
-        max_tokens: input.maxOutputTokens ?? 1200,
-        messages: [
-          { role: "system", content: systemPrompts[input.taskType] },
-          { role: "user", content: `Task: ${input.taskType}\nInput JSON:\n${userPayload}\nReturn JSON only.` },
-        ],
-      }),
-    });
-    if (response.status === 401 || response.status === 403) throw new OpenRouterConfigurationError(`OpenRouter rejected the credential with HTTP ${response.status}.`);
-    if (response.status === 429 || response.status >= 500) throw new OpenRouterTransientError(`OpenRouter is temporarily unavailable (HTTP ${response.status}).`);
-    if (!response.ok) throw new OpenRouterValidationError(`OpenRouter returned HTTP ${response.status}.`);
-    const payload = await response.json() as { model?: string; choices?: Array<{ message?: { content?: string } }> };
-    const content = payload.choices?.[0]?.message?.content;
-    if (!content) throw new OpenRouterValidationError("OpenRouter returned no assistant content.");
-    return { result: parseStructuredAiResult(input.taskType, content), selectedModel: payload.model ?? primary, latencyMs: Date.now() - startedAt };
-  } catch (error) {
-    if (error instanceof OpenRouterConfigurationError || error instanceof OpenRouterTransientError || error instanceof OpenRouterValidationError) throw error;
-    if (error instanceof Error && error.name === "AbortError") throw new OpenRouterTransientError("OpenRouter request timed out.");
-    throw new OpenRouterTransientError(error instanceof Error ? error.message : "OpenRouter request failed.");
-  } finally {
-    clearTimeout(timeout);
+  let lastError: Error | null = null;
+
+  for (const modelCandidate of candidateModels) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 25_000);
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "X-Title": "FreelanceHR Controlled Operations",
+        },
+        body: JSON.stringify({
+          model: modelCandidate,
+          temperature: 0.1,
+          max_tokens: input.maxOutputTokens ?? 1200,
+          messages: [
+            { role: "system", content: systemPrompts[input.taskType] },
+            { role: "user", content: `Task: ${input.taskType}\nInput JSON:\n${userPayload}\nReturn JSON only.` },
+          ],
+        }),
+      });
+      if (response.status === 401 || response.status === 403) {
+        throw new OpenRouterConfigurationError(`OpenRouter rejected the credential with HTTP ${response.status}.`);
+      }
+      if (response.status === 429 || response.status >= 500) {
+        throw new OpenRouterTransientError(`OpenRouter model ${modelCandidate} is temporarily unavailable (HTTP ${response.status}).`);
+      }
+      if (!response.ok) {
+        throw new OpenRouterValidationError(`OpenRouter returned HTTP ${response.status}.`);
+      }
+      const payload = await response.json() as { model?: string; choices?: Array<{ message?: { content?: string } }> };
+      const content = payload.choices?.[0]?.message?.content;
+      if (!content) throw new OpenRouterValidationError("OpenRouter returned no assistant content.");
+      return { result: parseStructuredAiResult(input.taskType, content), selectedModel: payload.model ?? modelCandidate, latencyMs: Date.now() - startedAt };
+    } catch (error) {
+      if (error instanceof OpenRouterConfigurationError) {
+        throw error;
+      }
+      const wrapped = error instanceof OpenRouterTransientError || error instanceof OpenRouterValidationError
+        ? error
+        : error instanceof Error && error.name === "AbortError"
+          ? new OpenRouterTransientError(`OpenRouter request for ${modelCandidate} timed out.`)
+          : new OpenRouterTransientError(error instanceof Error ? error.message : "OpenRouter request failed.");
+      lastError = wrapped;
+      continue;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
+
+  if (lastError) throw lastError;
+  throw new OpenRouterTransientError("All candidate models failed.");
 }

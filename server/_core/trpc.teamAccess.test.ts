@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 let selectResults: unknown[][] = [];
 
 vi.mock("../db", () => ({
+  recordAudit: vi.fn(),
   requireDb: async () => ({
     select: () => ({ from: () => ({ where: () => ({ limit: async () => selectResults.shift() ?? [] }) }) }),
   }),

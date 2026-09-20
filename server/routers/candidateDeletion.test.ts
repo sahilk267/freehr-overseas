@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import {
   auditEvents,
+  candidateDocuments,
   candidates,
   companies,
   consents,
@@ -131,6 +132,21 @@ describe("candidate privacy deletion workflow & cascade controls", () => {
       grantedAt: new Date(),
     });
 
+    const docId = createId("doc_");
+    await db.insert(candidateDocuments).values({
+      id: docId,
+      ownerId: testOwnerId,
+      candidateId,
+      documentType: "cv",
+      storageKey: `local/private/${testOwnerId}/candidates/${candidateId}/cv.pdf`,
+      storageUrl: `/api/private-storage/cv.pdf`,
+      originalName: "Maya_Sen_Resume.pdf",
+      mimeType: "application/pdf",
+      sizeBytes: 1024,
+      scanState: "clean",
+      parseState: "parsed",
+    });
+
     // 4. Create an erasure / deletion rights request
     const requestId = createId("rgt_");
     await db.insert(rightsRequests).values({
@@ -247,6 +263,17 @@ describe("candidate privacy deletion workflow & cascade controls", () => {
     expect(updatedRequest.status).toBe("resolved");
     expect(updatedRequest.resolvedAt).toBeInstanceOf(Date);
     expect(updatedRequest.details).toContain("Resolution: Right to erasure fulfilled");
+
+    // 15. Verify candidate document was redacted and document audit logged
+    const [updatedDoc] = await db.select().from(candidateDocuments).where(eq(candidateDocuments.id, docId));
+    expect(updatedDoc.scanState).toBe("redacted");
+    expect(updatedDoc.parseState).toBe("redacted");
+    expect(updatedDoc.originalName).toBe("redacted.bin");
+    expect(updatedDoc.storageUrl).toBe("");
+
+    const docAudit = audits.find(a => a.action === "document.deleted" && a.resourceId === docId);
+    expect(docAudit).toBeDefined();
+    expect(docAudit?.nextState).toBe("redacted");
   });
 
   it("gracefully transitions completed interview to 'closed' during cascade", async () => {

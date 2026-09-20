@@ -5,6 +5,7 @@ import { auditEvents, teamInvitations, teamMembers } from "../../drizzle/schema"
 import { createId, recordAudit, requireDb } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 import { TRPCError } from "@trpc/server";
+import { getHostingerMailApiStatus, sendViaHostingerMailApi } from "../services/hostingerMail";
 
 const assignableRoleSchema = z.enum(["recruiter", "coordinator", "finance", "viewer"]);
 
@@ -73,8 +74,25 @@ export const teamRouter = router({
       await db.insert(teamMembers).values({ id: memberId, ownerId, email, displayName: input.displayName ?? null, role, status: "invited", createdById: actorId });
     }
     await db.insert(teamInvitations).values({ id: invitationId, ownerId, memberId, email, role, tokenHash: hashInvitationToken(rawToken), expiresAt, createdById: actorId });
-    await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "team.invitation_created", resourceType: "team_invitation", resourceId: invitationId, nextState: "pending", metadata: { memberId, email, role, expiresAt: expiresAt.toISOString(), delivery: "pending_hostinger_mail_activation" } });
-    return { memberId, invitationId, expiresAt, invitationCode: rawToken, delivery: "pending_hostinger_mail_activation" as const };
+    let delivery: "pending_hostinger_mail_activation" | "delivered" | "delivery_failed" = "pending_hostinger_mail_activation";
+    if (getHostingerMailApiStatus().configured) {
+      try {
+        const appBaseUrl = (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "");
+        const inviteUrl = `${appBaseUrl}/team/accept?code=${rawToken}`;
+        await sendViaHostingerMailApi({
+          purpose: "owner",
+          to: email,
+          displayName: "FreelanceHR Team Invitation",
+          subject: "Invitation to join FreelanceHR workspace",
+          text: `You have been invited to join the FreelanceHR workspace as a ${role}.\n\nAccept your invitation: ${inviteUrl}\n\nThis invitation expires at: ${expiresAt.toISOString()}`,
+        });
+        delivery = "delivered";
+      } catch {
+        delivery = "delivery_failed";
+      }
+    }
+    await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "team.invitation_created", resourceType: "team_invitation", resourceId: invitationId, nextState: "pending", metadata: { memberId, email, role, expiresAt: expiresAt.toISOString(), delivery } });
+    return { memberId, invitationId, expiresAt, invitationCode: rawToken, delivery };
   }),
   updateRole: protectedProcedure.input(z.object({ memberId: z.string().min(4), role: assignableRoleSchema })).mutation(async ({ ctx, input }) => {
     const ownerId = requireTeamOwner(ctx);

@@ -30,8 +30,9 @@ import { protectedProcedure, router } from "../_core/trpc";
 import { createHeartbeatJob } from "../_core/heartbeat";
 import { extractDocumentText } from "../services/documentText";
 import { getPrivateDocumentUrl, putPrivateDocument } from "../services/privateStorage";
-import { createInterviewEventUid, createInterviewIcs } from "../services/calendar";
+import { createInterviewEventUid, createInterviewIcs, generateCalendarFeedIcs } from "../services/calendar";
 import { scanCandidateDocument } from "../services/documentScanner";
+import { generateInvoiceDocument, createInvoicePaymentLink, recordInvoicePayment } from "../services/invoicing";
 import { assertTransition, ensureSafeAiText, isConsequentialAction } from "../workflow";
 import { applyApprovalDecision, requestOrAutoDecide } from "../services/approvalEngine";
 import { consequentialRouter } from "./consequential";
@@ -125,6 +126,71 @@ export const prospectsRouter = router({
     await db.insert(contacts).values({ id, ownerId: ctx.user.id, companyId: input.companyId, name: input.name, title: input.title ?? null, email: input.email?.toLowerCase() ?? null, phone: input.phone ?? null, sourceUrl: input.sourceUrl ?? null, sourceType: input.sourceUrl ? "sourced" : "manual" });
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "contact.created", resourceType: "contact", resourceId: id, metadata: { companyId: input.companyId } });
     return { id };
+  }),
+  attachKybDocument: protectedProcedure.input(z.object({
+    companyId: z.string().min(4),
+    originalName: z.string().trim().min(1).max(255),
+    mimeType: z.enum(["application/pdf", "image/png", "image/jpeg", "text/plain"]),
+    dataBase64: z.string().min(16).max(7_000_000),
+    documentType: z.enum(["incorporation_certificate", "tax_id_gst", "bank_statement", "identity_proof", "other"]).default("incorporation_certificate"),
+  })).mutation(async ({ ctx, input }) => {
+    const db = await requireDb();
+    const rows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
+    const company = await requireOwned(rows[0], ctx.user.id, "Company");
+    const bytes = Buffer.from(input.dataBase64, "base64");
+    if (!bytes.length || bytes.length > 5 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "KYB verification documents must be no larger than 5 MB." });
+    const safeName = input.originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const uploaded = await putPrivateDocument(`private/${ctx.user.id}/companies/${company.id}/kyb/${safeName}`, bytes, input.mimeType);
+    
+    await db.update(companies).set({ verificationState: "in_review" }).where(eq(companies.id, company.id));
+    await recordAudit({
+      ownerId: ctx.user.id,
+      actorType: "user",
+      actorId: String(ctx.user.id),
+      action: "company.kyb_document_attached",
+      resourceType: "company",
+      resourceId: company.id,
+      previousState: company.verificationState,
+      nextState: "in_review",
+      metadata: {
+        documentType: input.documentType,
+        storageKey: uploaded.key,
+        originalName: safeName,
+        sizeBytes: bytes.length,
+      },
+    });
+
+    return { success: true, storageKey: uploaded.key, verificationState: "in_review" as const };
+  }),
+  verifyKyb: protectedProcedure.input(z.object({
+    companyId: z.string().min(4),
+    decision: z.enum(["verified", "rejected", "pending"]),
+    notes: z.string().trim().max(1000).optional(),
+  })).mutation(async ({ ctx, input }) => {
+    const db = await requireDb();
+    const rows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
+    const company = await requireOwned(rows[0], ctx.user.id, "Company");
+
+    const updateFields: any = { verificationState: input.decision };
+    if (input.decision === "verified") {
+      updateFields.onboardingApprovedAt = new Date();
+      updateFields.onboardingApprovedById = ctx.user.id;
+    }
+
+    await db.update(companies).set(updateFields).where(eq(companies.id, company.id));
+    await recordAudit({
+      ownerId: ctx.user.id,
+      actorType: "user",
+      actorId: String(ctx.user.id),
+      action: input.decision === "verified" ? "company.kyb_verified" : "company.kyb_rejected",
+      resourceType: "company",
+      resourceId: company.id,
+      previousState: company.verificationState,
+      nextState: input.decision,
+      metadata: { notes: input.notes, decision: input.decision },
+    });
+
+    return { success: true, verificationState: input.decision };
   }),
 });
 
@@ -394,6 +460,51 @@ export const matchingRouter = router({
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "match.evidence_recorded", resourceType: "match", resourceId: id, metadata: { candidateId: input.candidateId, jobId: input.jobId, lowConfidence } });
     return { id, lowConfidence };
   }),
+  queueScoreMatch: protectedProcedure
+    .input(z.object({ candidateId: z.string().min(4), jobId: z.string().min(4) }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+      const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
+      await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
+      const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
+      await requireOwned(jobRows[0], ctx.user.id, "Job");
+      const candidate = candidateRows[0];
+      const job = jobRows[0];
+      const queueId = createId("que_");
+      await db.insert(automationQueue).values({
+        id: queueId,
+        ownerId: ctx.user.id,
+        jobType: "score_match",
+        payload: {
+          candidateId: candidate.id,
+          jobId: job.id,
+          candidate: {
+            fullName: candidate.fullName,
+            headline: candidate.headline,
+            location: candidate.location,
+          },
+          job: {
+            title: job.title,
+            description: job.description,
+            location: job.location,
+          },
+        },
+        idempotencyKey: `score_match:${job.id}:${candidate.id}`,
+        priority: 2,
+        scheduledAt: new Date(),
+        maxAttempts: 3,
+      });
+      await recordAudit({
+        ownerId: ctx.user.id,
+        actorType: "user",
+        actorId: String(ctx.user.id),
+        action: "match.score_queued",
+        resourceType: "candidate",
+        resourceId: candidate.id,
+        metadata: { jobId: job.id, queueId },
+      });
+      return { queueId };
+    }),
   requestShareApproval: protectedProcedure.input(z.object({ candidateId: z.string().min(4), jobId: z.string().min(4), companyId: z.string().min(4), matchId: z.string().min(4).optional() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
@@ -475,6 +586,27 @@ export const interviewsRouter = router({
     await db.update(interviews).set({ status: input.state, completedAt: input.state === "completed" ? new Date() : interview.completedAt, calendarStatus: input.state === "confirmed" ? "confirmed" : input.state === "cancelled" ? "cancelled" : interview.calendarStatus }).where(eq(interviews.id, input.id));
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.state_changed", resourceType: "interview", resourceId: input.id, previousState: interview.status, nextState: input.state });
     return { success: true };
+  }),
+  calendarFeed: protectedProcedure.query(async ({ ctx }) => {
+    const db = await requireDb();
+    const rows = await db.select().from(interviews).where(eq(interviews.ownerId, ctx.user.id)).orderBy(desc(interviews.scheduledAt)).limit(200);
+    const events = rows.map(item => ({
+      uid: createInterviewEventUid(item.id),
+      sequence: item.calendarSequence,
+      start: item.scheduledAt,
+      end: item.scheduledEndAt ?? new Date(item.scheduledAt.getTime() + 45 * 60 * 1000),
+      summary: `Interview (${item.stage || "Standard"})`,
+      description: item.preparationNotes || "FreelanceHR scheduled interview",
+      location: item.location || "Online Meeting",
+      status: (item.status === "cancelled" ? "CANCELLED" : "CONFIRMED") as "CONFIRMED" | "CANCELLED",
+    }));
+    const ics = generateCalendarFeedIcs(events);
+    const appBaseUrl = (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "");
+    return {
+      eventCount: events.length,
+      icsContent: ics,
+      subscriptionUrl: `${appBaseUrl}/api/calendar/feed/${ctx.user.id}`,
+    };
   }),
 });
 
@@ -585,6 +717,26 @@ export const invoicesRouter = router({
       { amount: invoice.amount, taxAmount: invoice.taxAmount },
     );
     return { approvalId: result.approvalId, autoDecided: result.autoDecided };
+  }),
+  generateDocument: protectedProcedure.input(idInput).query(async ({ ctx, input }) => {
+    return generateInvoiceDocument(input.id, ctx.user.id);
+  }),
+  createPaymentLink: protectedProcedure.input(z.object({ id: z.string().min(4), provider: z.string().default("stripe") })).mutation(async ({ ctx, input }) => {
+    return createInvoicePaymentLink(input.id, ctx.user.id, input.provider);
+  }),
+  recordPayment: protectedProcedure.input(z.object({
+    id: z.string().min(4),
+    amount: z.number().int().positive().optional(),
+    provider: z.string().default("bank_transfer"),
+    providerEventId: z.string().min(3),
+    note: z.string().trim().max(500).optional(),
+  })).mutation(async ({ ctx, input }) => {
+    return recordInvoicePayment(input.id, ctx.user.id, {
+      amount: input.amount,
+      provider: input.provider,
+      providerEventId: input.providerEventId,
+      note: input.note,
+    });
   }),
 });
 

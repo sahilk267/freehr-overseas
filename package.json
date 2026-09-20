@@ -10,7 +10,8 @@
     "lint": "tsc --noEmit",
     "check": "tsc --noEmit",
     "test": "vitest run",
-    "test:hostinger": "tsx scripts/verify-hostinger.ts"
+    "test:hostinger": "tsx scripts/verify-hostinger.ts",
+    "seed:demo": "node scripts/seed-demo.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",

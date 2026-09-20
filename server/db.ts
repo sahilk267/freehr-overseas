@@ -20,14 +20,23 @@ const _mockStore = seedInitialStore();
 
 export async function getDb() {
   if (!_db) {
+    const isStrictProduction = process.env.NODE_ENV === "production" && !process.env.VITEST;
     if (process.env.DATABASE_URL) {
       try {
         _db = drizzle(process.env.DATABASE_URL);
       } catch (err) {
+        if (isStrictProduction) {
+          console.error("[FreelanceHR] FATAL: Failed to connect to DATABASE_URL in production mode:", err);
+          throw new Error("[FreelanceHR] Invariant Violation: DATABASE_URL is required and must connect successfully in production mode. Refusing to initialize mock database store.");
+        }
         console.warn("[FreelanceHR] Failed to connect to DATABASE_URL, using in-memory store:", err);
         _db = createMockDrizzle(_mockStore);
       }
     } else {
+      if (isStrictProduction) {
+        console.error("[FreelanceHR] FATAL: DATABASE_URL is missing in production mode.");
+        throw new Error("[FreelanceHR] Invariant Violation: DATABASE_URL is required and must connect successfully in production mode. Refusing to initialize mock database store.");
+      }
       _db = createMockDrizzle(_mockStore);
     }
   }

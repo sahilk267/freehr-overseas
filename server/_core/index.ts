@@ -12,9 +12,10 @@ import { processHostingerMailWebhook } from "../services/hostingerWebhook";
 import { processDueInterviewReminders } from "../services/interviewReminders";
 import { processDueAutomationBatch } from "../services/queue";
 import { readPrivateDocument } from "../services/privateStorage";
+import { createInterviewEventUid, generateCalendarFeedIcs } from "../services/calendar";
 import { sdk } from "./sdk";
-import { eq, or } from "drizzle-orm";
-import { candidateDocuments, workspaceSettings } from "../../drizzle/schema";
+import { desc, eq, or } from "drizzle-orm";
+import { candidateDocuments, interviews, workspaceSettings } from "../../drizzle/schema";
 import { requireDb } from "../db";
 
 function isPortAvailable(port: number): Promise<boolean> {
@@ -79,6 +80,38 @@ async function startServer() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Private document read failed.";
       return res.status(404).json({ error: message });
+    }
+  });
+  app.get("/api/calendar/feed/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId, 10);
+      if (isNaN(userId)) return res.status(400).send("Invalid user ID");
+      const db = await requireDb();
+      const rows = await db
+        .select()
+        .from(interviews)
+        .where(eq(interviews.ownerId, userId))
+        .orderBy(desc(interviews.scheduledAt))
+        .limit(200);
+
+      const events = rows.map(item => ({
+        uid: createInterviewEventUid(item.id),
+        sequence: item.calendarSequence,
+        start: item.scheduledAt,
+        end: item.scheduledEndAt ?? new Date(item.scheduledAt.getTime() + 45 * 60 * 1000),
+        summary: `Interview (${item.stage || "Standard"})`,
+        description: item.preparationNotes || "FreelanceHR scheduled interview",
+        location: item.location || "Online Meeting",
+        status: (item.status === "cancelled" ? "CANCELLED" : "CONFIRMED") as "CONFIRMED" | "CANCELLED",
+      }));
+
+      const ics = generateCalendarFeedIcs(events);
+      res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+      res.setHeader("Content-Disposition", "inline; filename=\"freelancehr-interviews.ics\"");
+      return res.send(ics);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Calendar feed error";
+      return res.status(500).send(message);
     }
   });
   app.post("/api/scheduled/interview-reminders", async (req, res) => {

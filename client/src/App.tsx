@@ -6,6 +6,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
+import TeamAcceptPage from "./pages/TeamAcceptPage";
 import { CandidatesPage, ControlPlanePage, ExceptionsPage, FinancePage, InterviewsPage, JobsPage, PlacementsPage, ProspectsPage, TeamPage } from "./pages/WorkspaceViews";
 
 function withDashboard(Page: React.ComponentType) {
@@ -34,6 +35,7 @@ function Router() {
     <Route path="/finance" component={Finance} />
     <Route path="/exceptions" component={Exceptions} />
     <Route path="/team" component={Team} />
+    <Route path="/team/accept" component={TeamAcceptPage} />
     <Route path="/control" component={ControlPlane} />
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />

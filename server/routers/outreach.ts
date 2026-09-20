@@ -18,7 +18,7 @@ export const outreachRouter = router({
     const queueId = createId("que_");
     await db.insert(conversations).values({ id: conversationId, ownerId: ctx.user.id, companyId: contact.companyId, contactId: contact.id, channel: "email", status: "drafting" });
     await db.insert(messages).values({ id: messageId, conversationId, ownerId: ctx.user.id, direction: "outbound", status: "drafting", body: "AI outreach draft pending", idempotencyKey: `message:${messageId}`, aiGenerated: true });
-    await db.insert(automationQueue).values({ id: queueId, ownerId: ctx.user.id, jobType: "draft_outreach", payload: { purpose: input.purpose, contact: { name: contact.name, title: contact.title, companyId: contact.companyId }, context: input.context, policy: "Draft only. Include a clear opt-out. No message may be sent automatically." }, idempotencyKey: `draft_outreach:${messageId}` });
+    await db.insert(automationQueue).values({ id: queueId, ownerId: ctx.user.id, jobType: "draft_outreach", payload: { messageId, purpose: input.purpose, contact: { name: contact.name, title: contact.title, companyId: contact.companyId }, context: input.context, policy: "Draft only. Include a clear opt-out. No message may be sent automatically." }, idempotencyKey: `draft_outreach:${messageId}` });
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "outreach.draft_queued", resourceType: "message", resourceId: messageId, nextState: "drafting", metadata: { conversationId, queueId, purpose: input.purpose } });
     return { conversationId, messageId, queueId };
   }),
@@ -30,7 +30,7 @@ export const outreachRouter = router({
     const messageId = createId("msg_");
     const queueId = createId("que_");
     await db.insert(messages).values({ id: messageId, conversationId: conversation.id, ownerId: ctx.user.id, direction: "inbound", status: "received", body: input.messageText, idempotencyKey: `inbound:${messageId}`, aiGenerated: false, deliveredAt: new Date() });
-    await db.insert(automationQueue).values({ id: queueId, ownerId: ctx.user.id, jobType: "classify_reply", payload: { messageText: input.messageText, instruction: "Classify only. If the message asks to stop contact, recommend stop_contact." }, idempotencyKey: `classify_reply:${messageId}` });
+    await db.insert(automationQueue).values({ id: queueId, ownerId: ctx.user.id, jobType: "classify_reply", payload: { conversationId: conversation.id, messageId, messageText: input.messageText, instruction: "Classify only. If the message asks to stop contact, recommend stop_contact." }, idempotencyKey: `classify_reply:${messageId}` });
     await db.update(conversations).set({ status: "reply_received", lastMessageAt: new Date() }).where(eq(conversations.id, conversation.id));
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "outreach.reply_queued_for_classification", resourceType: "conversation", resourceId: conversation.id, nextState: "reply_received", metadata: { queueId } });
     return { messageId, queueId };

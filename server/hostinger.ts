@@ -120,10 +120,31 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
     });
   }
 
+function authenticateCronRequest(request: { headers: Record<string, unknown>; query?: unknown }): { isCron: boolean; taskUid: string } | null {
+  const cronSecret = process.env.CRON_SECRET;
+  const cronKeyHeader = request.headers["x-cron-key"];
+  const authHeader = request.headers.authorization;
+  const bearerToken = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+
+  if (cronSecret && cronSecret.length >= 8) {
+    if (cronKeyHeader === cronSecret || bearerToken === cronSecret) {
+      const taskUid = (request.headers["x-cron-task-uid"] as string) || (request.query as any)?.taskUid || "global";
+      return { isCron: true, taskUid };
+    }
+  }
+  return null;
+}
+
   // 2. Scheduled interview reminders route with cron-only guard
   app.post("/api/scheduled/interview-reminders", async (request, reply) => {
     try {
-      const user = await sdk.authenticateRequest((request.raw || request) as any);
+      const cronUser = authenticateCronRequest(request);
+      let user: { isCron?: boolean; taskUid?: string | null };
+      if (cronUser) {
+        user = cronUser;
+      } else {
+        user = await sdk.authenticateRequest((request.raw || request) as any);
+      }
       if (!user.isCron || !user.taskUid) return reply.status(403).send({ error: "cron-only" });
       const db = await requireDb();
       const workspace = (
@@ -133,7 +154,13 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
           .where(eq(workspaceSettings.scheduleCronTaskUid, user.taskUid))
           .limit(1)
       )[0];
-      if (!workspace) return reply.send({ ok: true, skipped: "orphan" });
+      if (!workspace) {
+        if (user.taskUid === "global" || user.taskUid === "all") {
+          const result = await processDueInterviewReminders(undefined, 10);
+          return reply.send({ ok: true, ...result });
+        }
+        return reply.send({ ok: true, skipped: "orphan" });
+      }
       const result = await processDueInterviewReminders(workspace.ownerId, 10);
       return reply.send({ ok: true, ...result });
     } catch (error) {
@@ -145,7 +172,13 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
   // 3. Scheduled automation queue route with cron-only guard
   app.post("/api/scheduled/automation-queue", async (request, reply) => {
     try {
-      const user = await sdk.authenticateRequest((request.raw || request) as any);
+      const cronUser = authenticateCronRequest(request);
+      let user: { isCron?: boolean; taskUid?: string | null };
+      if (cronUser) {
+        user = cronUser;
+      } else {
+        user = await sdk.authenticateRequest((request.raw || request) as any);
+      }
       if (!user.isCron || !user.taskUid) return reply.status(403).send({ error: "cron-only" });
       const db = await requireDb();
       const workspace = (
