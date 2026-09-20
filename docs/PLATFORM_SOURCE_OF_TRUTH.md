@@ -347,17 +347,17 @@ When an approval record transitions to `approved`, the system executes bounded s
 
 ## 11. Known Gaps, Contradictions & Unverified Claims
 
-The following findings represent actual contradictions between repository code, configurations, and documentation. They are recorded here as verified audit facts without modification:
+The following findings represent the reconciled, verified audit facts comparing documentation claims against the actual repository code, configurations, and test runners:
 
-| Severity | Category | Contradiction / Gap Description | Evidence Reference |
-| :--- | :--- | :--- | :--- |
-| **P0 / P1** | **Database** | **Silent Mock Fallback in Production**: `server/db.ts` falls back to `createMockDrizzle(_mockStore)` if `DATABASE_URL` is unset or fails to connect. There is no check for `process.env.NODE_ENV === "production"`, violating Invariant 2. | `server/db.ts:24-33` |
-| **P0 / P1** | **Cron / Auth** | **Scheduled Endpoints Require Preview OAuth on Hostinger**: `/api/scheduled/interview-reminders` and `/api/scheduled/automation-queue` in `server/hostinger.ts` call `sdk.authenticateRequest`, which attempts to contact `ENV.oAuthServerUrl`. Hostinger cron curls have no mechanism to acquire a preview token without mock bypass. | `server/hostinger.ts:58,81`, `server/_core/sdk.ts:258-286` |
-| **P1** | **Storage** | **Document Scanner Coupled to Local Storage**: `scanCandidateDocument` calls `readPrivateDocument`, which strictly throws an error if `PRIVATE_STORAGE_MODE !== "local"`. S3 and managed storage modes cannot be scanned by background workers. | `server/services/privateStorage.ts:92`, `server/services/documentScanner.ts:128` |
-| **P2** | **Config** | **`.env.example` Out of Sync**: Root `.env.example` lists only template defaults (`GEMINI_API_KEY`, `APP_URL`). It omits all 35 operational variables required by production (`DATABASE_URL`, `OIDC_*`, `HOSTINGER_MAIL_*`, `OPENROUTER_API_KEY`, etc.). | `/.env.example:1-10` |
-| **P2** | **Scripts** | **Missing `seed:demo` Script**: `DEMO_DATA.md` documents `pnpm seed:demo`, but `package.json` contains no `seed:demo` script definition (only `scripts/seed-demo.mjs` exists on disk). | `DEMO_DATA.md:5`, `package.json:11-20` |
-| **P2** | **Heartbeat** | **Mock Heartbeat Fallback**: `server/_core/heartbeat.ts` returns `mock_heartbeat_${Date.now()}` when `BUILT_IN_FORGE_API_URL` or key is missing. | `server/_core/heartbeat.ts:68-70` |
-| **P3** | **Docs Drift** | **Outdated Test Count in Documentation**: `CHANGELOG.md` claims "All 135 unit and integration tests passing", whereas the current suite contains 187 tests (185 passed, 2 skipped). | `CHANGELOG.md:82`, Vitest run |
+| Severity | Category | Contradiction / Gap Description | Actual Verified Repository Status | Evidence Reference |
+| :--- | :--- | :--- | :--- | :--- |
+| **P0** | **Build / Deploy** | **Production Start Command Fails**: `package.json` specifies `"start": "node dist/server.cjs"`. Executing this crashes with `TypeError: (0 , import_vite.default) is not a function` because `server.ts` imports Vite. The real standalone production server is `dist/hostinger.js`, compiled via `scripts/build-hostinger.mjs`. | **ACTIVE BLOCKER**: `package.json` start script points to broken artifact; Hostinger deployment instructions require manual start override. | `package.json:16`, `server/_core/vite.ts:59`, runtime execution |
+| **P0** | **Database** | **Lazy Drizzle Connection & Mock Fallback**: While `server/db.ts:28-39` blocks production startup if `DATABASE_URL` is empty, `drizzle(DATABASE_URL)` is lazy and does not ping MySQL on boot. Dynamic query errors in `getDb()` still fall back to `createMockDrizzle(_mockStore)`. | **ACTIVE VULNERABILITY**: No synchronous startup connectivity check (`SELECT 1`). Silent mock fallback remains in runtime error paths. | `server/db.ts:24-52` |
+| **P0** | **Privacy / Storage** | **Privacy Deletion Fails Open on Storage Error**: `candidateWorkflows.ts:234-239` catches physical storage deletion errors in a `try/catch`, logs a console warning, and continues to mark the document as redacted and the privacy request as resolved. | **ACTIVE REGULATORY RISK**: Non-atomic erasure violates fail-closed invariant; storage unlink errors leave orphan PII on disk/S3. | `server/routers/candidateWorkflows.ts:234-239` |
+| **P1** | **Cron / Auth** | **Cron Secret vs Preview OAuth Fallback**: `server/hostinger.ts` and `server/_core/index.ts` now support `x-cron-key` and `Bearer <CRON_SECRET>`. However, if `CRON_SECRET` is unset, they fall back to `sdk.authenticateRequest`, which fails with 401/403 on Hostinger. | **RECONCILED / PARTIAL**: Cron secret authentication is implemented in code, but requires explicit `CRON_SECRET` configuration to avoid preview OAuth failure. | `server/hostinger.ts:68-76,96-104`, `server/_core/index.ts:49-62` |
+| **P1** | **AI Queue** | **Unwired Automation Queue Side Effects**: While `parse_cv`, `draft_outreach`, `classify_reply`, and `score_match` apply domain side effects in `queue.ts:13-240`, `send_reminder` and `reconcile_invoice` jobs have no domain handlers and store output only in `automationQueue.result`. | **ACTIVE GAP**: 2 of 6 queue job types do not update domain models upon completion. | `server/services/queue.ts:242-260` |
+| **P1** | **Dependencies** | **Lockfile vs Package.json Drift**: `drizzle-kit` is present in `pnpm-lock.yaml` but missing from `package.json` `devDependencies`. Running `pnpm db:push` or schema migrations directly from `package.json` scripts is unconfigured. | **ACTIVE GAP**: Schema management scripts require manual CLI invocation. | `package.json`, `pnpm-lock.yaml` |
+| **P2** | **Docs Drift** | **Test Count and Status Drift**: Previous documentation claimed 187 tests (185 passed, 2 skipped) or 135 tests. Actual execution verifies 190 passed, 2 skipped across 34 passed test files (1 test file skipped). Total tests: 192 across 35 test files. `scripts/verify-hostinger.ts` contains 21 passing assertions. | **RECONCILED**: Updated to verified execution counts. | `vitest run`, `scripts/verify-hostinger.ts` |
 
 ---
 
@@ -434,37 +434,37 @@ $$\text{User Interface} \longrightarrow \text{API/tRPC Route} \longrightarrow \t
 ## 14. Comprehensive 30-Workflow Verification Matrix
 
 | Flow # | Critical Workflow Name | UI Entry Point | API Procedure / Route | Service Layer | DB Tables | External Integration | State Machine | Audit Logged | Status | Key Gap / Deficiency |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **01** | **Authentication** | `client/src/main.tsx:57` | `/api/auth/oidc/*`, `auth.me` | `runtimeAuth.ts` | `users` | OIDC IdP / Preview OAuth | Session cookie | ❌ No | **PARTIAL** | Missing standalone login UI page; no audit events for login/logout; scheduled cron calls preview OAuth. |
-| **02** | **Authorization** | `DashboardLayout.tsx:32` | `requireWorkspaceOwnerProcedure` | `workspaceAccess.ts` | `workspace_settings`, `team_members` | None | None | ❌ Inline 403 | **PARTIAL** | Non-owner roles lack granular UI visibility restrictions; access denial attempts not logged to audit table. |
-| **03** | **Workspace / Team Access** | `WorkspaceViews.tsx:593` | `team.invite`, `team.accept` | `team.ts` | `team_members`, `team_invitations` | Hostinger Mail (unwired) | `invited` → `active` | ✅ Yes | **PARTIAL** | Invite emails are not dispatched via Hostinger Mail API; `/team/accept` UI route missing in Wouter router. |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **01** | **Authentication** | `client/src/main.tsx:57` | `/api/auth/oidc/*`, `auth.me` | `runtimeAuth.ts` | `users` | OIDC IdP / Preview OAuth | Session cookie | ✅ Yes (`auth.login`/`logout`) | **PARTIAL** | OIDC flow works and logs auth events; requires external IdP config in production. |
+| **02** | **Authorization** | `DashboardLayout.tsx:32` | `requireWorkspaceOwnerProcedure` | `workspaceAccess.ts` | `workspace_settings`, `team_members` | None | None | ✅ Yes (`auth.access_denied`) | **PARTIAL** | Backend enforces strict RBAC; non-owner UI role gating handles view restrictions. |
+| **03** | **Workspace / Team Access** | `WorkspaceViews.tsx:593` | `team.invite`, `team.accept` | `team.ts` | `team_members`, `team_invitations` | Hostinger Mail API | `invited` → `active` | ✅ Yes | **COMPLETE** | Invite email dispatches via Hostinger Mail when configured (falls back to URL); `/team/accept` UI page mounted in `App.tsx:38`. |
 | **04** | **Client Onboarding** | `WorkspaceViews.tsx:63` | `prospects.create`, `requestOnboarding` | `approvalEngine.ts` | `companies`, `approvals` | None | `new` → `converted` → `active` | ✅ Yes | **COMPLETE** | Full path from prospect creation through owner approval and client activation verified. |
-| **05** | **Client Verification** | `WorkspaceViews.tsx:75` | `prospects.requestOnboardingApproval`| `approvalEngine.ts` | `companies.verificationState` | None | `unverified` → `verified` | ✅ Yes | **PARTIAL** | Only manual owner verification supported; no document upload for tax/registration or registry lookups. |
+| **05** | **Client Verification** | `WorkspaceViews.tsx:75` | `prospects.requestOnboardingApproval`| `approvalEngine.ts` | `companies.verificationState` | None | `unverified` → `verified` | ✅ Yes | **COMPLETE** | Owner verification and KYB document attachment (`prospects.attachKybDocument`) verified. |
 | **06** | **Job Creation** | `WorkspaceViews.tsx:88` | `jobs.create` | `recruitment.ts:136` | `jobs` | None | `draft` | ✅ Yes | **COMPLETE** | Scorecard sum validation (100%), requirement quality calculation, and audit trail verified. |
 | **07** | **Job Validation** | `WorkspaceViews.tsx:94` | `jobs.transition` | `recruitment.ts:158` | `jobs` | None | `draft` → `sourcing` | ✅ Yes | **COMPLETE** | Client confirmation strictly enforced before job can enter sourcing or approved states. |
 | **08** | **Candidate Creation** | `WorkspaceViews.tsx:103` | `candidates.create` | `recruitment.ts:185` | `candidates` | None | `consent_pending` | ✅ Yes | **COMPLETE** | Contact hashing (`emailHash`, `phoneHash`), provenance capture, and audit recording verified. |
 | **09** | **Candidate Document Upload** | `WorkspaceViews.tsx:125` | `candidates.documents.upload` | `privateStorage.ts` | `candidateDocuments`, `automationQueue` | S3 / Local Disk | `accepted_pending_scan` | ✅ Yes | **COMPLETE** | 5MB limit, SHA-256 verification, encrypted/local storage, and scan enqueueing verified. |
-| **10** | **Resume Parsing** | `WorkspaceViews.tsx:112` | `recruitment.ts:355` | `documentExtractor.ts`, `queue.ts` | `candidateDocuments` | OpenRouter (`parse_cv`) | `queued` (stalled) | ❌ Partial | **UNWIRED** | AI parser runs, but parsed skills/work history are never written to candidate or document parse state. |
+| **10** | **Resume Parsing** | `WorkspaceViews.tsx:112` | `recruitment.ts:355` | `documentExtractor.ts`, `queue.ts` | `candidateDocuments` | OpenRouter (`parse_cv`) | `parsed` | ✅ Yes | **COMPLETE** | CV parser runs, updates `candidateDocuments.parseState = "parsed"`, stores `parsedData`, sets candidate headline. |
 | **11** | **Consent Management** | `WorkspaceViews.tsx:135` | `candidates.grantConsent`, `withdraw` | `recruitment.ts:250` | `consents`, `suppressionList` | None | `consent_pending` → `consented` | ✅ Yes | **COMPLETE** | Explicit consent gating strictly blocks downstream candidate processing; withdrawals cascade to suppression. |
-| **12** | **Candidate Matching** | `WorkspaceViews.tsx:142` | `matching.createEvidenceMatch` | `recruitment.ts:379` | `matches` | OpenRouter (manual) | `evidence_validated` | ✅ Yes | **PARTIAL** | Manual evidence matching works; automated background scoring (`score_match` queue job) is never dispatched. |
+| **12** | **Candidate Matching** | `WorkspaceViews.tsx:142` | `matching.createEvidenceMatch` | `recruitment.ts:379`, `queue.ts` | `matches` | OpenRouter (`score_match`) | `evidence_validated` | ✅ Yes | **COMPLETE** | Manual evidence matching and automated `score_match` queue job processing verified. |
 | **13** | **Candidate Screening** | `WorkspaceViews.tsx:150` | `candidateWorkflows.screenings` | `recruitment.ts`, `consequential.ts` | `screenings`, `approvals` | None | `in_progress` → `decision_pending` | ✅ Yes | **COMPLETE** | Anti-autonomous rejection enforced; candidate final disposition strictly requires owner approval. |
 | **14** | **Candidate Profile Sharing** | `WorkspaceViews.tsx:160` | `matching.requestShareApproval` | `approvalEngine.ts` | `shortlists`, `consents` | None | `prepared` → `shared` | ✅ Yes | **COMPLETE** | Requires active `client_sharing` consent; owner approval required; sets 14-day expiry. |
-| **15** | **Interview Lifecycle** | `WorkspaceViews.tsx:172` | `interviews.create`, `reschedule` | `recruitment.ts:417`, `calendar.ts` | `interviews` | RFC 5545 `.ics` Export | `scheduled` → `confirmed` | ✅ Yes | **PARTIAL** | ICS export works; native two-way synchronization with Google Calendar or MS Graph is not implemented. |
+| **15** | **Interview Lifecycle** | `WorkspaceViews.tsx:172` | `interviews.create`, `reschedule` | `recruitment.ts:417`, `calendar.ts` | `interviews` | RFC 5545 `.ics` Export / Feed | `scheduled` → `confirmed` | ✅ Yes | **COMPLETE** | ICS export and live iCal subscription feed (`/api/calendar/feed/:userId`) verified. |
 | **16** | **Offer Extended / Accepted** | `WorkspaceViews.tsx:198` | `placements.create` | `recruitment.ts:517` | `placements` | None | `offer_pending` → `offer_extended` | ✅ Yes | **COMPLETE** | Placement record created with compensation tracking and lifecycle validation. |
 | **17** | **Placement Confirmation** | `WorkspaceViews.tsx:205` | `placements.transition` | `approvalEngine.ts` | `placements`, `approvals` | None | `joining_confirmed` | ✅ Yes | **COMPLETE** | Consequential action requires joining evidence and owner approval before activating guarantee period. |
 | **18** | **Replacement Case** | `WorkspaceViews.tsx:235` | `consequential.requestReplacement` | `consequential.ts:45` | `placements`, `approvals` | None | `replacement_requested` | ✅ Yes | **COMPLETE** | Commercial modification requires owner approval and structured rationale before transitioning. |
-| **19** | **Invoice Generation** | `WorkspaceViews.tsx:213` | `invoices.draft`, `requestIssue` | `recruitment.ts:552` | `invoices`, `approvals` | None | `draft` → `approval_pending` | ✅ Yes | **COMPLETE** | Placement invoice eligibility enforced; duplicate billing prevented; issuance requires owner approval. |
-| **20** | **Payment & Revenue Actions** | `WorkspaceViews.tsx:220` | `consequential.requestInvoiceAction` | `consequential.ts:51` | `invoices`, `approvals` | None | `payment_pending` → `paid` | ✅ Yes | **COMPLETE** | Payment status updates, dispute resolutions, and credit adjustments require owner approval. |
+| **19** | **Invoice Generation** | `WorkspaceViews.tsx:213` | `invoices.draft`, `requestIssue` | `recruitment.ts:552`, `invoicing.ts` | `invoices`, `approvals` | PDF Render / Payment Link | `draft` → `approval_pending` | ✅ Yes | **COMPLETE** | Placement invoice eligibility enforced; PDF generation and payment link creation supported. |
+| **20** | **Payment & Revenue Actions** | `WorkspaceViews.tsx:220` | `consequential.requestInvoiceAction` | `consequential.ts:51`, `invoicing.ts` | `invoices`, `approvals` | None | `payment_pending` → `paid` | ✅ Yes | **COMPLETE** | Payment status updates, dispute resolutions, and payment recording require owner approval. |
 | **21** | **Outbound Email Dispatch** | `WorkspaceViews.tsx:410` | `email.outbound.deliverApproved` | `hostingerMail.ts` | `messages`, `approvals` | Hostinger Mail API | `approval_pending` → `sent` | ✅ Yes | **COMPLETE** | Domain verification enforced; suppression list checked; owner approval consumed with replay protection. |
 | **22** | **Inbound Email Webhook** | `/api/webhooks/hostinger-mail` | HTTP POST | `hostingerWebhook.ts` | `messages`, `suppressionList` | Hostinger Mail Inbound | `received` → `opted_out` | ✅ Yes | **COMPLETE** | Timing-safe auth, opt-out suppression, thread correlation, and incident routing on unmatched mail. |
-| **23** | **Task Scheduler** | `WorkspaceViews.tsx:450` | `operations.queue.enableSchedule` | `heartbeat.ts`, `hostinger.ts` | `workspace_settings` | Forge Heartbeat / Cron | Recurring Trigger | ✅ Yes | **BROKEN** | Hostinger scheduled endpoints call preview OAuth server; cron curl requests fail with 401/403. |
+| **23** | **Task Scheduler** | `WorkspaceViews.tsx:450` | `operations.queue.enableSchedule` | `heartbeat.ts`, `hostinger.ts` | `workspace_settings` | Forge Heartbeat / Cron | Recurring Trigger | ✅ Yes | **PARTIAL** | Hostinger scheduled endpoints support `x-cron-key` and `Bearer <CRON_SECRET>`; requires `CRON_SECRET` configured. |
 | **24** | **Automation Queue** | `WorkspaceViews.tsx:480` | `operations.queue.*` | `queue.ts` | `automationQueue` | Worker process | `queued` → `running` → `completed` | ✅ Yes | **COMPLETE** | Locking, backoff calculation, emergency stop check, and daily AI limit gating verified. |
-| **25** | **AI Task Execution** | `WorkspaceViews.tsx:510` | `queue.ts:189` | `aiRouting.ts`, `openrouter.ts` | `aiUsage`, `aiModelRoutes` | OpenRouter API | Task execution | ✅ Yes | **PARTIAL** | Validation and quota tracking work, but parsed outputs are unwired for 4 of 6 AI job types. |
-| **26** | **Privacy Right Fulfillment** | `WorkspaceViews.tsx:250` | `privacy.fulfillDeletion` | `candidateWorkflows.ts:108` | `candidates`, `suppressionList` | None | `received` → `resolved` | ✅ Yes | **PARTIAL** | Candidate PII redacted and suppressed, but candidate documents and storage files are not deleted. |
-| **27** | **Private Storage Deletion** | None | None | `privateStorage.ts` | None | S3 / Local Disk | None | ❌ No | **MISSING** | No `deletePrivateDocument` function exists; cannot physically erase files for GDPR right-to-erasure. |
+| **25** | **AI Task Execution** | `WorkspaceViews.tsx:510` | `queue.ts:189` | `aiRouting.ts`, `openrouter.ts` | `aiUsage`, `aiModelRoutes` | OpenRouter API | Task execution | ✅ Yes | **PARTIAL** | `parse_cv`, `draft_outreach`, `classify_reply`, `score_match` update models; `send_reminder` and `reconcile_invoice` lack domain handlers. |
+| **26** | **Privacy Right Fulfillment** | `WorkspaceViews.tsx:250` | `privacy.fulfillDeletion` | `candidateWorkflows.ts:108` | `candidates`, `suppressionList` | None | `received` → `resolved` | ✅ Yes | **PARTIAL** | PII redacted and files deleted; however, physical storage deletion failure is caught in try/catch and does not fail closed. |
+| **27** | **Private Storage Deletion** | Server Service | `deletePrivateDocument` | `privateStorage.ts` | None | S3 / Local Disk | File Erasure | ✅ Yes | **COMPLETE** | `deletePrivateDocument` implements local `unlink`, S3 `DeleteObjectCommand`, and managed storage deletion. |
 | **28** | **Audit Trail Logging** | `Home.tsx:34`, `WorkspaceViews.tsx`| `operations.audits.list` | `db.ts:recordAudit` | `audit_events` | SHA-256 Hash Chaining | Append-only | ✅ Yes | **COMPLETE** | Cryptographic hash chaining (`previousEventHash`, `eventHash`) verified across all domain entities. |
-| **29** | **Hostinger Production Deploy** | Build Scripts | Fastify Server (`server/hostinger.ts`) | Reverse Proxy (`.htaccess`) | None | LiteSpeed / Node.js | Container / Standalone | N/A | **PARTIAL** | Fastify production server ready, but silent mock DB fallback and cron auth mismatch prevent deployment. |
-| **30** | **Production Startup Guard** | `server/hostinger.ts:185` | `fastify.listen` | `runtimeAuth.ts`, `db.ts` | `workspace_settings` | MySQL / Hostinger | Service Boot | ✅ Init | **BROKEN** | `getDb()` catches DB failures and silently initializes in-memory mock store instead of exiting. |
+| **29** | **Hostinger Production Deploy** | Build Scripts | Fastify Server (`server/hostinger.ts`) | Reverse Proxy (`.htaccess`) | None | LiteSpeed / Node.js | Container / Standalone | N/A | **PARTIAL** | Fastify production server ready in `dist/hostinger.js`, but root `package.json:start` points to broken `dist/server.cjs`. |
+| **30** | **Production Startup Guard** | `server/hostinger.ts:185` | `fastify.listen` | `runtimeAuth.ts`, `db.ts` | `workspace_settings` | MySQL / Hostinger | Service Boot | ✅ Init | **PARTIAL** | Fails closed on missing config, but `drizzle()` lacks synchronous ping on boot and runtime `getDb()` still has mock fallback. |
 
 ---
 
@@ -792,52 +792,79 @@ $$\text{User Interface} \longrightarrow \text{API/tRPC Route} \longrightarrow \t
 
 ---
 
-## 17. Gap Statistics & Top Blockers Summary
+## 17. Reconciled Gap Statistics & Verification Audit
 
-### Priority Distribution
-- **P0 Gaps**: **5** (All 5 Resolved: GAP-01, GAP-02, GAP-03, GAP-04, GAP-05)
-- **P1 Gaps**: **6** (All 6 Resolved: GAP-06, GAP-07, GAP-08, GAP-09, GAP-10, GAP-11)
-- **P2 Gaps**: **4** (All 4 Resolved: GAP-12, GAP-13, GAP-14, GAP-15)
-- **P3 Gaps**: **3** (All 3 Resolved: GAP-16, GAP-17, GAP-18)
-- **P4 Gaps**: **1** (All 1 Resolved: GAP-19)
-- **P5 Gaps**: **2** (All 2 Resolved: GAP-20, GAP-21)
-- **Total Identified Gaps**: **21**
-
-### Status Breakdown
-- **RESOLVED / COMPLETE**: **21 / 21 (100%)**
-- **ACTIVE BLOCKERS**: **0**
-
-### Verification Summary
-All 21 audit gaps identified in the Platform Source of Truth have been completely resolved, validated against architectural invariants, and verified via the test suite (190 passing tests across 34 test files).
-
-### Top 10 Critical Blockers (Ranked by Risk)
-1. **GAP-01 [P0]**: `server/db.ts:24` — Silent mock DB fallback in production causes data loss on restart.
-2. **GAP-02 [P0]**: `server/hostinger.ts:126` — Scheduled cron endpoints call preview OAuth server; cron fails on Hostinger.
-3. **GAP-03 [P0]**: `server/services/privateStorage.ts:92` — Document scanner strictly throws in S3 mode; CVs cannot be scanned.
-4. **GAP-04 [P0]**: `server/services/privateStorage.ts:1` — No storage deletion function exists for GDPR right-to-erasure.
-5. **GAP-05 [P0]**: `server/routers/candidateWorkflows.ts:108` — Candidate files and document rows remain stored after deletion fulfillment.
-6. **GAP-06 [P1]**: `server/services/queue.ts:189` — CV parsing results are never saved to candidate profiles or document state.
-7. **GAP-07 [P1]**: `server/services/queue.ts:189` — AI outreach generation results are never written back to messages.
-8. **GAP-08 [P1]**: `server/services/queue.ts:189` — AI reply classification results are never written back to conversations.
-9. **GAP-10 [P1]**: `server/routers/team.ts:47` — Team invitation email delivery is unwired to Hostinger Mail.
-10. **GAP-11 [P1]**: `client/src/App.tsx:20` — Missing `/team/accept` route breaks colleague invite acceptance.
+### Historical Gap Status Reconciliation (GAP-01 through GAP-21)
+- **Verified Complete in Code**: **17 Gaps**
+  - GAP-03: S3/local multi-mode document bytes reader implemented in `server/services/privateStorage.ts:114-142`.
+  - GAP-04: Storage deletion (`deletePrivateDocument`) implemented across local, S3, and managed modes in `server/services/privateStorage.ts:145-172`.
+  - GAP-06: CV parsing results persisted to `candidateDocuments.parseState = "parsed"` and `candidates.headline` in `server/services/queue.ts:39-73`.
+  - GAP-07: Outreach drafts written to `messages` with status `"draft_ready"` in `server/services/queue.ts:74-103`.
+  - GAP-08: Inbound email reply classification updates `conversations.classification` and opt-out suppression in `server/services/queue.ts:104-177`.
+  - GAP-09: Automated AI evidence match scoring wired into `matches` table in `server/services/queue.ts:178-239`.
+  - GAP-10: Hostinger Mail invite delivery wired in `server/routers/team.ts:77-101`.
+  - GAP-11: Public team invitation acceptance page mounted at `/team/accept` (`client/src/App.tsx:38`, `TeamAcceptPage.tsx`).
+  - GAP-12: PDF invoice rendering and payment link generation implemented in `server/services/invoicing.ts`.
+  - GAP-13: RFC 5545 iCal subscription feed implemented in `server/services/calendar.ts:75-132` and `/api/calendar/feed/:userId`.
+  - GAP-14: Comprehensive `.env.example` documents all 35 operational variables.
+  - GAP-15: `"seed:demo"` script configured in `package.json:20`.
+  - GAP-16: Client KYB document upload and verification implemented in `server/routers/recruitment.ts:121-177`.
+  - GAP-17: Authentication (`auth.login`, `auth.logout`) and authorization rejection (`auth.access_denied`) audit logging implemented.
+  - GAP-18: Granular UI RBAC visibility gating implemented in `DashboardLayout.tsx` and `WorkspaceViews.tsx`.
+  - GAP-19: OpenRouter candidate model failover retry loop implemented in `server/services/openrouter.ts:88-142`.
+  - GAP-20: Mock heartbeat documented for development with warning logs directing production to cron.
+  - GAP-21: Documentation test count reconciled to verified execution results.
+- **Active Blockers & Partial Implementations**: **4 Gaps**
+  - GAP-01: Database fails closed on missing `DATABASE_URL` in production, but connection is lazy (no boot ping) and runtime dynamic query failure still catches to in-memory store.
+  - GAP-02: Cron secret authentication implemented (`x-cron-key` / `Bearer`), but unconfigured `CRON_SECRET` falls back to preview OAuth SDK which fails on Hostinger.
+  - GAP-05: Privacy deletion invokes `deletePrivateDocument`, but catches deletion errors in a `try/catch` and continues resolving the request without failing closed.
+  - GAP-22 / Production Build: `package.json` `"start": "node dist/server.cjs"` fails due to Vite bundling in CommonJS; actual production server is `dist/hostinger.js`.
 
 ---
 
-## 18. Recommended Next Phase Execution Plan
+## 18. RELEASE BLOCKER REGISTER
 
-The P0.1 Evidence-Based Gap Audit is now locked into the Platform Source of Truth. The recommended sequence for implementation is:
+The following items are ACTIVE RELEASE BLOCKERS that prevent zero-defect production release. Each item must be resolved before production deployment:
 
-1. **Phase P1.0 — Security, Storage & Deployment Hardening (P0 Fixes)**:
-   - Fix `server/db.ts` to abort server startup on DB failure when `NODE_ENV === "production"`.
-   - Implement `X-Cron-Key` / Bearer cron secret authentication in `server/hostinger.ts` for scheduled tasks.
-   - Extend `server/services/privateStorage.ts` with S3 byte streaming and `deletePrivateDocument`.
-   - Wire physical document deletion into `candidateWorkflows.privacy.fulfillDeletion`.
-   - Update `/.env.example` with all production variables.
+| Blocker ID | Severity | Category | Description & Impact | File Reference | Action Required |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **RB-01** | **P0** | **Runtime / Build** | **Broken Production Start Script**: `npm start` executes `node dist/server.cjs`, which crashes immediately with `TypeError: (0 , import_vite.default) is not a function`. The true standalone production server is `dist/hostinger.js` generated by `scripts/build-hostinger.mjs`. | `package.json:16`, `scripts/build-hostinger.mjs` | Update `package.json` start script or add dedicated `start:hostinger` script; ensure container deployment executes `dist/hostinger.js`. |
+| **RB-02** | **P0** | **Compliance / Safety** | **Non-Fail-Closed Privacy Deletion**: `candidateWorkflows.ts:234-239` catches physical storage deletion errors in a `try/catch` block, logs a warning, and continues to mark the document as redacted and the request as resolved. If disk or S3 deletion fails, physical PII remains stored while compliance logs claim full erasure. | `server/routers/candidateWorkflows.ts:234-239` | Make document physical deletion atomic and fail-closed: if `deletePrivateDocument` throws, abort transaction, transition request to `erasure_failed`, and notify workspace owner. |
+| **RB-03** | **P0** | **Database / Safety** | **Lazy DB Connection & Mock Fallback in Runtime**: `server/db.ts` checks `DATABASE_URL` presence on startup in production, but `drizzle(DATABASE_URL)` is non-blocking. There is no startup ping (`SELECT 1`). Furthermore, `getDb()` still contains a catch fallback initializing `createMockDrizzle(_mockStore)`. | `server/db.ts:24-52` | Add explicit synchronous connection test during server boot; remove mock store fallback in production mode so any DB failure halts the process. |
+| **RB-04** | **P1** | **Automation / Cron** | **Cron OAuth Fallback Risk**: In `server/hostinger.ts` and `server/_core/index.ts`, if `CRON_SECRET` is not provided in the environment, `authenticateCronRequest` falls back to `sdk.authenticateRequest`, which attempts to reach the dev preview OAuth server. | `server/hostinger.ts:68-76`, `server/_core/index.ts:49-62` | Require `CRON_SECRET` in production runtime check; reject unauthenticated cron calls with 401/403 without attempting OAuth server lookup. |
+| **RB-05** | **P1** | **Queue / AI** | **Unwired Automation Job Types**: `handleAiTaskResult` in `server/services/queue.ts` handles `parse_cv`, `draft_outreach`, `classify_reply`, and `score_match`, but omits domain handlers for `send_reminder` and `reconcile_invoice`. Completed task results are stored only in `automationQueue.result`. | `server/services/queue.ts:242-260` | Implement side-effect handlers for `send_reminder` (updating interview notification state) and `reconcile_invoice` (updating invoice ledger). |
+| **RB-06** | **P1** | **Tooling / Config** | **Dependency Drift in Schema Tooling**: `drizzle-kit` is present in `pnpm-lock.yaml` but missing from `package.json`. Developers cannot run `pnpm drizzle-kit push` or generate migrations without relying on global or cached binaries. | `package.json`, `pnpm-lock.yaml` | Add `"drizzle-kit": "^0.31.8"` to `devDependencies` in `package.json` and declare `"db:push"` script. |
 
-2. **Phase P1.1 — Core Workflow & AI Output Wiring (P1 Fixes)**:
-   - Implement side-effect application in `queue.ts` for `parse_cv`, `draft_outreach`, and `classify_reply`.
-   - Wire `team.invite` to send invitation emails via Hostinger Mail API.
-   - Add `/team/accept` route and acceptance component in `client/src/App.tsx`.
-   - Add `"seed:demo"` script to `package.json`.
+---
+
+## 19. SPECIAL RULE FOR FUTURE AI AGENTS
+
+> [!CAUTION]
+> **MANDATORY DIRECTIVE FOR ALL FUTURE AI AGENTS WORKING ON FREELANCEHR / FREEHR OVERSEAS:**
+>
+> 1. **VERIFY THE FULL EXECUTION PATH**: No AI agent may treat a function, router, table, test, documentation claim, or mock implementation as complete without verifying the full end-to-end execution path:
+>    $$\text{UI / Caller} \longrightarrow \text{Router / Endpoint} \longrightarrow \text{Service Logic} \longrightarrow \text{DB State / Storage} \longrightarrow \text{Audit Event}$$
+> 2. **PRODUCTION MUST FAIL CLOSED**: Production runtime must strictly fail closed for database connections, user authentication, cron authentication, storage access, and privacy right fulfillment. Under NO circumstances may production fall back to an in-memory mock store, bypass security checks, or resolve a data deletion request if file erasure failed.
+> 3. **EXECUTION IS MANDATORY FOR TEST CLAIMS**: A test count is NOT a passing-test count. You must NEVER claim tests pass unless you execute the test runner and observe exit code 0. Record the exact number of passed and skipped tests.
+> 4. **DO NOT CLAIM PRODUCTION-READY MERELY BECAUSE A FUNCTION EXISTS**: The existence of an exported TypeScript function does not guarantee it is wired to routes, UI, or cron jobs.
+> 5. **RECORD REALITY OVER ASPIRATION**: If an audit or feature requires code modifications, record it as **ACTIVE** or **BLOCKED** in documentation. Never mark an item as "RESOLVED" prematurely.
+> 6. **SINGLE SOURCE OF TRUTH**: This document (`docs/PLATFORM_SOURCE_OF_TRUTH.md`) is authoritative only when reconciled against current repository code. Always verify the code before taking architectural action.
+
+---
+
+## 20. Recommended Next Phase Execution Plan
+
+The truth reconciliation phase (P0.1-B) is complete. The recommended sequence for Phase P0.2 Release Hardening is:
+
+1. **Phase P0.2A — Startup & Build Hardening**:
+   - Resolve RB-01: Update `package.json` start script to boot `dist/hostinger.js` in production.
+   - Resolve RB-03: Add synchronous database ping on server startup in `server/hostinger.ts` and `server/_core/index.ts`. Remove silent mock fallback in production `getDb()`.
+   - Resolve RB-06: Add `drizzle-kit` to `package.json` `devDependencies`.
+
+2. **Phase P0.2B — Privacy & Security Fail-Closed Hardening**:
+   - Resolve RB-02: Update `candidateWorkflows.ts:234-239` so that physical file deletion failures abort the fulfillment transaction and fail closed.
+   - Resolve RB-04: Enforce `CRON_SECRET` configuration in production startup checks.
+
+3. **Phase P0.2C — Queue Completion**:
+   - Resolve RB-05: Implement domain side-effect handlers in `server/services/queue.ts` for `send_reminder` and `reconcile_invoice`.
 
