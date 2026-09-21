@@ -17,20 +17,20 @@ The following table reflects the **ACTUAL CURRENT VALUES** as declared in reposi
 | **Primary Domain (Target)** | `freelancehr.overseasjob.in` | TARGET-NOT-IMPLEMENTED | `HOSTINGER_DEPLOYMENT.md:3` |
 | **Mail Domain (Target)** | `overseasjob.in` | TARGET-NOT-IMPLEMENTED | `server/services/hostingerMail.ts:6` |
 | **Primary Owner Email** | Configured via `PRIMARY_OWNER_EMAIL` | CURRENT-VERIFIED | `server/services/primaryOwner.ts:9` |
-| **Runtime Engine** | **NONE** declared (`engines` field does not exist in `package.json`) | DEPENDENCY DRIFT — ACTIVE | `package.json` |
-| **Package Manager** | **NONE** declared (`packageManager` field does not exist in `package.json`) | DEPENDENCY DRIFT — ACTIVE | `package.json` |
-| **Lockfiles Present** | Both `pnpm-lock.yaml` (v9.0) and `bun.lock` exist on disk | DEPENDENCY DRIFT — ACTIVE | `pnpm-lock.yaml`, `bun.lock` |
-| **React Dependency** | `react: ^19.0.1`, `react-dom: ^19.0.1` | CURRENT-VERIFIED | `package.json:77,79` |
-| **Vite Dependency** | `vite: ^6.2.3` | CURRENT-VERIFIED | `package.json:90` |
-| **Fastify Dependency** | `fastify: ^5.12.4` | CURRENT-VERIFIED | `package.json:65` |
-| **Drizzle ORM Dependency**| `drizzle-orm: ^0.44.5` | CURRENT-VERIFIED | `package.json:62` |
-| **Drizzle-Kit Dependency**| **NONE** in `package.json` (present as `drizzle-kit@0.31.5` in `pnpm-lock.yaml`) | DEPENDENCY DRIFT — ACTIVE | `package.json`, `pnpm-lock.yaml` |
-| **Zod Dependency** | `zod: ^3.24.2` | CURRENT-VERIFIED | `package.json:92` |
-| **Hostinger Mail SDK** | `hostinger-mail-api-sdk: ^1.18.0` | CURRENT-VERIFIED | `package.json:67` |
-| **tRPC Dependency** | `@trpc/server: ^11.6.0`, `@trpc/client: ^11.6.0`, `@trpc/react-query: ^11.6.0` | CURRENT-VERIFIED | `package.json:51-53` |
-| **Database Engine** | MySQL (via `mysql2: ^3.15.0` & Drizzle ORM) | PARTIAL | `package.json:73`, `server/db.ts` |
-| **Server Architecture** | Dual Entrypoint: Express (Dev) & Fastify (Target Prod) | PARTIAL | `server.ts:1`, `server/hostinger.ts:1` |
-| **Production Start Script**| `node dist/server.cjs` (crashes on startup due to Vite bundling) | BROKEN | `package.json:9` |
+| **Runtime Engine** | `node: ">=20.19.0"` declared in `engines` | CURRENT-VERIFIED | `package.json:7-9` |
+| **Package Manager** | `pnpm@11.0.0` declared in `packageManager` | CURRENT-VERIFIED | `package.json:6` |
+| **Lockfile Present** | `pnpm-lock.yaml` (v9.0) canonical and synchronized; `bun.lock` removed | CURRENT-VERIFIED | `pnpm-lock.yaml` |
+| **React Dependency** | `react: ^19.0.1`, `react-dom: ^19.0.1` | CURRENT-VERIFIED | `package.json:83,85` |
+| **Vite Dependency** | `vite: ^6.2.3` | CURRENT-VERIFIED | `package.json:96` |
+| **Fastify Dependency** | `fastify: ^5.12.4` | CURRENT-VERIFIED | `package.json:71` |
+| **Drizzle ORM Dependency**| `drizzle-orm: ^0.44.5` | CURRENT-VERIFIED | `package.json:68` |
+| **Drizzle-Kit Dependency**| `drizzle-kit: ^0.31.4` (resolves to `0.31.5`) in `devDependencies` | CURRENT-VERIFIED | `package.json:107` |
+| **Zod Dependency** | `zod: ^3.24.2` | CURRENT-VERIFIED | `package.json:98` |
+| **Hostinger Mail SDK** | `hostinger-mail-api-sdk: ^1.18.0` | CURRENT-VERIFIED | `package.json:73` |
+| **tRPC Dependency** | `@trpc/server: ^11.6.0`, `@trpc/client: ^11.6.0`, `@trpc/react-query: ^11.6.0` | CURRENT-VERIFIED | `package.json:57-59` |
+| **Database Engine** | MySQL (via `mysql2: ^3.15.0` & Drizzle ORM) | PARTIAL | `package.json:79`, `server/db.ts` |
+| **Server Architecture** | Dual Entrypoint: Express (Dev) & Fastify (Prod `dist/hostinger.js`) | CURRENT-VERIFIED | `server.ts:1`, `server/hostinger.ts:1` |
+| **Production Start Script**| `node dist/hostinger.js` (executes compiled Fastify server) | CURRENT-VERIFIED | `package.json:12` |
 
 ---
 
@@ -57,12 +57,12 @@ The following table reflects the **ACTUAL CURRENT VALUES** as declared in reposi
 
 | Command / Script | Target File | Current Output / Behavior | Operational Status |
 | :--- | :--- | :--- | :--- |
-| `npm run build` (`package.json:8`) | `vite build && esbuild server.ts ...` | Generates `dist/public` and `dist/server.cjs` | PARTIAL |
-| `npm run start` (`package.json:9`) | `node dist/server.cjs` | Crashes with `TypeError: (0 , import_vite.default) is not a function` because `server.ts` imports development Vite setup | **BROKEN** |
-| `node scripts/build-hostinger.mjs` | `server/hostinger.ts` | Bundles Fastify production server into `dist/hostinger.js` (ESM, external packages) | CURRENT-VERIFIED |
-| Production Server Execution | `dist/hostinger.js` | Fastify 5 standalone server. NOT wired to `package.json` `"start"` | **PARTIAL** |
+| `pnpm build` (`package.json:11`) | `node scripts/build-hostinger.mjs` | Builds Vite frontend (`dist/public`) and bundles Fastify backend into `dist/hostinger.js` | CURRENT-VERIFIED |
+| `pnpm start` (`package.json:12`) | `node dist/hostinger.js` | Starts compiled Fastify production server on validated PORT (default 3000) listening on 0.0.0.0 | CURRENT-VERIFIED |
+| `pnpm build:hostinger` | `node scripts/build-hostinger.mjs` | Canonical Hostinger builder alias | CURRENT-VERIFIED |
+| `pnpm start:hostinger` | `node dist/hostinger.js` | Canonical Hostinger starter alias | CURRENT-VERIFIED |
 
-> **Critical Runtime Fact**: `dist/hostinger.js` is NOT the active `package.json` production start path. Anyone deploying via standard `npm run build && npm start` will encounter an immediate crash. Hostinger production startup is classified as **BROKEN / PARTIAL**.
+> **Production Runtime Architecture**: The production build path is now fully unified. Running `pnpm build` builds the frontend assets with Vite into `dist/public` and bundles the production Fastify server into `dist/hostinger.js` via esbuild. Running `pnpm start` runs `node dist/hostinger.js`, which serves both the API endpoints and the static SPA frontend.
 
 ### 3.2 Dual-Server Topology
 

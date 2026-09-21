@@ -231,7 +231,8 @@ function authenticateCronRequest(request: { headers: Record<string, unknown>; qu
 
 async function start() {
   const app = await buildFastifyServer({ logger: true });
-  const port = Number(process.env.PORT || 3000);
+  const rawPort = process.env.PORT ? Number(process.env.PORT) : 3000;
+  const port = Number.isInteger(rawPort) && rawPort > 0 && rawPort <= 65535 ? rawPort : 3000;
   await app.listen({ port, host: "0.0.0.0" });
 }
 
