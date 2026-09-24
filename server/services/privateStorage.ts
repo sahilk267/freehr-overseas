@@ -115,12 +115,17 @@ export async function deletePrivateDocument(relKey: string): Promise<boolean> {
       await unlink(localFile(key));
       return true;
     } catch (err: any) {
-      if (err?.code === "ENOENT") return false;
+      if (err?.code === "ENOENT") {
+        // Document already absent from disk; idempotent erasure success
+        return true;
+      }
       throw err;
     }
   }
   if (mode === "managed") {
-    return true;
+    // Managed storage stub does not support physical file deletion.
+    // Statutory erasure must fail closed rather than falsely reporting physical erasure completion.
+    throw new Error("[FreelanceHR] Physical document deletion is not supported in managed storage mode. Erasure cannot proceed safely.");
   }
   const { bucket, client } = getS3Client();
   await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));

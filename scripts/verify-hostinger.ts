@@ -46,6 +46,7 @@ async function runVerification() {
   process.env.NODE_ENV = "test";
   process.env.PRIVATE_STORAGE_MODE = "local";
   process.env.PRIVATE_LOCAL_STORAGE_PATH = `/tmp/freelancehr-test-${Date.now()}`;
+  delete process.env.OWNER_ONLY_MODE;
 
   const db = await requireDb();
   const testUserId = 1;

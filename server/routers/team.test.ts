@@ -21,7 +21,13 @@ const { teamRouter } = await import("./team");
 describe("team router owner controls", () => {
   const ownerCtx = { user: { id: 17, role: "admin", name: "Workspace Owner", email: "owner@example.test" }, req: {}, res: {} } as never;
 
-  beforeEach(() => { inserts.length = 0; updates.length = 0; audits.length = 0; selectResults = []; });
+  beforeEach(() => {
+    delete process.env.HOSTINGER_MAIL_API_TOKEN;
+    inserts.length = 0;
+    updates.length = 0;
+    audits.length = 0;
+    selectResults = [];
+  });
 
   it("blocks non-owners from managing team memberships", async () => {
     const caller = teamRouter.createCaller({ user: { id: 18, role: "user", email: "member@example.test" }, req: {}, res: {} } as never);

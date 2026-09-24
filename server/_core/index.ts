@@ -3,7 +3,12 @@ import express from "express";
 import { createServer } from "http";
 import net from "net";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { assertProductionRuntimeConfiguration, authenticateRuntimeRequest, registerRuntimeAuthRoutes } from "../services/runtimeAuth";
+import {
+  assertProductionRuntimeConfiguration,
+  authenticateCronRequest,
+  authenticateRuntimeRequest,
+  registerRuntimeAuthRoutes,
+} from "../services/runtimeAuth";
 import { registerStorageProxy } from "./storageProxy";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
@@ -116,8 +121,19 @@ async function startServer() {
   });
   app.post("/api/scheduled/interview-reminders", async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req);
-      if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
+      const cronUser = authenticateCronRequest(req);
+      let user: { isCron?: boolean; taskUid?: string | null } | null = cronUser;
+      if (!user) {
+        if (process.env.NODE_ENV === "production") {
+          return res.status(401).json({ error: "cron-authentication-required" });
+        }
+        try {
+          user = await sdk.authenticateRequest(req);
+        } catch {
+          return res.status(401).json({ error: "cron-authentication-required" });
+        }
+      }
+      if (!user?.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
       const db = await requireDb();
       const workspace = (await db.select().from(workspaceSettings).where(eq(workspaceSettings.scheduleCronTaskUid, user.taskUid)).limit(1))[0];
       if (!workspace) return res.json({ ok: true, skipped: "orphan" });
@@ -130,8 +146,19 @@ async function startServer() {
   });
   app.post("/api/scheduled/automation-queue", async (req, res) => {
     try {
-      const user = await sdk.authenticateRequest(req);
-      if (!user.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
+      const cronUser = authenticateCronRequest(req);
+      let user: { isCron?: boolean; taskUid?: string | null } | null = cronUser;
+      if (!user) {
+        if (process.env.NODE_ENV === "production") {
+          return res.status(401).json({ error: "cron-authentication-required" });
+        }
+        try {
+          user = await sdk.authenticateRequest(req);
+        } catch {
+          return res.status(401).json({ error: "cron-authentication-required" });
+        }
+      }
+      if (!user?.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
       const db = await requireDb();
       const workspace = (
         await db

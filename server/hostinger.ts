@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { eq, or } from "drizzle-orm";
 import { appRouter } from "./routers";
 import { candidateDocuments, workspaceSettings, type User } from "../drizzle/schema";
-import { requireDb } from "./db";
+import { requireDb, verifyDatabaseConnectivity } from "./db";
 import { sdk } from "./_core/sdk";
 import { processHostingerMailWebhook } from "./services/hostingerWebhook";
 import { processDueInterviewReminders } from "./services/interviewReminders";
@@ -16,6 +16,7 @@ import { processDueAutomationBatch } from "./services/queue";
 import { getPrivateStorageStatus, readPrivateDocument } from "./services/privateStorage";
 import {
   assertProductionRuntimeConfiguration,
+  authenticateCronRequest,
   authenticateRuntimeRequest,
   beginOidcLogin,
   completeOidcLogin,
@@ -36,6 +37,10 @@ export interface FastifyServerOptions {
 
 export async function buildFastifyServer(options: FastifyServerOptions = {}) {
   assertProductionRuntimeConfiguration();
+  const isStrictProduction = process.env.NODE_ENV === "production" && !process.env.VITEST;
+  if (isStrictProduction) {
+    await requireDb();
+  }
 
   // Fastify default bodyLimit is 1 MB; previously set to 6 MB.
   // 5 MB binary files encoded as base64 inflate by ~33.3% (5 MB -> ~6.67 MB, up to 7,000,000 chars in zod schema).
@@ -120,32 +125,18 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
     });
   }
 
-function authenticateCronRequest(request: { headers: Record<string, unknown>; query?: unknown }): { isCron: boolean; taskUid: string } | null {
-  const cronSecret = process.env.CRON_SECRET;
-  const cronKeyHeader = request.headers["x-cron-key"];
-  const authHeader = request.headers.authorization;
-  const bearerToken = typeof authHeader === "string" && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
-
-  if (cronSecret && cronSecret.length >= 8) {
-    if (cronKeyHeader === cronSecret || bearerToken === cronSecret) {
-      const taskUid = (request.headers["x-cron-task-uid"] as string) || (request.query as any)?.taskUid || "global";
-      return { isCron: true, taskUid };
-    }
-  }
-  return null;
-}
-
   // 2. Scheduled interview reminders route with cron-only guard
   app.post("/api/scheduled/interview-reminders", async (request, reply) => {
     try {
       const cronUser = authenticateCronRequest(request);
-      let user: { isCron?: boolean; taskUid?: string | null };
-      if (cronUser) {
-        user = cronUser;
-      } else {
+      let user: { isCron?: boolean; taskUid?: string | null } | null = cronUser;
+      if (!user) {
+        if (process.env.NODE_ENV === "production") {
+          return reply.status(401).send({ error: "cron-authentication-required" });
+        }
         user = await sdk.authenticateRequest((request.raw || request) as any);
       }
-      if (!user.isCron || !user.taskUid) return reply.status(403).send({ error: "cron-only" });
+      if (!user || !user.isCron || !user.taskUid) return reply.status(403).send({ error: "cron-only" });
       const db = await requireDb();
       const workspace = (
         await db
@@ -173,13 +164,14 @@ function authenticateCronRequest(request: { headers: Record<string, unknown>; qu
   app.post("/api/scheduled/automation-queue", async (request, reply) => {
     try {
       const cronUser = authenticateCronRequest(request);
-      let user: { isCron?: boolean; taskUid?: string | null };
-      if (cronUser) {
-        user = cronUser;
-      } else {
+      let user: { isCron?: boolean; taskUid?: string | null } | null = cronUser;
+      if (!user) {
+        if (process.env.NODE_ENV === "production") {
+          return reply.status(401).send({ error: "cron-authentication-required" });
+        }
         user = await sdk.authenticateRequest((request.raw || request) as any);
       }
-      if (!user.isCron || !user.taskUid) return reply.status(403).send({ error: "cron-only" });
+      if (!user || !user.isCron || !user.taskUid) return reply.status(403).send({ error: "cron-only" });
       const db = await requireDb();
       const workspace = (
         await db
@@ -230,6 +222,14 @@ function authenticateCronRequest(request: { headers: Record<string, unknown>; qu
 }
 
 async function start() {
+  const isStrictProduction = process.env.NODE_ENV === "production" && !process.env.VITEST;
+  if (isStrictProduction) {
+    const dbCheck = await verifyDatabaseConnectivity();
+    if (!dbCheck.connected) {
+      console.error("[FreelanceHR] FATAL: Database connectivity check failed during startup:", dbCheck.error);
+      process.exit(1);
+    }
+  }
   const app = await buildFastifyServer({ logger: true });
   const rawPort = process.env.PORT ? Number(process.env.PORT) : 3000;
   const port = Number.isInteger(rawPort) && rawPort > 0 && rawPort <= 65535 ? rawPort : 3000;

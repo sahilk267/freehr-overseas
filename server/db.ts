@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { nanoid } from "nanoid";
 import {
@@ -21,26 +21,59 @@ const _mockStore = seedInitialStore();
 export async function getDb() {
   if (!_db) {
     const isStrictProduction = process.env.NODE_ENV === "production" && !process.env.VITEST;
-    if (process.env.DATABASE_URL) {
-      try {
-        _db = drizzle(process.env.DATABASE_URL);
-      } catch (err) {
+    const rawUrl = process.env.DATABASE_URL?.trim();
+    const hasValidMysqlProtocol = Boolean(rawUrl && /^(mysql|mysql2|mariadb):\/\//i.test(rawUrl));
+
+    if (rawUrl) {
+      if (!hasValidMysqlProtocol) {
         if (isStrictProduction) {
-          console.error("[FreelanceHR] FATAL: Failed to connect to DATABASE_URL in production mode:", err);
-          throw new Error("[FreelanceHR] Invariant Violation: DATABASE_URL is required and must connect successfully in production mode. Refusing to initialize mock database store.");
+          console.error("[FreelanceHR] FATAL: DATABASE_URL format is invalid in production mode.");
+          throw new Error("[FreelanceHR] Database configuration error: DATABASE_URL must be a valid MySQL connection URL (e.g. mysql://user:pass@host:3306/db). Refusing to initialize mock database store in production.");
         }
-        console.warn("[FreelanceHR] Failed to connect to DATABASE_URL, using in-memory store:", err);
         _db = createMockDrizzle(_mockStore);
+      } else {
+        try {
+          const client = drizzle(rawUrl);
+          if (isStrictProduction) {
+            await client.execute(sql`SELECT 1`);
+          }
+          _db = client;
+        } catch (err) {
+          if (isStrictProduction) {
+            console.error("[FreelanceHR] FATAL: Failed to connect to DATABASE_URL in production mode:", err);
+            throw new Error("[FreelanceHR] Database connectivity error: Failed to connect to MySQL database. Refusing to initialize mock database store in production.");
+          }
+          console.warn("[FreelanceHR] Failed to connect to DATABASE_URL, using in-memory store:", (err as Error)?.message || String(err));
+          _db = createMockDrizzle(_mockStore);
+        }
       }
     } else {
       if (isStrictProduction) {
         console.error("[FreelanceHR] FATAL: DATABASE_URL is missing in production mode.");
-        throw new Error("[FreelanceHR] Invariant Violation: DATABASE_URL is required and must connect successfully in production mode. Refusing to initialize mock database store.");
+        throw new Error("[FreelanceHR] Database configuration error: DATABASE_URL environment variable is missing. Refusing to initialize mock database store in production.");
       }
       _db = createMockDrizzle(_mockStore);
     }
   }
   return _db;
+}
+
+export function _resetDbForTesting() {
+  _db = null;
+}
+
+export async function verifyDatabaseConnectivity(): Promise<{ connected: boolean; error?: string }> {
+  try {
+    const isStrictProduction = process.env.NODE_ENV === "production" && !process.env.VITEST;
+    if (isStrictProduction && !process.env.DATABASE_URL) {
+      return { connected: false, error: "[FreelanceHR] Database configuration error: DATABASE_URL environment variable is missing in production mode." };
+    }
+    const db = await getDb();
+    await db.execute(sql`SELECT 1`);
+    return { connected: true };
+  } catch (err: any) {
+    return { connected: false, error: err?.message || String(err) };
+  }
 }
 
 export async function requireDb() {

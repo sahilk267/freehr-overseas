@@ -59,6 +59,9 @@ function getTableMap(store: StoreData, tableName: string) {
 
 export function createMockDrizzle(store: StoreData) {
   const db = {
+    async execute(_query?: any) {
+      return [{ 1: 1 }];
+    },
     select(selection?: any) {
       let currentTable = "";
       const conditions: Array<(item: any) => boolean> = [];

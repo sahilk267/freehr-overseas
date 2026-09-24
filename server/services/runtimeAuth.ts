@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { Express } from "express";
 import { SignJWT, createRemoteJWKSet, jwtVerify } from "jose";
 import type { User } from "../../drizzle/schema";
@@ -60,6 +60,7 @@ function configIssues() {
     clientSecret: process.env.OIDC_CLIENT_SECRET?.trim(),
     appBaseUrl: process.env.APP_BASE_URL?.trim(),
     sessionSecret: process.env.SESSION_SECRET?.trim(),
+    cronSecret: process.env.CRON_SECRET?.trim(),
     primaryOwner: configuredOwner.openId || configuredOwner.email,
   };
   const missing = [
@@ -69,6 +70,7 @@ function configIssues() {
     !values.clientSecret ? "OIDC_CLIENT_SECRET" : null,
     !values.appBaseUrl ? "APP_BASE_URL" : null,
     !values.sessionSecret || values.sessionSecret.length < 32 ? "SESSION_SECRET (at least 32 characters)" : null,
+    !values.cronSecret || values.cronSecret.length < 8 ? "CRON_SECRET (at least 8 characters)" : null,
     !values.primaryOwner ? "PRIMARY_OWNER_OPEN_ID or PRIMARY_OWNER_EMAIL" : null,
   ].filter((value): value is string => Boolean(value));
   return missing;
@@ -237,6 +239,26 @@ export function registerRuntimeAuthRoutes(app: Express) {
       res.redirect("/");
     } catch { res.status(403).json({ error: "OIDC sign-in could not be completed." }); }
   });
+}
+
+export function authenticateCronRequest(request: { headers: Record<string, unknown>; query?: unknown }): { isCron: boolean; taskUid: string } | null {
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  const cronKeyHeader = typeof request.headers["x-cron-key"] === "string" ? request.headers["x-cron-key"].trim() : null;
+  const authHeader = typeof request.headers.authorization === "string" ? request.headers.authorization : null;
+  const bearerToken = authHeader && authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : null;
+
+  if (cronSecret && cronSecret.length >= 8) {
+    const candidate = cronKeyHeader || bearerToken;
+    if (candidate) {
+      const candidateBuf = Buffer.from(candidate);
+      const secretBuf = Buffer.from(cronSecret);
+      if (candidateBuf.length === secretBuf.length && timingSafeEqual(candidateBuf, secretBuf)) {
+        const taskUid = (request.headers["x-cron-task-uid"] as string) || (request.query as any)?.taskUid || "global";
+        return { isCron: true, taskUid };
+      }
+    }
+  }
+  return null;
 }
 
 export const oidcSessionCookieNames = { session: SESSION_COOKIE, state: STATE_COOKIE };

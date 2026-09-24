@@ -20,6 +20,7 @@ describe("Fastify production server (server/hostinger.ts)", () => {
     process.env.NODE_ENV = "test";
     process.env.PRIVATE_STORAGE_MODE = "local";
     process.env.PRIVATE_LOCAL_STORAGE_PATH = `/tmp/freelancehr-vitest-${Date.now()}`;
+    delete process.env.OWNER_ONLY_MODE;
 
     const app = await buildFastifyServer({ logger: false });
     const originalAuthenticateRequest = sdk.authenticateRequest;

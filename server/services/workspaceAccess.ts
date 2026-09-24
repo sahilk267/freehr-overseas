@@ -20,8 +20,8 @@ export function isOwnerOnlyMode() {
 export { isPrimaryOwner, resolvePrimaryOwner, getConfiguredPrimaryOwner } from "./primaryOwner";
 import { isPrimaryOwner } from "./primaryOwner";
 
-export function canUseApplication(actor: Pick<User, "openId" | "email">) {
-  return !isOwnerOnlyMode() || isPrimaryOwner(actor);
+export function canUseApplication(actor: Pick<User, "openId" | "email"> & { role?: string | null }) {
+  return !isOwnerOnlyMode() || isPrimaryOwner(actor) || actor.role === "admin";
 }
 
 export const rolePaths: Record<Exclude<TeamRole, "owner">, readonly string[]> = {

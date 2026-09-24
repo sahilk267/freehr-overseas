@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
@@ -21,6 +21,23 @@ import { appRouter } from "../routers";
 import { assertTransition } from "../workflow";
 
 describe("candidate privacy deletion workflow & cascade controls", () => {
+  const originalOwnerMode = process.env.OWNER_ONLY_MODE;
+  const originalStorageMode = process.env.PRIVATE_STORAGE_MODE;
+  beforeAll(() => {
+    delete process.env.OWNER_ONLY_MODE;
+    process.env.PRIVATE_STORAGE_MODE = "local";
+  });
+  afterAll(() => {
+    if (originalOwnerMode !== undefined) {
+      process.env.OWNER_ONLY_MODE = originalOwnerMode;
+    }
+    if (originalStorageMode !== undefined) {
+      process.env.PRIVATE_STORAGE_MODE = originalStorageMode;
+    } else {
+      delete process.env.PRIVATE_STORAGE_MODE;
+    }
+  });
+
   const testOwnerId = 1;
   const ownerCtx = {
     user: { id: testOwnerId, role: "admin", name: "Lead Partner", email: "partner@freelancehr.local" },
@@ -361,5 +378,76 @@ describe("candidate privacy deletion workflow & cascade controls", () => {
         resolutionNote: "Invalid attempt to delete via correction",
       })
     ).rejects.toThrow(TRPCError);
+  });
+
+  it("fails closed when physical storage deletion fails (managed mode or I/O error)", async () => {
+    const db = await requireDb();
+    const candidateId = createId("cnd_");
+    await db.insert(candidates).values({
+      id: candidateId,
+      ownerId: testOwnerId,
+      fullName: "Physical Deletion Candidate",
+      email: "physical@example.com",
+      profileState: "available",
+    });
+
+    const docId = createId("doc_");
+    await db.insert(candidateDocuments).values({
+      id: docId,
+      ownerId: testOwnerId,
+      candidateId,
+      documentType: "cv",
+      storageKey: `local/private/${testOwnerId}/candidates/${candidateId}/cv.pdf`,
+      originalName: "cv.pdf",
+      mimeType: "application/pdf",
+      fileSizeBytes: 1024,
+      scanState: "clean",
+      parseState: "parsed",
+    });
+
+    const reqId = createId("rgt_");
+    await db.insert(rightsRequests).values({
+      id: reqId,
+      ownerId: testOwnerId,
+      candidateId,
+      requestType: "deletion",
+      status: "received",
+      details: "Right to erasure request",
+    });
+
+    // Simulate storage mode where physical erasure cannot be completed
+    const prevMode = process.env.PRIVATE_STORAGE_MODE;
+    process.env.PRIVATE_STORAGE_MODE = "managed";
+
+    try {
+      await expect(
+        caller.recruitment.candidateWorkflows.privacy.fulfillDeletion({
+          requestId: reqId,
+          resolutionNote: "Attempted erasure with managed storage",
+        })
+      ).rejects.toThrow(/Physical document deletion is not supported/);
+
+      // Verify fail-closed invariants:
+      // 1. Rights request must transition to investigation (not resolved)
+      const updatedReq = (await db.select().from(rightsRequests).where(eq(rightsRequests.id, reqId)))[0];
+      expect(updatedReq.status).toBe("investigation");
+      expect(updatedReq.details).toContain("[Failure] Physical deletion failure");
+
+      // 2. Document record must NOT be redacted
+      const doc = (await db.select().from(candidateDocuments).where(eq(candidateDocuments.id, docId)))[0];
+      expect(doc.scanState).toBe("clean");
+      expect(doc.originalName).toBe("cv.pdf");
+
+      // 3. Candidate profile must NOT be deleted
+      const cand = (await db.select().from(candidates).where(eq(candidates.id, candidateId)))[0];
+      expect(cand.profileState).toBe("available");
+      expect(cand.fullName).toBe("Physical Deletion Candidate");
+
+      // 4. Audit event privacy.erasure_failed must be recorded
+      const audits = await db.select().from(auditEvents).where(and(eq(auditEvents.action, "privacy.erasure_failed"), eq(auditEvents.resourceId, docId)));
+      expect(audits.length).toBeGreaterThan(0);
+    } finally {
+      process.env.PRIVATE_STORAGE_MODE = prevMode;
+    }
   });
 });

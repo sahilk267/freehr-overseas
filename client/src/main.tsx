@@ -89,34 +89,64 @@ const trpcClient = trpc.createClient({
           credentials: "include",
         });
 
-        // Guard against non-JSON responses (e.g. reverse proxy 502/503 HTML error pages or fallbacks)
+        // Guard against non-JSON or malformed error responses (e.g. reverse proxy 502/503 HTML error pages or non-superjson API errors)
         const contentType = response.headers.get("content-type") || "";
-        if (!contentType.includes("application/json")) {
-          const text = await response.text();
-          const isHtml = text.trim().startsWith("<") || contentType.includes("text/html");
-          const safeMessage = isHtml
-            ? `Service temporarily unavailable (${response.status || 503})`
-            : text || `Request failed with status ${response.status}`;
+        const isJson = contentType.includes("application/json");
 
-          const synthesized = JSON.stringify([
-            {
-              error: {
-                message: safeMessage,
-                code: -32603,
-                data: {
-                  code: "INTERNAL_SERVER_ERROR",
-                  httpStatus: response.status >= 400 ? response.status : 503,
+        if (!response.ok || !isJson) {
+          const text = await response.text();
+          let parsed: any = null;
+          if (isJson) {
+            try {
+              parsed = JSON.parse(text);
+            } catch {
+              parsed = null;
+            }
+          }
+
+          const hasValidTrpcStructure = Array.isArray(parsed)
+            ? Boolean(parsed[0]?.error?.json || parsed[0]?.result)
+            : Boolean(parsed?.error?.json || parsed?.result);
+
+          if (!hasValidTrpcStructure) {
+            let safeMessage = `Request failed with status ${response.status}`;
+            if (parsed && typeof parsed === "object") {
+              safeMessage = parsed.message || parsed.error || JSON.stringify(parsed);
+            } else if (text) {
+              const isHtml = text.trim().startsWith("<") || contentType.includes("text/html");
+              safeMessage = isHtml
+                ? `Service temporarily unavailable (${response.status || 503})`
+                : text;
+            }
+
+            const synthesized = JSON.stringify([
+              {
+                error: {
+                  json: {
+                    message: safeMessage,
+                    code: -32603,
+                    data: {
+                      code: "INTERNAL_SERVER_ERROR",
+                      httpStatus: response.status >= 400 ? response.status : 503,
+                    },
+                  },
                 },
               },
-            },
-          ]);
+            ]);
 
-          return new Response(synthesized, {
-            status: response.status >= 400 ? response.status : 503,
-            statusText: response.statusText || "Service Unavailable",
-            headers: {
-              "content-type": "application/json",
-            },
+            return new Response(synthesized, {
+              status: response.status >= 400 ? response.status : 503,
+              statusText: response.statusText || "Service Unavailable",
+              headers: {
+                "content-type": "application/json",
+              },
+            });
+          }
+
+          return new Response(text, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
           });
         }
 

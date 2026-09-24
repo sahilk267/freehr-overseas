@@ -228,15 +228,46 @@ export const candidateWorkflowsRouter = router({
         }).onDuplicateKeyUpdate({ set: { active: true, reason: suppressionReason } });
       }
 
-      // 9. Delete candidate documents physically and redact document records for statutory right-to-erasure
+      // 9. Verify and physically delete candidate documents first (fail-closed for statutory right-to-erasure)
       const docs = await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.candidateId, candidate.id), eq(candidateDocuments.ownerId, ctx.user.id)));
-      let documentsDeletedCount = 0;
       for (const doc of docs) {
         try {
           await deletePrivateDocument(doc.storageKey);
-        } catch (err) {
-          console.warn(`[Privacy] Failed to physically delete document file ${doc.storageKey}:`, err);
+        } catch (err: any) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          await recordAudit({
+            ownerId: ctx.user.id,
+            actorType: "user",
+            actorId: String(ctx.user.id),
+            action: "privacy.erasure_failed",
+            resourceType: "candidate_document",
+            resourceId: doc.id,
+            previousState: doc.scanState,
+            nextState: doc.scanState,
+            metadata: {
+              reason: "physical_storage_deletion_failure",
+              candidateId: candidate.id,
+              storageKey: doc.storageKey,
+              error: errMsg,
+            },
+          });
+          if (request.status !== "investigation") {
+            assertTransition("rights_request", request.status, "investigation");
+          }
+          await db.update(rightsRequests).set({
+            status: "investigation",
+            details: `${request.details}\n[Failure] Physical deletion failure on document ${doc.id}: ${errMsg}`,
+          }).where(eq(rightsRequests.id, request.id));
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Physical storage deletion failed for candidate document ${doc.id}: ${errMsg}. Statutory erasure cannot be completed.`,
+          });
         }
+      }
+
+      // 10. Only after all physical deletions succeed, redact document records
+      let documentsDeletedCount = 0;
+      for (const doc of docs) {
         await db.update(candidateDocuments).set({
           storageKey: `deleted/${doc.id}`,
           storageUrl: "",
