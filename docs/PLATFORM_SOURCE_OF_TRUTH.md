@@ -1,6 +1,6 @@
 # FreelanceHR Platform Source of Truth (Canonical Architecture Record)
 
-**Document Phase**: P0.1-D Master Platform Source of Truth Reconstruction  
+**Document Phase**: P0.1-E Platform Source of Truth Forensic Verification & Reconciliation  
 **Verification Level**: Strict Repository-Audited Evidence (Zero Hallucination / Zero Speculation)  
 **Last Verified Date**: 2026-09-28  
 **Repository Authority Rule**: The actual codebase, schemas, configuration files, and test files supersede all external, historical, or aspirational documentation claims.
@@ -66,8 +66,8 @@ To build the most resilient, autonomous, and audit-proof operating infrastructur
 
 ## 2. Product Operating Model & Governance Separation
 
-### 2.1 The 5-Layer Governance Model
-The fundamental invariant of FreelanceHR is that **AI intelligence is strictly separated from business authority**. The platform architecture enforces a strict division across five operational layers:
+### 2.1 The 5-Layer Governance Model (Target vs Reality)
+The target architecture of FreelanceHR enforces that **AI intelligence is strictly separated from business authority**. The platform architecture defines five operational layers:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -100,13 +100,27 @@ The fundamental invariant of FreelanceHR is that **AI intelligence is strictly s
    - Capabilities: Evidence extraction, semantic scoring, outreach drafting, inbound reply classification.
    - Boundaries: Strictly prohibited from autonomously rejecting candidates, altering invoice statuses, granting consent, executing payouts, or bypassing owner approvals (`openrouter.ts:51-58`, `workflow.ts:159-174`).
 2. **Policy Engine (`server/services/policyEngine.ts`, `server/services/approvalEngine.ts`)**:
-   - Enforces workspace constraints: daily outbound email budgets, quiet hours, emergency stop flags, and matching rules.
+   - Intended to enforce workspace constraints: daily outbound email budgets, quiet hours, emergency stop flags, and non-consequential matching rules.
 3. **Approval Engine (`server/services/approvalEngine.ts`, `server/routers/consequential.ts`)**:
-   - Enforces mandatory human owner authorization for all irreversible or high-impact actions.
+   - Intended to enforce mandatory human owner authorization for all irreversible or high-impact actions.
 4. **Domain Engines (`server/workflow.ts`, `server/routers/*`)**:
    - The sole owners of business state. Enforce valid state machine transitions via `assertTransition()`.
 5. **Audit Plane (`server/db.ts:recordAudit`, `incidents` table)**:
    - Records an immutable, append-only evidentiary trail for every state transition, authorization check, and delivery attempt.
+
+### 2.2 Forensic Governance Inconsistencies & Active Defects
+Forensic repository audit reveals four critical divergence points between Layer A (Target) and Layer B (Repository Reality):
+1. **Auto-Approval Rule Bypass of Consequential Actions (RB-07)**:
+   In `server/services/approvalEngine.ts:requestOrAutoDecide` (lines 265-276), `findMatchingRule` is executed against `policyConfig` without checking whether `actionType` belongs to `consequentialActionTypes`. If any rule matches the action type and conditions, `status: "approved"` is recorded immediately (or queued via delayed grace period) with `decisionSource: "policy"`. Consequential actions are NOT protected against policy auto-approval.
+2. **Consequential Action Taxonomy Mismatch (RB-09)**:
+   - `server/workflow.ts:isConsequentialAction` (lines 159-174) defines **12 actions**: `client_onboarding`, `candidate_share`, `final_candidate_decision`, `candidate_final_decision`, `placement_confirmation`, `replacement_case`, `invoice_issue`, `invoice_payment_status`, `invoice_dispute`, `invoice_credit`, `invoice_write_off`, `automation_stop`.
+   - `server/services/approvalEngine.ts:consequentialActionTypes` (lines 15-21) defines **only 5 actions**: `candidate_final_decision`, `replacement_case`, `invoice_payment_status`, `invoice_dispute`, `invoice_credit`.
+   - `server/routers/consequential.ts:consequentialActions` (line 9) also defines **only the same 5 actions**.
+   - As a consequence: attempting to decide approvals for `client_onboarding`, `candidate_share`, `placement_confirmation`, or `invoice_issue` via `consequentialRouter.decide` throws `TRPCError(NOT_FOUND, "Consequential approval was not found.")`. Those actions can only be decided via the generic `approvalsRouter.decide` in `server/routers/recruitment.ts:748`.
+3. **Lack of Transaction Atomicity in Approval Execution (RB-11)**:
+   In `server/services/approvalEngine.ts:applyApprovalDecision` (lines 190-220), `recordDecision` (updating `approvals` table), `applySideEffect` (updating domain tables like `placements`, `invoices`, `companies`), and `recordAudit` execute sequentially without wrapping in `db.transaction()`. If the side-effect or audit insert throws, the approval row remains marked "approved" with no automated rollback mechanism.
+4. **Client Onboarding Direct Transition Bypass (RB-08)**:
+   In `server/routers/recruitment.ts:prospects.transition` (lines 95-103), a caller can transition a company from `converted` directly to `active` (which sets `companyType = "client"`) via standard tRPC mutation because `transitions.company.converted` contains `"active"`. No verification check or decided `client_onboarding` approval row is required, bypassing the onboarding approval gate entirely.
 
 ---
 
@@ -122,9 +136,9 @@ FOLLOW-UP → NURTURE → CONVERT → DELIVER → MEASURE → LEARN → NEXT ACT
 
 | Entity Loop | Intended Target Operating Behavior | Current Repository Reality | Status | Evidence |
 | :--- | :--- | :--- | :--- | :--- |
-| **A. Clients** | Discover company → enrich domain → check hiring signal → KYB check → outreach → sign fee agreement → receive job. | Manual entry via `companies` table; KYB document upload verified; outreach via `outreachRouter`. | **PARTIAL** | `drizzle/schema.ts:73`, `server/routers/recruitment.ts:45` |
-| **B. Recruiters** | Discover freelance recruiters → verify credentials → assign jobs → track sourcing → commission payout. | Handled only via `teamMembers` (roles: owner, recruiter, reviewer, viewer). No marketplace or payouts. | **PARTIAL** | `server/routers/team.ts`, `drizzle/schema.ts:641` |
-| **C. Candidates** | Acquire CV → deduplicate by hash → parse skills → obtain consent → score match → interview → place. | Fully implemented: SHA-256 deduplication, AI CV parsing, consent gating, shortlist sharing, `.ics` calendar. | **CURRENT-VERIFIED** | `server/routers/recruitment.ts`, `server/services/queue.ts` |
+| **A. Clients** | Discover company → enrich domain → check hiring signal → KYB check → outreach → sign fee agreement → receive job. | Manual entry via `companies` table; KYB document upload verified; outreach via `outreachRouter`. Direct activation bypass exists (RB-08). | **PARTIAL / ACTIVE-DEFECT** | `drizzle/schema.ts:73`, `server/routers/recruitment.ts:95-118` |
+| **B. Recruiters** | Discover freelance recruiters → verify credentials → assign jobs → track sourcing → commission payout. | Handled only via `teamMembers` (roles: owner, recruiter, reviewer, viewer). No marketplace, rating engine, or payouts. | **PARTIAL** | `server/routers/team.ts`, `drizzle/schema.ts:641` |
+| **C. Candidates** | Acquire CV → deduplicate by hash → parse skills → obtain consent → score match → interview → place. | Fully implemented: SHA-256 deduplication, AI CV parsing, consent gating, shortlist sharing, `.ics` calendar. Candidate share can be policy-auto-approved. | **PARTIAL** | `server/routers/recruitment.ts`, `server/services/queue.ts` |
 | **D. Jobs** | Intake requirement → score quality (100-pt scorecard) → client confirmation → AI match → interview → fill. | Implemented: 100-point scorecard sum validation, client confirmation required before sourcing. | **CURRENT-VERIFIED** | `server/routers/recruitment.ts:180-260` |
 | **E. Leads** | Ingest lead signals → scrape website → score hiring intent → cold outreach sequence → meeting booking. | Manual company creation with `hiringSignal` field; automated scraping and lead enrichment are absent. | **TARGET / MISSING** | `drizzle/schema.ts:88` |
 | **F. Partners** | Cross-border recruitment agencies, employer of record (EOR), and visa processing partners. | No partner or agency tables exist in the schema. | **TARGET / MISSING** | Zero schema/code presence |
@@ -138,19 +152,19 @@ The platform architecture is decomposed into 14 distinct engine domains. Each is
 
 | Engine Domain | Subsystem / Capability | Current Status | Primary Code / Schema Sites | Operational Gaps |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. Identity & Org** | Multi-tenant Workspace & RBAC | **CURRENT-VERIFIED** | `server/services/workspaceAccess.ts`, `server/routers/team.ts` | Production OIDC requires live identity provider. |
-| **2. Client CRM** | Company, Contact & KYB Engine | **CURRENT-VERIFIED** | `drizzle/schema.ts:73,100`, `server/routers/recruitment.ts` | Automated web scraping/enrichment missing. |
-| **3. Commercial** | Fee Proposals & Terms | **CURRENT-VERIFIED** | `drizzle/schema.ts:135`, `server/routers/outreach.ts:170` | Digital e-signature integration missing. |
+| **1. Identity & Org** | Multi-tenant Workspace & RBAC | **CURRENT-VERIFIED** | `server/services/workspaceAccess.ts`, `server/routers/team.ts` | Production OIDC requires live identity provider. Express dev fallback exists (RB-12). |
+| **2. Client CRM** | Company, Contact & KYB Engine | **PARTIAL / ACTIVE-DEFECT** | `drizzle/schema.ts:73,100`, `server/routers/recruitment.ts:95` | Direct activation bypasses onboarding approval (RB-08). Auto-enrichment missing. |
+| **3. Commercial** | Fee Proposals & Terms | **PARTIAL** | `drizzle/schema.ts:135`, `server/routers/outreach.ts:170` | DB tracking only; digital e-signature integration (DocuSign/HelloSign) missing. |
 | **4. Requirement** | Job Intake & Quality Scorecard | **CURRENT-VERIFIED** | `server/routers/recruitment.ts:180`, `jobs` table | Automated ATS sync/import missing. |
-| **5. Candidate** | Ingestion, Deduplication, Parse | **CURRENT-VERIFIED** | `server/routers/recruitment.ts:270`, `server/services/queue.ts` | Public job application portal missing. |
-| **6. Compliance** | GDPR/DPDP Consent & Deletion | **CURRENT-VERIFIED** | `server/routers/candidateWorkflows.ts:250`, `privateStorage.ts` | Heuristic scanner is not true antivirus. |
+| **5. Candidate** | Ingestion, Deduplication, Parse | **CURRENT-VERIFIED** | `server/routers/recruitment.ts:270`, `server/services/queue.ts` | Public job application portal missing. Candidate share can be policy-auto-approved. |
+| **6. Compliance** | GDPR/DPDP Consent & Deletion | **CURRENT-VERIFIED** | `server/routers/candidateWorkflows.ts:250`, `privateStorage.ts` | Document scanner is heuristic only (no live antivirus). |
 | **7. Matching** | Evidence-based Semantic Matching | **CURRENT-VERIFIED** | `server/services/queue.ts:178`, `matches` table | Feedback loop to retrain scoring is manual. |
-| **8. Interview** | RFC 5545 Calendar & Reminders | **PARTIAL** | `server/services/calendar.ts`, `interviewReminders.ts` | Reminder side-effects unwired in queue (RB-05). |
-| **9. Placement** | Placement & Guarantee Tracking | **CURRENT-VERIFIED** | `server/routers/recruitment.ts:650`, `placements` table | Background cron for guarantee expiration missing. |
-| **10. Finance** | Invoicing, PDF & Stripe Links | **CURRENT-VERIFIED** | `server/services/invoicing.ts`, `invoices` table | Auto-reconciliation side-effect unwired (RB-05). |
-| **11. Comm** | Hostinger Mail SDK & Threading | **CURRENT-VERIFIED** | `server/services/hostingerMail.ts`, `hostingerWebhook.ts` | Cold inbound mail cannot auto-thread (goes to exceptions). |
-| **12. Queue** | Distributed Automation Queue | **PARTIAL** | `server/services/queue.ts`, `automationQueue` table | 2 of 6 job handlers unwired in queue (RB-05). |
-| **13. Marketplace**| Freelance Recruiter Network | **TARGET / MISSING** | None (`teamMembers` role "recruiter" only) | Dedicated marketplace, ratings, payouts missing. |
+| **8. Interview** | RFC 5545 Calendar & Reminders | **PARTIAL / UNWIRED** | `server/services/calendar.ts`, `interviewReminders.ts` | Reminder side-effects unwired in queue (RB-05). |
+| **9. Placement** | Placement & Guarantee Tracking | **PARTIAL** | `server/routers/recruitment.ts:650`, `placements` table | Placement confirmation can be policy-auto-approved (RB-07). Guarantee cron missing. |
+| **10. Finance** | Invoicing, PDF & Stripe Links | **PARTIAL / UNWIRED** | `server/services/invoicing.ts`, `invoices` table | Auto-reconciliation unwired in queue (RB-05). Consequential approvals can be auto-approved (RB-07). |
+| **11. Comm** | Hostinger Mail SDK & Threading | **PARTIAL / ACTIVE-DEFECT** | `server/services/hostingerMail.ts:54`, `hostingerWebhook.ts` | Outbound `providerMessageId` hardcoded null breaks production thread correlation (RB-10). |
+| **12. Queue** | Distributed Automation Queue | **PARTIAL / UNWIRED** | `server/services/queue.ts`, `automationQueue` table | 2 of 6 job handlers unwired in queue (RB-05). |
+| **13. Marketplace**| Freelance Recruiter Network | **TARGET / MISSING** | None (`teamMembers` role "recruiter" only) | Dedicated marketplace, ratings, commission ledgers, payouts missing. |
 | **14. Growth** | Content, SEO & Social Marketing| **TARGET / MISSING** | None | Social APIs, sitemaps, campaigns missing. |
 
 ---
@@ -169,8 +183,9 @@ INVOICE → PAYMENT → GUARANTEE → REPLACEMENT → RETENTION → EXPANSION �
 - **Company Ingestion**: `companies` table (`schema.ts:73`) supports fields: `name`, `domain`, `companyType` (`prospect` | `client`), `pipelineState`, `sector`, `sizeBand`, `location`, `hiringSignal`, `confidence`, `verificationState`.
 - **Contact Ingestion**: `contacts` table (`schema.ts:100`) hashes email/phone with SHA-256 for privacy tracking (`emailHash`, `phoneHash`), enforcing uniqueness per owner.
 - **Client KYB Verification**: `server/routers/recruitment.ts:prospects.uploadKybDocument` stores registration proofs, tax certificates, and PAN/GST documents in private storage.
-- **Onboarding Approval**: Handled via `server/services/approvalEngine.ts:client_onboarding`. Updates `companyType = "client"` and `pipelineState = "converted"`.
-- **Fee Proposals**: `feeProposals` table (`schema.ts:135`) records commercial terms (percentage fee, guarantee days, payment terms).
+- **Onboarding Approval (Intended)**: `prospects.requestOnboardingApproval` (`server/routers/recruitment.ts:104`) creates approval request for `client_onboarding` when `company.pipelineState === "converted"`.
+- **Onboarding Approval Bypass (Active Defect RB-08)**: `prospects.transition` (`server/routers/recruitment.ts:95-103`) allows direct transition from `converted` to `active` (and sets `companyType: "client"`), completely bypassing the onboarding approval gate and KYB verification requirements.
+- **Fee Proposals**: `feeProposals` table (`schema.ts:135`) records commercial terms (percentage fee, guarantee days, payment terms). No client signature portal exists.
 
 ---
 
@@ -185,7 +200,7 @@ SOURCE → SUBMIT → COMMUNICATE → TRACK → PERFORMANCE → COMMISSION → P
 ### 6.2 Implementation Reality & Code Trace
 - **Team Workspace Roles**: Implemented in `server/routers/team.ts` and `server/services/workspaceAccess.ts`. Roles supported: `owner`, `recruiter`, `reviewer`, `viewer`.
 - **Recruiter Invitations**: `teamInvitations` table (`schema.ts:659`) issues cryptographically secure invitation codes dispatched via Hostinger Mail. Accept page mounted at `/team/accept`.
-- **Marketplace & Payout Reality**: **TARGET / MISSING**. The current repository does NOT contain a public recruiter marketplace, commission calculation ledger, recruiter rating engine, or automated payout gateway. Recruiter activity is managed as internal workspace team members.
+- **Marketplace & Payout Reality**: **TARGET / MISSING**. The current repository does NOT contain a public recruiter marketplace, commission calculation ledger, recruiter rating engine, or automated payout gateway. Recruiter activity is managed strictly as internal workspace team members.
 
 ---
 
@@ -204,6 +219,7 @@ JOIN → PLACEMENT → GUARANTEE → REPLACEMENT → CLOSE → RETAIN / NURTURE
 - **Document Storage**: `candidateDocuments` (`schema.ts:221`) stores CVs and certifications in private storage (`local`, `s3`, or `managed`).
 - **CV Parsing**: `server/services/queue.ts:handleAiTaskResult` (`parse_cv`) extracts skills, experience years, education, and headline, updating `candidateDocuments.parseState = "parsed"`.
 - **Consent Gating**: `consents` table (`schema.ts:251`) records explicit, versioned candidate consent (`platform_processing`, `client_sharing`, etc.).
+- **Candidate Sharing Approval**: `matchingRouter.requestShareApproval` (`server/routers/recruitment.ts:508-525`) creates `candidate_share` approval. Note: If an auto-approval rule is configured in workspace policies, candidate sharing can be auto-approved without owner review (RB-07).
 - **Suppression & DNC**: `suppressionList` (`schema.ts:581`) enforces opt-out. Any candidate marked DNC or withdrawing consent cascades suppression.
 - **Privacy Erasure (Fail-Closed)**: `candidateWorkflows.ts:250-295` mandates that physical document deletion from disk/S3 MUST succeed before database records are redacted. If storage fails, the deletion aborts, transitions to `investigation`, and logs an audit failure (`privacy.erasure_failed`).
 
@@ -236,7 +252,7 @@ PLACEMENT CONFIRMED → INVOICE ISSUED → GUARANTEE PERIOD ACTIVE →
 
 ### 9.2 Implementation Reality & Code Trace
 - **Placement Creation**: `placements` table (`schema.ts:401`) records candidate, job, company, offer amount, fee percentage, joining date, guarantee start/end dates, and state.
-- **Consequential Placement Confirmation**: `placementsRouter.confirm` submits an approval request. Applying the side effect updates placement state to `joining_confirmed` and `invoice_eligible`.
+- **Consequential Placement Confirmation**: `placementsRouter.transition` (`server/routers/recruitment.ts:656-676`) creates an approval request for `placement_confirmation` when transitioning to `joining_confirmed`. Note: If an auto-approval rule is configured, it auto-approves immediately (RB-07). Furthermore, deciding this approval via `consequentialRouter.decide` throws `NOT_FOUND` because `placement_confirmation` was omitted from `consequentialActions` (RB-09); it must be decided via `approvalsRouter.decide`.
 - **Replacement Governance**: `consequentialRouter.requestReplacement` creates an approval request for `replacement_case`. Deciding the approval updates placement state to `replacement_requested`.
 
 ---
@@ -253,7 +269,7 @@ PLACEMENT CONFIRMED → INVOICE ISSUED → GUARANTEE PERIOD ACTIVE →
 - **Invoice Generation**: `invoices` table (`schema.ts:438`) and `server/services/invoicing.ts`. Generates complete HTML/PDF-ready invoice documents with tax calculation (`invoicing.ts:54-150`).
 - **Payment Link Generation**: Supports provider integration stubs (`invoicing.ts:createInvoicePaymentLink`).
 - **Payment Recording**: `payments` table (`schema.ts:474`) logs provider event IDs and timestamps.
-- **Consequential Actions**: `invoice_payment_status`, `invoice_dispute`, and `invoice_credit` require consequential approval.
+- **Consequential Actions**: `invoice_payment_status`, `invoice_dispute`, and `invoice_credit` require approval. (Note: policy auto-approval flaw RB-07 applies if rules match).
 - **Queue Gap (RB-05)**: `reconcile_invoice` has prompt and schema in `openrouter.ts`, but its result handler is **UNWIRED** in `server/services/queue.ts`.
 
 ---
@@ -290,11 +306,14 @@ PLACEMENT CONFIRMED → INVOICE ISSUED → GUARANTEE PERIOD ACTIVE →
 - **Suppression Check**: Pre-flight SHA-256 hash lookup against `suppressionList` table. Throws `TRPCError(PRECONDITION_FAILED)` if recipient is suppressed.
 - **Approval Gate**: Cold recruitment outreach requires approval before `deliverApproved` can dispatch.
 
-### 12.2 Inbound Email Webhook & Threading Reality
+### 12.2 Inbound Email Webhook & Threading Reality (Active Defect RB-10)
 - Located in `server/services/hostingerWebhook.ts` and `server/routers/email.ts`.
 - **Authentication**: `isValidHostingerWebhookAuthorization` validates `HOSTINGER_MAIL_WEBHOOK_SECRET` with `timingSafeEqual`.
-- **Threading Matching**: `chooseThreadReference` searches `In-Reply-To` and `References` headers against `messages.providerMessageId`.
-- **Cold Inbound Limitation**: If an incoming email does not contain a recognized thread reference to an existing message, it CANNOT create a new conversation thread. It logs an audit event (`email.webhook_unmatched`), creates an incident in `incidents`, and returns 202 (`routed_to_exception`).
+- **Outbound Provider Message ID Hardcoded Null (RB-10)**:
+  `server/services/hostingerMail.ts:54` hardcodes `return { providerMessageId: null, senderAddress, mailboxResourceId };`. In `server/routers/email.ts:92`, `messages.providerMessageId` is updated with `null`.
+- **Inbound Threading Failure**:
+  When an incoming email arrives via webhook, `recordByThread` (`server/routers/email.ts:123-131`) attempts to match `In-Reply-To` and `References` against `messages.providerMessageId`. Because all outbound messages have `providerMessageId = null`, parent matching fails 100% of the time in live mail flow.
+- **Exception Routing**: Every unmatched inbound reply logs an audit event (`email.inbound_unmatched`), creates an incident in `incidents` ("Inbound mail did not contain a recognized message thread reference"), and returns HTTP 202. Bidirectional threading is therefore non-functional in live production.
 
 ---
 
@@ -308,7 +327,7 @@ REMINDER → FOLLOW-UP → RESPONSE → NURTURE → CONVERT / CLOSED
 
 ### 13.2 Implementation Reality & Code Trace
 - **Interview Reminders**: `server/services/interviewReminders.ts` queries confirmed interviews due for reminders (`reminderAt <= now`), marks `reminderSentAt`, and inserts a `send_reminder` job into `automationQueue`.
-- **Queue Gap (RB-05)**: In `server/services/queue.ts`, `handleAiTaskResult` has **NO HANDLER** for `send_reminder`. The AI draft generated by OpenRouter is stored in `automationQueue.result` and abandoned. No notification is sent.
+- **Queue Gap (RB-05)**: In `server/services/queue.ts`, `handleAiTaskResult` has **NO HANDLER** for `send_reminder`. The AI draft generated by OpenRouter is stored in `automationQueue.result` and abandoned. No notification is dispatched.
 - **Client & Candidate Nurture**: **TARGET / MISSING**. Long-term automated drip campaigns and stale lead nurture workflows are not implemented in code.
 
 ---
@@ -514,12 +533,13 @@ appRouter
 - **Webhook Security**: Hostinger inbound webhooks require `HOSTINGER_MAIL_WEBHOOK_SECRET` verified via `timingSafeEqual`.
 - **Storage Security**: Document downloads enforce workspace ownership verification before piping bytes (`scripts/verify-hostinger.ts`).
 
-### 21.3 Primary Owner & Dev Fallback Security Audit
-- `server/services/primaryOwner.ts` checks:
-  1. `PRIMARY_OWNER_OPEN_ID`
-  2. `OWNER_OPEN_ID`
-  3. `PRIMARY_OWNER_EMAIL`
-- **Known Risk Fact**: In non-test environments when neither variable is set, code falls back to `mohd.aziz.sk@gmail.com` or `owner_dev`. Production deployments must explicitly provide `PRIMARY_OWNER_EMAIL` to prevent fallback.
+### 21.3 Primary Owner & Runtime Context Security Audit
+1. **Fastify Production Context (`server/hostinger.ts:29-32`)**:
+   `createFastifyContext` resolves `user = await authenticateRuntimeRequest(...)`. If the user is unauthenticated, `user` is strictly `null`. It does NOT fabricate an owner.
+2. **Express Development Context (Active Defect RB-12)**:
+   In `server/_core/context.ts` (lines 27-39), if `user` is null, the handler unconditionally falls back to `(await getUserByOpenId("owner_dev")) ?? { id: 1, openId: "owner_dev", name: "Sahil (Owner)", role: "admin", ... }`. If the application is ever executed via `server.ts` in production, all unauthenticated requests are granted root owner privileges.
+3. **Primary Owner Resolution (`server/services/primaryOwner.ts`)**:
+   Resolves `PRIMARY_OWNER_OPEN_ID`, `OWNER_OPEN_ID`, or `PRIMARY_OWNER_EMAIL`. If unset in non-test environments, falls back to `mohd.aziz.sk@gmail.com` or `owner_dev`. Production deployments must explicitly provide `PRIMARY_OWNER_EMAIL`.
 
 ---
 
@@ -540,21 +560,21 @@ appRouter
 
 | Scenario # | Canonical Business Scenario | Target Operational Flow | Current Code State | Current Status |
 | :- | :--- | :--- | :--- | :--- |
-| **01** | **New Client Acquisition to Invoice** | Prospect → KYB → Agreement → Job → Match → Place → Invoice | Fully wired via recruitment, consequential, and invoicing routers. | **CURRENT-VERIFIED** |
+| **01** | **New Client Acquisition to Invoice** | Prospect → KYB → Agreement → Job → Match → Place → Invoice | Client onboarding approval can be bypassed via direct transition (RB-08). Consequential actions can be auto-approved (RB-07). | **PARTIAL / ACTIVE-DEFECT** |
 | **02** | **Existing Client New Job Requisition**| Company → Job (scorecard=100) → Client Confirmation → Pipeline | Enforced scorecard sum and mandatory client confirmation email. | **CURRENT-VERIFIED** |
-| **03** | **Candidate Ingestion to Placement** | CV upload → Dedup → Scan → Parse → Consent → Match → Place | Verified deduplication, parsing, consent gating, and placement. | **CURRENT-VERIFIED** |
+| **03** | **Candidate Ingestion to Placement** | CV upload → Dedup → Scan → Parse → Consent → Match → Place | Verified deduplication, parsing, consent gating, and placement. Candidate share can be policy-auto-approved (RB-07). | **PARTIAL** |
 | **04** | **Recruiter Team Member Onboarding** | Owner invites → Email sent → Recruiter accepts at `/team/accept` | Dispatches email via Hostinger Mail; role enforced via RBAC. | **CURRENT-VERIFIED** |
 | **05** | **Consent Withdrawal & DNC Cascade** | Candidate withdraws consent → Instant suppression list insertion | Pre-flight suppression check blocks outbound communications. | **CURRENT-VERIFIED** |
 | **06** | **GDPR Right to Erasure (Fail-Closed)**| Deletion requested → Physical files deleted → DB redacted | Atomic fail-closed: fails if disk/S3 deletion fails; audits failure. | **VERIFIED-TEST** |
 | **07** | **Interview Calendar Scheduling** | Interview created → RFC 5545 `.ics` generated → Feed subscribed | Calendar export verified; provider-free iCalendar format. | **CURRENT-VERIFIED** |
 | **08** | **Interview Reminder Dispatch** | Cron triggers → Due interviews scanned → Reminder queued → Sent | **DEFECT (RB-05)**: Job queued, but result handler unwired in queue. | **PARTIAL / UNWIRED** |
-| **09** | **Candidate Profile Sharing Approval** | Recruiter requests share → Owner approves → Shortlist marked shared | Implemented; can be auto-approved if policy rule configured. | **PARTIAL** |
-| **10** | **Placement Confirmation & Guarantee** | Candidate joins → Owner approves placement → Guarantee starts | Consequential approval triggers `invoice_eligible` state. | **CURRENT-VERIFIED** |
+| **09** | **Candidate Profile Sharing Approval** | Recruiter requests share → Owner approves → Shortlist marked shared | Implemented; can be auto-approved if policy rule configured (RB-07). | **PARTIAL** |
+| **10** | **Placement Confirmation & Guarantee** | Candidate joins → Owner approves placement → Guarantee starts | Consequential approval can be auto-approved (RB-07); rejected by `consequentialRouter.decide` (RB-09). | **PARTIAL / ACTIVE-DEFECT** |
 | **11** | **Replacement Guarantee Activation** | Candidate leaves → Replacement case opened → Sourcing restarts | Consequential approval updates placement to `replacement_requested`. | **CURRENT-VERIFIED** |
 | **12** | **Invoice Generation & Stripe Link** | Placement confirms → Invoice drafted → HTML rendered → Pay link | Verified invoice document generator and payment link stubs. | **CURRENT-VERIFIED** |
 | **13** | **Invoice Auto-Reconciliation** | Bank event received → AI reconciles payment → Status updated | **DEFECT (RB-05)**: AI task schema exists; handler unwired in queue. | **UNWIRED** |
-| **14** | **Invoice Dispute / Credit Governance**| Client disputes invoice → Consequential approval → Status credit | Managed via `consequentialRouter.requestInvoiceAction`. | **CURRENT-VERIFIED** |
-| **15** | **Inbound Email Thread Matching** | Inbound webhook → Message headers matched to thread → Stored | Matches via `In-Reply-To`/`References`. Unmatched goes to incidents. | **CURRENT-VERIFIED** |
+| **14** | **Invoice Dispute / Credit Governance**| Client disputes invoice → Consequential approval → Status credit | Managed via `consequentialRouter.requestInvoiceAction`. (RB-07 auto-approval applies). | **PARTIAL** |
+| **15** | **Inbound Email Thread Matching** | Inbound webhook → Message headers matched to thread → Stored | **DEFECT (RB-10)**: Outbound providerMessageId is null; incoming replies fail match and route to incidents. | **PARTIAL / ACTIVE-DEFECT** |
 | **16** | **Inbound Email Opt-out Detection** | Candidate replies "STOP" → AI/regex detects → Suppressed | Automatically inserts into `suppressionList` and halts contact. | **CURRENT-VERIFIED** |
 | **17** | **Cold Inbound Ingestion** | Unsolicited email arrives at mailbox → New lead created | **GAP**: Unmatched inbound emails cannot create leads; routed to exception. | **PARTIAL** |
 | **18** | **AI CV Parsing Pipeline** | PDF uploaded → Text extracted → OpenRouter parses JSON → Saved | Full pipeline verified from storage to `candidateDocuments`. | **CURRENT-VERIFIED** |
@@ -600,7 +620,12 @@ appRouter
 | Blocker ID | Severity | Category | Description & Verified Code Fact | Code Site | Required Resolution | Status |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **RB-05** | **P1** | **AI / Queue** | **Unwired Automation Queue Side Effects**: In `server/services/queue.ts`, `handleAiTaskResult` implements result handlers for `parse_cv`, `draft_outreach`, `classify_reply`, and `score_match`, but contains NO handler for `send_reminder` or `reconcile_invoice`. Completed task results remain trapped in `automationQueue.result` without updating domain records. | `server/services/queue.ts:13-240` | Implement side-effect handlers in `queue.ts` for `send_reminder` (updating interview reminder dispatch state) and `reconcile_invoice` (updating invoice ledger status). | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
-| **RB-07** | **P1** | **Approval / Safety** | **Consequential Actions Can Bypass Mandatory Human Approval**: `server/services/approvalEngine.ts:15-21` defines only 5 actions in `consequentialActionTypes`. Furthermore, `requestOrAutoDecide` and `findMatchingRule` do NOT prevent consequential actions from matching `autoApprovalRules`. Any action can be policy-auto-approved if a matching rule is configured. | `server/services/approvalEngine.ts:240-340`, `server/services/policyEngine.ts:120-173` | Enforce in code that consequential actions (`consequentialActionTypes`) MUST NEVER match policy auto-approval rules and strictly require human owner decision. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
+| **RB-07** | **P1** | **Approval / Safety** | **Consequential Actions Can Bypass Mandatory Human Approval**: In `server/services/approvalEngine.ts:requestOrAutoDecide` (lines 265-276), `findMatchingRule` does NOT check whether `actionType` is consequential. Any consequential action matching a workspace policy rule is automatically approved with `decisionSource: "policy"`. | `server/services/approvalEngine.ts:240-340`, `server/services/policyEngine.ts:120-173` | Enforce in code that all consequential actions strictly bypass `findMatchingRule` and require human owner decision. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
+| **RB-08** | **P1** | **Client Onboarding Bypass** | **Client Onboarding Direct Transition Bypass**: In `server/routers/recruitment.ts:prospects.transition` (lines 95-103), a caller can transition a company directly from `converted` to `active`, which sets `companyType: "client"` without checking or requiring a decided `client_onboarding` approval row or KYB verification. | `server/routers/recruitment.ts:95-103` | In `prospects.transition`, disallow direct transition to `active`. Require that `active` state can only be reached via approved `client_onboarding` side-effect execution. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
+| **RB-09** | **P1** | **Consequential Inconsistency** | **Consequential Action Taxonomy Mismatch & Routing Disconnect**: `server/workflow.ts:isConsequentialAction` defines 12 actions, but `approvalEngine.ts` and `consequential.ts` define only 5. Attempting to decide approvals for `client_onboarding`, `candidate_share`, `placement_confirmation`, or `invoice_issue` via `consequentialRouter.decide` throws `NOT_FOUND`. | `server/services/approvalEngine.ts:15-21`, `server/routers/consequential.ts:9,62` | Unify `consequentialActionTypes` across `workflow.ts`, `approvalEngine.ts`, and `consequential.ts` to include all 12 actions. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
+| **RB-10** | **P1** | **Email Threading Failure** | **Outbound Email Provider Message ID Hardcoded Null**: `server/services/hostingerMail.ts:54` hardcodes `providerMessageId: null` on all outbound emails. Consequently, `messages.providerMessageId` is persisted as null, making bidirectional thread correlation via `In-Reply-To` and `References` impossible. 100% of incoming replies fail matching and route to `incidents`. | `server/services/hostingerMail.ts:54`, `server/routers/email.ts:92,123-138` | Extract or generate a valid, RFC-compliant Message-ID during outbound dispatch and store it in `messages.providerMessageId`. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
+| **RB-11** | **P1** | **Transaction Non-Atomicity** | **Approval Decision & Side-Effect Lack Transaction Boundary**: In `server/services/approvalEngine.ts:applyApprovalDecision` (lines 190-220), `recordDecision`, `applySideEffect`, and `recordAudit` execute sequentially without a database transaction wrapper (`db.transaction`). If a side effect fails, the approval remains marked "approved" with no rollback. | `server/services/approvalEngine.ts:190-220` | Wrap `recordDecision`, `applySideEffect`, and `recordAudit` in an atomic database transaction. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
+| **RB-12** | **P2** | **Security / Dev Fallback** | **Express Context Unconditional Owner Fallback**: `server/_core/context.ts` unconditionally assigns unauthenticated callers to `Sahil (Owner)` (`id: 1`, `role: "admin"`). While the production Fastify server (`server/hostinger.ts`) uses `createFastifyContext` without this fallback, any execution of `server.ts` exposes root owner privileges. | `server/_core/context.ts:27-39` | Guard the fallback in `server/_core/context.ts` with `if (process.env.NODE_ENV !== "production")` and throw 401 when running in production. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
 
 ### 25.2 Resolved Release Blockers (Historical Audit Record)
 
@@ -618,19 +643,19 @@ appRouter
 
 | Architectural Domain | Target Capability (Layer A) | Current Implementation (Layer B) | Status | Gap Analysis & Operational Impact |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. Identity & Auth** | Enterprise SSO, multi-factor auth, OIDC, RBAC | OIDC discovery with PKCE, session cookie JWT, workspace RBAC | **CURRENT-VERIFIED** | Requires live production IdP configuration in `.env`. |
-| **2. Client CRM** | Auto-enrichment from web, automated KYB lookup | Manual company creation, document upload for KYB | **PARTIAL** | Automated company web scraping is missing. |
-| **3. Fee Proposals** | E-signature contract execution, dynamic fee terms | Database proposal creation, acceptance tracking in DB | **CURRENT-VERIFIED** | DocuSign/HelloSign integration is target roadmap. |
+| **1. Identity & Auth** | Enterprise SSO, multi-factor auth, OIDC, RBAC | OIDC discovery with PKCE, session cookie JWT, workspace RBAC | **CURRENT-VERIFIED** | Fastify runtime fail-closed; Express dev context has owner fallback (RB-12). |
+| **2. Client CRM** | Auto-enrichment from web, automated KYB lookup | Manual company creation, document upload for KYB | **PARTIAL / ACTIVE-DEFECT** | Direct transition `converted → active` bypasses onboarding approval (RB-08). |
+| **3. Fee Proposals** | E-signature contract execution, dynamic fee terms | Database proposal creation, acceptance tracking in DB | **PARTIAL** | DocuSign/HelloSign integration is target roadmap. |
 | **4. Requirements** | ATS sync, automated JD parsing, quality scorecard | Manual job entry, scorecard sum=100 rule, client confirmation | **CURRENT-VERIFIED** | Direct XML/API job board ingestion is missing. |
-| **5. Candidate ATS** | Career portal, resume ingestion, parsing, dedup | SHA-256 dedup, private doc storage, OpenRouter CV parsing | **CURRENT-VERIFIED** | Public-facing career portal is missing. |
-| **6. Compliance** | GDPR/DPDP consent, fail-closed erasure, AV scanning | Versioned consent, fail-closed erasure, static heuristic scan | **PARTIAL** | Document scanner is heuristic only (no live antivirus). |
+| **5. Candidate ATS** | Career portal, resume ingestion, parsing, dedup | SHA-256 dedup, private doc storage, OpenRouter CV parsing | **CURRENT-VERIFIED** | Public-facing career portal is missing. Candidate share can be policy-auto-approved. |
+| **6. Compliance** | GDPR/DPDP consent, fail-closed erasure, AV scanning | Versioned consent, fail-closed erasure, static heuristic scan | **CURRENT-VERIFIED** | Document scanner is heuristic only (no live antivirus). |
 | **7. Matching** | Vector search, semantic evidence scoring, feedback loop| OpenRouter `score_match` writing evidence to `matches` table | **CURRENT-VERIFIED** | Automated model retraining from recruiter feedback missing. |
-| **8. Interviews** | Google/Outlook Calendar 2-way sync, reminders | RFC 5545 `.ics` export, reminder scanning in cron | **PARTIAL** | Unwired reminder side effect (RB-05); no Google OAuth. |
-| **9. Placements** | Offer tracking, guarantee tracking, replacement pipeline| Complete placement state machine and replacement approvals | **CURRENT-VERIFIED** | Background cron to auto-expire guarantees missing. |
-| **10. Finance** | Stripe/bank reconciliation, automated debt collection | HTML/PDF invoice generation, payment recording, disputes | **PARTIAL** | Unwired invoice reconciliation side effect (RB-05). |
-| **11. Email / Comm**| Multi-mailbox Hostinger sync, auto-threading, cold leads| Hostinger SDK outbound, thread matching via In-Reply-To | **PARTIAL** | Unmatched inbound emails cannot create new leads. |
-| **12. Queue Engine**| Distributed multi-worker queue with dead-letter queue| Single-table MySQL queue with priority, retry, backoff | **PARTIAL** | 2 of 6 job handlers unwired in `queue.ts` (RB-05). |
-| **13. Approval Safety**| Non-bypassable human owner approval for high-risk acts| Approval engine supports manual and policy auto-approval | **ACTIVE-DEFECT** | Consequential actions can be policy-auto-approved (RB-07). |
+| **8. Interviews** | Google/Outlook Calendar 2-way sync, reminders | RFC 5545 `.ics` export, reminder scanning in cron | **PARTIAL / UNWIRED** | Unwired reminder side effect (RB-05); no Google OAuth. |
+| **9. Placements** | Offer tracking, guarantee tracking, replacement pipeline| Complete placement state machine and replacement approvals | **PARTIAL / ACTIVE-DEFECT** | Placement confirmation can be policy-auto-approved (RB-07). Guarantee cron missing. |
+| **10. Finance** | Stripe/bank reconciliation, automated debt collection | HTML/PDF invoice generation, payment recording, disputes | **PARTIAL / UNWIRED** | Unwired invoice reconciliation side effect (RB-05). Consequential approvals can be auto-approved. |
+| **11. Email / Comm**| Multi-mailbox Hostinger sync, auto-threading, cold leads| Hostinger SDK outbound, thread matching via In-Reply-To | **PARTIAL / ACTIVE-DEFECT** | Outbound providerMessageId is null; all inbound replies fail thread match (RB-10). |
+| **12. Queue Engine**| Distributed multi-worker queue with dead-letter queue| Single-table MySQL queue with priority, retry, backoff | **PARTIAL / UNWIRED** | 2 of 6 job handlers unwired in `queue.ts` (RB-05). |
+| **13. Approval Safety**| Non-bypassable human owner approval for high-risk acts| Approval engine supports manual and policy auto-approval | **ACTIVE-DEFECT** | Consequential actions can be policy-auto-approved (RB-07). Non-atomic execution (RB-11). |
 | **14. Recruiter Network**| Marketplace with ratings, assignments, automated payouts | Team members with role `recruiter` only | **TARGET / MISSING** | Dedicated marketplace, commission ledger, payouts missing. |
 | **15. Overseas Recr.**| Country-specific visa checklists, compliance guides | General country/location string fields | **TARGET / MISSING** | Immigration rules, work permit tracking missing. |
 | **16. Growth / SEO** | Automated blog publisher, social post distributor | Zero marketing or social media code in repo | **TARGET / MISSING** | Entirely an aspirational roadmap engine. |
@@ -721,4 +746,3 @@ appRouter
 - `server/routers/safeAiText.test.ts`: Content safety filter blocking protected recruitment traits.
 - `server/e2eHappyPath.workflow.test.ts`: End-to-end happy path recruitment workflow.
 - `scripts/verify-hostinger.ts`: Standalone verification of Fastify production routes, storage auth, and payload size bounds (21 passed).
-
