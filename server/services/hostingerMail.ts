@@ -4,6 +4,14 @@ export const EMAIL_PURPOSES = ["owner", "clients", "talent", "interviews", "fina
 export type EmailPurpose = (typeof EMAIL_PURPOSES)[number];
 
 const approvedDomain = (process.env.HOSTINGER_MAIL_FROM_DOMAIN || "overseasjob.in").trim().toLowerCase();
+export const CANONICAL_MAILBOX_ENV_KEYS: Record<EmailPurpose, string> = {
+  owner: "OWNER_MAILBOX",
+  clients: "CLIENTS_MAILBOX",
+  talent: "TALENT_MAILBOX",
+  interviews: "INTERVIEWS_MAILBOX",
+  finance: "FINANCE_MAILBOX",
+  privacy: "PRIVACY_MAILBOX",
+};
 const mailboxResourceEnvKey: Record<EmailPurpose, string> = { owner: "HOSTINGER_MAILBOX_OWNER_ID", clients: "HOSTINGER_MAILBOX_CLIENTS_ID", talent: "HOSTINGER_MAILBOX_TALENT_ID", interviews: "HOSTINGER_MAILBOX_INTERVIEWS_ID", finance: "HOSTINGER_MAILBOX_FINANCE_ID", privacy: "HOSTINGER_MAILBOX_PRIVACY_ID" };
 const senderAddressEnvKey: Record<EmailPurpose, string> = { owner: "HOSTINGER_MAILBOX_OWNER_ADDRESS", clients: "HOSTINGER_MAILBOX_CLIENTS_ADDRESS", talent: "HOSTINGER_MAILBOX_TALENT_ADDRESS", interviews: "HOSTINGER_MAILBOX_INTERVIEWS_ADDRESS", finance: "HOSTINGER_MAILBOX_FINANCE_ADDRESS", privacy: "HOSTINGER_MAILBOX_PRIVACY_ADDRESS" };
 
@@ -13,7 +21,10 @@ export function isApprovedSenderAddress(address: string) {
 }
 
 export function getSenderAddress(purpose: EmailPurpose) {
-  return process.env[senderAddressEnvKey[purpose]]?.trim().toLowerCase() || `${purpose}@${approvedDomain}`;
+  const configured =
+    process.env[CANONICAL_MAILBOX_ENV_KEYS[purpose]]?.trim().toLowerCase() ||
+    process.env[senderAddressEnvKey[purpose]]?.trim().toLowerCase();
+  return configured || `${purpose}.fl@${approvedDomain}`;
 }
 
 export function detectOptOut(text: string) {
