@@ -1,8 +1,8 @@
 # FreelanceHR Platform Source of Truth (Canonical Architecture Record)
 
-**Document Phase**: P0.1-F Final Source of Truth Normalization & Freeze  
+**Document Phase**: P0.1-G Final Source of Truth Consistency & Configuration Normalization  
 **Verification Level**: Strict Repository-Audited Evidence (Zero Hallucination / Zero Speculation)  
-**Last Verified Date**: 2026-09-28  
+**Last Verified Date**: 2026-09-29  
 **Repository Authority Rule**: The actual codebase, schemas, configuration files, and test files supersede all external, historical, or aspirational documentation claims.
 
 ---
@@ -10,15 +10,15 @@
 ## 0. Document Governance & Baseline Status
 
 ### 0.0 Baseline Status
-This document is the canonical platform Source of Truth baseline after P0.1-D reconstruction and P0.1-E repository reconciliation.
+This document is the canonical platform Source of Truth baseline after P0.1-D reconstruction, P0.1-E repository reconciliation, and P0.1-G consistency & configuration normalization.
 
 It defines the current documented product and implementation baseline. It strictly distinguishes verified implementation from target architecture.
 
 Future implementation work MUST NOT silently modify the product truth. Material architecture, workflow, database, approval, security, or capability changes must update this Source of Truth and the relevant downstream contract documents.
 
 - **Baseline Status**: **FROZEN BASELINE**
-- **Last Verified**: 2026-09-28
-- **Verification Phase**: P0.1-F — Final Source of Truth Normalization & Freeze
+- **Last Verified**: 2026-09-29
+- **Verification Phase**: P0.1-G — Final Source of Truth Consistency & Configuration Normalization
 - **Operational Scope Note**: Declaring this document "FROZEN" signifies that the **DOCUMENT BASELINE IS FROZEN**. It does NOT mean the platform is production complete, free of defects, or ready for general deployment. Active release blockers (RB-05, RB-07 through RB-12) remain documented and unresolved in the codebase.
 
 ### 0.1 Purpose & Authority
@@ -169,24 +169,25 @@ FOLLOW-UP → NURTURE → CONVERT → DELIVER → MEASURE → LEARN → NEXT ACT
 
 ## 4. Master Capability & Engine Registry
 
-The platform architecture is decomposed into 14 distinct engine domains. Each is classified by current implementation state:
+The platform architecture is decomposed into 15 distinct engine domains (Domains A through O, comprising ENG-001 to ENG-129) synchronized with `docs/ENGINE_REGISTRY.md` and `docs/FEATURE_COMPLETION_MATRIX.md`. Each is classified by current implementation state:
 
 | Engine Domain | Subsystem / Capability | Current Status | Primary Code / Schema Sites | Operational Gaps |
 | :--- | :--- | :--- | :--- | :--- |
-| **1. Identity & Org** | Multi-tenant Workspace & RBAC | **PARTIAL / ACTIVE-DEFECT** | `server/services/workspaceAccess.ts`, `server/routers/team.ts`, `server/hostinger.ts` | Fastify runtime fail-closed; Express dev context has owner fallback (RB-12). |
-| **2. Client CRM** | Company, Contact & KYB Engine | **PARTIAL / ACTIVE-DEFECT** | `drizzle/schema.ts:73,100`, `server/routers/recruitment.ts:95` | Direct activation bypasses onboarding approval (RB-08). Auto-enrichment missing. |
-| **3. Commercial** | Fee Proposals & Terms | **PARTIAL** | `drizzle/schema.ts:135`, `server/routers/outreach.ts:170` | DB tracking only; digital e-signature integration (DocuSign/HelloSign) missing. |
-| **4. Requirement** | Job Intake & Quality Scorecard | **CURRENT-VERIFIED** | `server/routers/recruitment.ts:180`, `jobs` table | Automated ATS sync/import missing. |
-| **5. Candidate** | Ingestion, Deduplication, Parse | **PARTIAL / RELEASE-BLOCKED** | `server/routers/recruitment.ts:270`, `server/services/queue.ts` | Ingestion/parsing verified; candidate share can be auto-approved (RB-07) and routing disconnected (RB-09). Public portal missing. |
-| **6. Compliance** | GDPR/DPDP Consent & Deletion | **PARTIAL** | `server/routers/candidateWorkflows.ts:250`, `privateStorage.ts` | Consent, suppression, and fail-closed deletion verified; document scanner is heuristic only (no live antivirus). |
-| **7. Matching** | Evidence-based Semantic Matching | **PARTIAL** | `server/services/queue.ts:178`, `matches` table | Evidence scoring verified; vector search, automated candidate feedback loops, and retraining missing. |
-| **8. Interview** | RFC 5545 Calendar & Reminders | **PARTIAL / UNWIRED** | `server/services/calendar.ts`, `interviewReminders.ts` | Calendar export verified; reminder side-effects unwired in queue (RB-05). |
-| **9. Placement** | Placement & Guarantee Tracking | **PARTIAL / ACTIVE-DEFECT** | `server/routers/recruitment.ts:650`, `placements` table | Placement confirmation can be policy-auto-approved (RB-07) and routing broken (RB-09). Guarantee cron missing. |
-| **10. Finance** | Invoicing, PDF & Stripe Links | **PARTIAL / UNWIRED** | `server/services/invoicing.ts`, `invoices` table | Invoicing/PDF verified; auto-reconciliation unwired (RB-05); consequential approvals can be auto-approved (RB-07). |
-| **11. Comm** | Hostinger Mail SDK & Threading | **PARTIAL / ACTIVE-DEFECT** | `server/services/hostingerMail.ts:54`, `hostingerWebhook.ts` | Outbound SDK and suppression verified; outbound `providerMessageId: null` breaks live thread correlation (RB-10). |
-| **12. Queue** | Distributed Automation Queue | **PARTIAL / UNWIRED** | `server/services/queue.ts`, `automationQueue` table | 4 of 6 job handlers wired; 2 unwired in queue (`send_reminder`, `reconcile_invoice`) (RB-05). |
-| **13. Marketplace**| Freelance Recruiter Network | **TARGET / MISSING** | None (`teamMembers` role "recruiter" only) | Dedicated marketplace, ratings, commission ledgers, payouts missing. |
-| **14. Growth** | Content, SEO & Social Marketing| **TARGET / MISSING** | None | Social APIs, sitemaps, campaigns missing. |
+| **Domain A: Identity & Org** (ENG-001 - ENG-006) | Multi-tenant Workspace & RBAC | **PARTIAL / ACTIVE-DEFECT** | `server/services/workspaceAccess.ts`, `server/routers/team.ts`, `server/hostinger.ts` | Fastify runtime fail-closed; Express dev context has owner fallback (RB-12). |
+| **Domain B: Client CRM** (ENG-007 - ENG-013) | Company, Contact & KYB Engine | **PARTIAL / ACTIVE-DEFECT** | `drizzle/schema.ts:73,100`, `server/routers/recruitment.ts:95` | Direct activation bypasses onboarding approval (RB-08). Auto-enrichment missing. |
+| **Domain C: Commercial** (ENG-014 - ENG-018) | Fee Proposals & Terms | **PARTIAL** | `drizzle/schema.ts:135`, `server/routers/outreach.ts:170` | DB tracking only; digital e-signature integration (DocuSign/HelloSign) missing. |
+| **Domain D: Job / Requirement** (ENG-019 - ENG-025) | Job Intake & Quality Scorecard | **CURRENT-VERIFIED** | `server/routers/recruitment.ts:180`, `jobs` table | Automated ATS sync/import missing. |
+| **Domain E: Candidate** (ENG-026 - ENG-036) | Ingestion, Deduplication, Parse | **PARTIAL / RELEASE-BLOCKED** | `server/routers/recruitment.ts:270`, `server/services/queue.ts` | Ingestion/parsing verified; candidate share can be auto-approved (RB-07) and routing disconnected (RB-09). Public portal missing. |
+| **Domain F: Recruitment** (ENG-037 - ENG-050) | Matching, Pipeline & Placements | **PARTIAL / ACTIVE-DEFECT** | `server/routers/recruitment.ts:650`, `placements` table | Placement confirmation can be policy-auto-approved (RB-07) and routing broken (RB-09). Guarantee cron missing. |
+| **Domain G: Finance** (ENG-051 - ENG-059) | Invoicing, PDF & Stripe Links | **PARTIAL / UNWIRED** | `server/services/invoicing.ts`, `invoices` table | Invoicing/PDF verified; auto-reconciliation unwired (RB-05); consequential approvals can be auto-approved (RB-07). |
+| **Domain H: Compliance / Risk** (ENG-060 - ENG-068) | GDPR/DPDP Consent & Deletion | **PARTIAL** | `server/routers/candidateWorkflows.ts:250`, `privateStorage.ts` | Consent, suppression, and fail-closed deletion verified; document scanner is heuristic only (no live antivirus). |
+| **Domain I: Communication** (ENG-069 - ENG-075) | Hostinger Mail SDK & Threading | **PARTIAL / ACTIVE-DEFECT** | `server/services/hostingerMail.ts:54`, `hostingerWebhook.ts` | Outbound SDK and suppression verified; outbound `providerMessageId: null` breaks live thread correlation (RB-10). |
+| **Domain J: Automation** (ENG-076 - ENG-082) | Distributed Automation Queue | **PARTIAL / UNWIRED** | `server/services/queue.ts`, `automationQueue` table | Queue engine verified; 2 of 6 job handlers unwired in queue (`send_reminder`, `reconcile_invoice`) (RB-05). |
+| **Domain K: AI** (ENG-083 - ENG-093) | AI Routing & Model Gateways | **PARTIAL / UNWIRED** | `server/services/openrouter.ts`, `server/services/aiRouting.ts` | CV parse, outreach draft, reply classification verified; reminder & invoice reconciliation unwired (RB-05). |
+| **Domain L: Platform & Infra** (ENG-094 - ENG-105) | Database, Storage & Fastify Server | **CURRENT-VERIFIED** | `server/db.ts`, `server/hostinger.ts`, `server/services/privateStorage.ts` | MySQL connection, fail-closed storage, and Fastify production routes verified. |
+| **Domain M: Recruiter Marketplace** (ENG-106 - ENG-113)| Freelance Recruiter Network | **TARGET / MISSING** | None (`teamMembers` role "recruiter" only) | Dedicated marketplace, ratings, commission ledgers, payouts missing. |
+| **Domain N: International Recruitment** (ENG-114 - ENG-120)| Cross-Border Hiring & Mobility | **TARGET / MISSING** | None | Country visa checklists, legal mobility rules, and overseas agency contracts missing. |
+| **Domain O: Growth & Marketing** (ENG-121 - ENG-129)| Content, SEO & Social Marketing| **TARGET / MISSING** | None | Social APIs, sitemaps, marketing campaigns missing. |
 
 ---
 
@@ -346,10 +347,34 @@ PLACEMENT CONFIRMED → INVOICE ISSUED → GUARANTEE PERIOD ACTIVE →
 - **Authentication**: `isValidHostingerWebhookAuthorization` validates `HOSTINGER_MAIL_WEBHOOK_SECRET` with `timingSafeEqual`.
 - **Outbound Provider Message ID Hardcoded Null (RB-10)**:
   `server/services/hostingerMail.ts:54` hardcodes `return { providerMessageId: null, senderAddress, mailboxResourceId };`. In `server/routers/email.ts:92`, `messages.providerMessageId` is updated with `null`.
-- **Inbound Threading Correlation Limitation**:
-  The current Hostinger outbound dispatch path returns and persists `providerMessageId` as `null`, while inbound conversation matching relies on message identity/thread headers (`In-Reply-To`, `References`) matching stored provider message IDs. Therefore, reliable bidirectional production threading through the current outbound path is incomplete/unverified (live replies to emails sent via this path will fail parent thread correlation and route to exception incidents). Inbound header extraction and incident logging are verified.
+- **Inbound Threading Correlation Limitation (RB-10 Precision)**:
+  The normal production Hostinger outbound dispatch path currently does not persist a usable provider message ID, so reliable provider-ID-based bidirectional reply correlation through that path is incomplete/unverified. Replies whose correlation depends on the missing provider message ID cannot reliably match the parent thread and may be routed to the unmatched-email incident path. Inbound header extraction (`In-Reply-To`, `References`) and exception logging are verified.
 - **Exception Routing**: Every unmatched inbound reply logs an audit event (`email.inbound_unmatched`), creates an incident in `incidents` ("Inbound mail did not contain a recognized message thread reference"), and returns HTTP 202.
 - **Aggregate Communication Status**: **PARTIAL / ACTIVE-DEFECT**.
+
+### 12.3 Canonical Domain Mailbox Architecture & Identity Decoupling
+To enforce strict separation between authorization identity and communication identity, mailbox identities are fully configuration-driven:
+
+1. **Canonical Production Mailbox Addresses**:
+   - **OWNER**: `owner.fl@overseasjob.in` (`OWNER_MAILBOX`) — Platform approvals, owner escalation, system notices.
+   - **CLIENTS**: `clients.fl@overseasjob.in` (`CLIENTS_MAILBOX`) — Client onboarding, contracts, requirements intake.
+   - **TALENT**: `talent.fl@overseasjob.in` (`TALENT_MAILBOX`) — Candidate sourcing, CV consent, application communications.
+   - **INTERVIEWS**: `interviews.fl@overseasjob.in` (`INTERVIEWS_MAILBOX`) — Interview scheduling, calendar invites, reminders.
+   - **FINANCE**: `finance.fl@overseasjob.in` (`FINANCE_MAILBOX`) — Invoices, credit notes, payment receipts, disputes.
+   - **PRIVACY**: `privacy.fl@overseasjob.in` (`PRIVACY_MAILBOX`) — GDPR/DPDP data subject rights, consent withdrawals.
+
+2. **Configuration-Driven Resolution & Logical Keys**:
+   - Resolved via logical environment keys: `OWNER_MAILBOX`, `CLIENTS_MAILBOX`, `TALENT_MAILBOX`, `INTERVIEWS_MAILBOX`, `FINANCE_MAILBOX`, `PRIVACY_MAILBOX` (with fallback to Hostinger resource address variables or canonical `{purpose}.fl@overseasjob.in`).
+   - Invariant: Business and domain logic must NEVER hardcode production email addresses.
+
+3. **Strict Separation of Concerns**:
+   - **AUTHORIZATION IDENTITY**: Authenticated user / owner role / RBAC permission hierarchy / `workspaceSettings.ownerId`.
+   - **MAILBOX IDENTITY**: Domain communication endpoints for message delivery and webhook correlation.
+   - A mailbox address must NEVER itself be treated as an authorization credential or bypass RBAC policies.
+
+4. **Legacy / Development Fallback Identity (RB-12)**:
+   - `owner@freelancehr.local` is a **Legacy/local development owner fallback — NOT a canonical production mailbox**.
+   - It exists in development fixtures and Express fallback code paths (`server/_core/context.ts`), which represents an active security defect (**RB-12**) when executed outside Fastify production runtime. It must never be treated or documented as a production mailbox.
 
 ---
 
@@ -579,9 +604,11 @@ appRouter
 1. **Fastify Production Context (`server/hostinger.ts:29-32`)**:
    `createFastifyContext` resolves `user = await authenticateRuntimeRequest(...)`. If the user is unauthenticated, `user` is strictly `null`. It does NOT fabricate an owner.
 2. **Express Development Context (Active Defect RB-12)**:
-   In `server/_core/context.ts` (lines 27-39), if `user` is null, the handler unconditionally falls back to `(await getUserByOpenId("owner_dev")) ?? { id: 1, openId: "owner_dev", name: "Sahil (Owner)", role: "admin", ... }`. If the application is ever executed via `server.ts` in production, all unauthenticated requests are granted root owner privileges.
+   In `server/_core/context.ts` (lines 27-39), if `user` is null, the handler unconditionally falls back to `(await getUserByOpenId("owner_dev")) ?? { id: 1, openId: "owner_dev", name: "Sahil (Owner)", email: "owner@freelancehr.local", role: "admin", ... }`.
+   *Identity Clarification*: `owner@freelancehr.local` is a **Legacy/local development owner fallback — NOT a canonical production mailbox**. The canonical production owner mailbox is `OWNER_MAILBOX` (`owner.fl@overseasjob.in`). If the application is ever executed via `server.ts` in production, all unauthenticated requests are granted root owner privileges (**RB-12**).
 3. **Primary Owner Resolution (`server/services/primaryOwner.ts`)**:
-   Resolves `PRIMARY_OWNER_OPEN_ID`, `OWNER_OPEN_ID`, or `PRIMARY_OWNER_EMAIL`. If unset in non-test environments, falls back to `mohd.aziz.sk@gmail.com` or `owner_dev`. Production deployments must explicitly provide `PRIMARY_OWNER_EMAIL`.
+   Resolves `PRIMARY_OWNER_OPEN_ID`, `OWNER_OPEN_ID`, or `PRIMARY_OWNER_EMAIL`. If unset in non-test environments, falls back to developer email or `owner_dev`. Production deployments must explicitly provide `PRIMARY_OWNER_EMAIL`.
+   *Authorization vs Mailbox Decoupling*: Authorization identity (the authenticated user principal and RBAC role) is strictly decoupled from domain mailbox identity (`OWNER_MAILBOX`, etc.). Mailbox addresses are used solely for outbound/inbound communication and never grant administrative or bypass privileges.
 4. **Aggregate Identity / Auth Status**: **PARTIAL / ACTIVE-DEFECT**.
 
 ---
@@ -668,9 +695,9 @@ appRouter
 | **RB-07** | **P1** | **Approval / Safety** | **Consequential Actions Can Bypass Mandatory Human Approval**: In `server/services/approvalEngine.ts:requestOrAutoDecide` (lines 265-276), `findMatchingRule` does NOT check whether `actionType` is consequential. Any consequential action matching a workspace policy rule is automatically approved with `decisionSource: "policy"`. | `server/services/approvalEngine.ts:240-340`, `server/services/policyEngine.ts:120-173` | Enforce in code that all consequential actions strictly bypass `findMatchingRule` and require human owner decision. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
 | **RB-08** | **P1** | **Client Onboarding Bypass** | **Client Onboarding Direct Transition Bypass**: In `server/routers/recruitment.ts:prospects.transition` (lines 95-103), a caller can transition a company directly from `converted` to `active`, which sets `companyType: "client"` without checking or requiring a decided `client_onboarding` approval row or KYB verification. | `server/routers/recruitment.ts:95-103` | In `prospects.transition`, disallow direct transition to `active`. Require that `active` state can only be reached via approved `client_onboarding` side-effect execution. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
 | **RB-09** | **P1** | **Consequential Inconsistency** | **Consequential Action Taxonomy Mismatch & Routing Disconnect**: `server/workflow.ts:isConsequentialAction` defines 12 actions, but `approvalEngine.ts` and `consequential.ts` define only 5. Attempting to decide approvals for `client_onboarding`, `candidate_share`, `placement_confirmation`, or `invoice_issue` via `consequentialRouter.decide` throws `NOT_FOUND`. | `server/services/approvalEngine.ts:15-21`, `server/routers/consequential.ts:9,62` | Unify `consequentialActionTypes` across `workflow.ts`, `approvalEngine.ts`, and `consequential.ts` to include all 12 actions. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
-| **RB-10** | **P1** | **Email Threading Failure** | **Outbound Email Provider Message ID Hardcoded Null**: `server/services/hostingerMail.ts:54` hardcodes `providerMessageId: null` on all outbound emails. Consequently, `messages.providerMessageId` is persisted as null, making bidirectional thread correlation via `In-Reply-To` and `References` impossible. Inbound replies fail parent matching and route to `incidents`. | `server/services/hostingerMail.ts:54`, `server/routers/email.ts:92,123-138` | Extract or generate a valid, RFC-compliant Message-ID during outbound dispatch and store it in `messages.providerMessageId`. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
+| **RB-10** | **P1** | **Email Threading Failure** | **Outbound Email Provider Message ID Hardcoded Null**: The normal production Hostinger outbound dispatch path currently does not persist a usable provider message ID (`server/services/hostingerMail.ts:54` returns `providerMessageId: null`), so reliable provider-ID-based bidirectional reply correlation through that path is incomplete/unverified. Replies whose correlation depends on the missing provider message ID cannot reliably match the parent thread and may be routed to the unmatched-email incident path. | `server/services/hostingerMail.ts:54`, `server/routers/email.ts:92,123-138` | Extract or generate a valid, RFC-compliant Message-ID during outbound dispatch and store it in `messages.providerMessageId`. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
 | **RB-11** | **P1** | **Transaction Non-Atomicity** | **Approval Decision & Side-Effect Lack Transaction Boundary**: In `server/services/approvalEngine.ts:applyApprovalDecision` (lines 190-220), `recordDecision`, `applySideEffect`, and `recordAudit` execute sequentially without a database transaction wrapper (`db.transaction`). If a side effect fails, the approval remains marked "approved" with no rollback. | `server/services/approvalEngine.ts:190-220` | Wrap `recordDecision`, `applySideEffect`, and `recordAudit` in an atomic database transaction. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
-| **RB-12** | **P2** | **Security / Dev Fallback** | **Express Context Unconditional Owner Fallback**: `server/_core/context.ts` unconditionally assigns unauthenticated callers to `Sahil (Owner)` (`id: 1`, `role: "admin"`). While the production Fastify server (`server/hostinger.ts`) uses `createFastifyContext` without this fallback, any execution of `server.ts` exposes root owner privileges. | `server/_core/context.ts:27-39` | Guard the fallback in `server/_core/context.ts` with `if (process.env.NODE_ENV !== "production")` and throw 401 when running in production. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
+| **RB-12** | **P2** | **Security / Dev Fallback** | **Express Context Unconditional Owner Fallback**: `server/_core/context.ts` unconditionally assigns unauthenticated callers to `Sahil (Owner)` (`openId: "owner_dev"`, `email: "owner@freelancehr.local"`, `role: "admin"`). Note: `owner@freelancehr.local` is a legacy/local development owner fallback — NOT a canonical production mailbox. While Fastify (`server/hostinger.ts`) avoids this fallback, any execution of `server.ts` in production exposes root owner privileges. | `server/_core/context.ts:27-39` | Guard the fallback in `server/_core/context.ts` with `if (process.env.NODE_ENV !== "production")` and throw 401 when running in production. | **ACTIVE-DEFECT / RELEASE-BLOCKER** |
 
 ### 25.2 Resolved Release Blockers (Historical Audit Record)
 
@@ -698,7 +725,7 @@ appRouter
 | **8. Interviews** | Google/Outlook Calendar 2-way sync, reminders | RFC 5545 `.ics` export, reminder scanning in cron | **PARTIAL / UNWIRED** | Unwired reminder side effect (RB-05); no Google OAuth. |
 | **9. Placements** | Offer tracking, guarantee tracking, replacement pipeline| Complete placement state machine and replacement approvals | **PARTIAL / ACTIVE-DEFECT** | Placement confirmation can be policy-auto-approved (RB-07). Guarantee cron missing. |
 | **10. Finance** | Stripe/bank reconciliation, automated debt collection | HTML/PDF invoice generation, payment recording, disputes | **PARTIAL / UNWIRED** | Unwired invoice reconciliation side effect (RB-05). Consequential approvals can be auto-approved. |
-| **11. Email / Comm**| Multi-mailbox Hostinger sync, auto-threading, cold leads| Hostinger SDK outbound, thread matching via In-Reply-To | **PARTIAL / ACTIVE-DEFECT** | Outbound providerMessageId is null; incoming replies fail thread match (RB-10). |
+| **11. Email / Comm**| Multi-mailbox Hostinger sync, auto-threading, cold leads| Hostinger SDK outbound, thread matching via In-Reply-To | **PARTIAL / ACTIVE-DEFECT** | Normal outbound path returns null providerMessageId; provider-ID-based reply correlation incomplete (RB-10). |
 | **12. Queue Engine**| Distributed multi-worker queue with dead-letter queue| Single-table MySQL queue with priority, retry, backoff | **PARTIAL / UNWIRED** | 2 of 6 job handlers unwired in `queue.ts` (RB-05). |
 | **13. Approval Safety**| Non-bypassable human owner approval for high-risk acts| Approval engine supports manual and policy auto-approval | **ACTIVE-DEFECT** | Consequential actions can be policy-auto-approved (RB-07). Non-atomic execution (RB-11). |
 | **14. Recruiter Network**| Marketplace with ratings, assignments, automated payouts | Team members with role `recruiter` only | **TARGET / MISSING** | Dedicated marketplace, commission ledger, payouts missing. |
@@ -735,7 +762,28 @@ appRouter
 | `STORAGE_ENDPOINT` | S3 Mode | NO | `server/services/privateStorage.ts:53` | Custom S3 endpoint URL (e.g. MinIO, Cloudflare R2). |
 | `HOSTINGER_MAIL_API_TOKEN` | Hostinger Mail | **YES** | `server/services/hostingerMail.ts:28` | Hostinger Mail API Bearer token for outbound dispatch. |
 | `HOSTINGER_MAIL_FROM_DOMAIN`| Hostinger Mail | NO | `server/services/hostingerMail.ts:6` | Domain for email dispatches (e.g. `overseasjob.in`). |
+| `OWNER_MAILBOX` | Hostinger Mail | NO | `server/services/hostingerMail.ts:7` | Canonical production owner mailbox (`owner.fl@overseasjob.in`). |
+| `CLIENTS_MAILBOX` | Hostinger Mail | NO | `server/services/hostingerMail.ts:8` | Canonical production client communication mailbox (`clients.fl@overseasjob.in`). |
+| `TALENT_MAILBOX` | Hostinger Mail | NO | `server/services/hostingerMail.ts:9` | Canonical production talent communication mailbox (`talent.fl@overseasjob.in`). |
+| `INTERVIEWS_MAILBOX` | Hostinger Mail | NO | `server/services/hostingerMail.ts:10` | Canonical production interview coordination mailbox (`interviews.fl@overseasjob.in`). |
+| `FINANCE_MAILBOX` | Hostinger Mail | NO | `server/services/hostingerMail.ts:11` | Canonical production finance and invoice mailbox (`finance.fl@overseasjob.in`). |
+| `PRIVACY_MAILBOX` | Hostinger Mail | NO | `server/services/hostingerMail.ts:12` | Canonical production GDPR/DPDP privacy mailbox (`privacy.fl@overseasjob.in`). |
+| `HOSTINGER_MAILBOX_OWNER_ID` | Hostinger API | NO | `server/services/hostingerMail.ts:15` | Hostinger API mailbox resource ID for owner account. |
+| `HOSTINGER_MAILBOX_CLIENTS_ID`| Hostinger API | NO | `server/services/hostingerMail.ts:15` | Hostinger API mailbox resource ID for clients account. |
+| `HOSTINGER_MAILBOX_TALENT_ID` | Hostinger API | NO | `server/services/hostingerMail.ts:15` | Hostinger API mailbox resource ID for talent account. |
+| `HOSTINGER_MAILBOX_INTERVIEWS_ID`| Hostinger API | NO | `server/services/hostingerMail.ts:15` | Hostinger API mailbox resource ID for interviews account. |
+| `HOSTINGER_MAILBOX_FINANCE_ID`| Hostinger API | NO | `server/services/hostingerMail.ts:15` | Hostinger API mailbox resource ID for finance account. |
+| `HOSTINGER_MAILBOX_PRIVACY_ID`| Hostinger API | NO | `server/services/hostingerMail.ts:15` | Hostinger API mailbox resource ID for privacy account. |
 | `HOSTINGER_MAIL_WEBHOOK_SECRET`| Hostinger Mail | **YES** | `server/services/hostingerWebhook.ts:13`| Secret for inbound webhook verification via `timingSafeEqual`. |
+
+### 27.1 Production External Dependencies (Classification)
+The following infrastructure elements cannot be verified from repository source code alone and are subject to external provisioning:
+- **DNS Records (MX, SPF, DKIM, DMARC, CNAME, A)**: **BLOCKED-EXTERNAL / UNVERIFIED**. Hostinger hPanel DNS zone must be manually verified.
+- **SSL / TLS Certificate**: **BLOCKED-EXTERNAL / UNVERIFIED**. Requires live domain propagation and SSL issuance.
+- **Hostinger Mailbox Provisioning**: **BLOCKED-EXTERNAL / UNVERIFIED**. The six `.fl@overseasjob.in` mailboxes and their corresponding API resource IDs must be created in hPanel.
+- **Hostinger Mail API Bearer Token**: **BLOCKED-EXTERNAL**. Transactional outbound delivery requires active paid Hostinger Mail plan token.
+- **Production OIDC Provider Setup**: **BLOCKED-EXTERNAL**. Google Cloud / IdP OAuth client credentials must be provisioned for `https://freelancehr.overseasjob.in/api/auth/oidc/callback`.
+- **Automated Database Backups**: **UNVERIFIED**. Nightly MySQL dump runbooks rely on Hostinger cron scripts external to repository.
 
 ---
 
