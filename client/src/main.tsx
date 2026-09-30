@@ -18,8 +18,9 @@ const queryClient = new QueryClient({
             return false;
           }
         }
-        return failureCount < 2;
+        return failureCount < 3;
       },
+      retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 5000),
     },
   },
 });
@@ -39,7 +40,12 @@ queryClient.getQueryCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.query.state.error;
     redirectToLoginIfUnauthorized(error);
-    if (error && !(error instanceof SyntaxError && error.message.includes("is not valid JSON"))) {
+    const isPending = event.query.state.status === "pending" || event.query.state.fetchFailureCount < 2;
+    const isUnauth = (error instanceof TRPCClientError && (error.data?.code === "UNAUTHORIZED" || error.data?.httpStatus === 401)) || error?.message === UNAUTHED_ERR_MSG;
+    const isWarmupOrHtml = error instanceof TRPCClientError && (error.message?.includes("warming up") || error.message?.includes("temporarily unavailable"));
+    const isSyntax = error instanceof SyntaxError && error.message.includes("is not valid JSON");
+
+    if (error && !isPending && !isUnauth && !isWarmupOrHtml && !isSyntax) {
       console.error("[API Query Error]", error);
     }
   }
@@ -49,7 +55,11 @@ queryClient.getMutationCache().subscribe(event => {
   if (event.type === "updated" && event.action.type === "error") {
     const error = event.mutation.state.error;
     redirectToLoginIfUnauthorized(error);
-    if (error && !(error instanceof SyntaxError && error.message.includes("is not valid JSON"))) {
+    const isUnauth = (error instanceof TRPCClientError && (error.data?.code === "UNAUTHORIZED" || error.data?.httpStatus === 401)) || error?.message === UNAUTHED_ERR_MSG;
+    const isWarmupOrHtml = error instanceof TRPCClientError && (error.message?.includes("warming up") || error.message?.includes("temporarily unavailable"));
+    const isSyntax = error instanceof SyntaxError && error.message.includes("is not valid JSON");
+
+    if (error && !isUnauth && !isWarmupOrHtml && !isSyntax) {
       console.error("[API Mutation Error]", error);
     }
   }
@@ -109,14 +119,42 @@ const trpcClient = trpc.createClient({
             : Boolean(parsed?.error?.json || parsed?.result);
 
           if (!hasValidTrpcStructure) {
-            let safeMessage = `Request failed with status ${response.status}`;
+            const isHtml = text.trim().startsWith("<") || contentType.includes("text/html");
+            const isAuthRedirect = response.redirected || text.includes("applet-auth-bridge") || text.includes("cookie_check");
+
+            if (isAuthRedirect) {
+              const synthesized = JSON.stringify([
+                {
+                  error: {
+                    json: {
+                      message: UNAUTHED_ERR_MSG,
+                      code: -32001,
+                      data: {
+                        code: "UNAUTHORIZED",
+                        httpStatus: 401,
+                      },
+                    },
+                  },
+                },
+              ]);
+
+              return new Response(synthesized, {
+                status: 401,
+                statusText: "Unauthorized",
+                headers: { "content-type": "application/json" },
+              });
+            }
+
+            const errorHttpStatus = response.status >= 400 ? response.status : 503;
+            const isWarmup = text.includes("warmup") || response.status === 502 || response.status === 503 || response.status === 504;
+            let safeMessage = isWarmup
+              ? "Service is warming up. Please wait..."
+              : isHtml
+              ? `Service temporarily unavailable (${errorHttpStatus})`
+              : text || `Request failed with status ${errorHttpStatus}`;
+
             if (parsed && typeof parsed === "object") {
               safeMessage = parsed.message || parsed.error || JSON.stringify(parsed);
-            } else if (text) {
-              const isHtml = text.trim().startsWith("<") || contentType.includes("text/html");
-              safeMessage = isHtml
-                ? `Service temporarily unavailable (${response.status || 503})`
-                : text;
             }
 
             const synthesized = JSON.stringify([
@@ -127,7 +165,7 @@ const trpcClient = trpc.createClient({
                     code: -32603,
                     data: {
                       code: "INTERNAL_SERVER_ERROR",
-                      httpStatus: response.status >= 400 ? response.status : 503,
+                      httpStatus: errorHttpStatus,
                     },
                   },
                 },
@@ -135,7 +173,7 @@ const trpcClient = trpc.createClient({
             ]);
 
             return new Response(synthesized, {
-              status: response.status >= 400 ? response.status : 503,
+              status: errorHttpStatus,
               statusText: response.statusText || "Service Unavailable",
               headers: {
                 "content-type": "application/json",

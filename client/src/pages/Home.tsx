@@ -14,11 +14,11 @@ function MetricCard({ label, value, detail, tone = "navy", icon: Icon }: { label
 }
 
 export default function Home() {
-  const { data, isLoading, error } = trpc.operations.dashboard.useQuery();
+  const { data, isLoading, error, refetch } = trpc.operations.dashboard.useQuery();
   const [, setLocation] = useLocation();
 
   if (isLoading) return <div className="space-y-6"><Skeleton className="h-40 w-full rounded-3xl" /><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <Skeleton className="h-40 rounded-2xl" key={index} />)}</div></div>;
-  if (error || !data) return <div className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-rose-900"><ShieldAlert className="mb-3 h-7 w-7" /><h1 className="text-xl font-semibold">Command Center needs attention</h1><p className="mt-2 text-sm">The dashboard could not load. Please refresh or verify your database connection.</p></div>;
+  if (error || !data) return <div className="rounded-3xl border border-rose-200 bg-rose-50 p-8 text-rose-900"><ShieldAlert className="mb-3 h-7 w-7" /><h1 className="text-xl font-semibold">Command Center needs attention</h1><p className="mt-2 text-sm">The dashboard could not load. Please refresh or verify your connection.</p><Button onClick={() => refetch()} variant="outline" className="mt-4 border-rose-300 bg-white text-rose-950 hover:bg-rose-100">Retry</Button></div>;
 
   const { metrics, upcoming, recentAudits, workspace, aiQuota } = data;
   const attention = metrics.pendingApprovals + metrics.failedJobs;
