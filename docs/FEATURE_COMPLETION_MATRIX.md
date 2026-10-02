@@ -1,6 +1,6 @@
 # FreelanceHR Feature Completion Matrix
 
-**Document Version**: 1.3.1 (P0.2-B.2-E Final Evidence Integrity & Cross-Document Consistency Cleanup)  
+**Document Version**: 1.4.0 (P0.2-B.2-F Final Implementation Truth Reconciliation)  
 **Governance Alignment**: Strictly synchronized with frozen `docs/PLATFORM_SOURCE_OF_TRUTH.md` and `docs/ENGINE_REGISTRY.md` (v2.1.0)  
 **Verification Level**: Forensic Evidence-Audited Baseline (Zero Speculation)  
 **Last Verified Date**: 2026-10-01  
@@ -16,18 +16,18 @@ This document is the canonical, independently verified **Feature Completion Matr
 - **Engines Audited**: **129/129** (100% represented across 15 domains, strictly aligned with frozen `docs/ENGINE_REGISTRY.md` v2.1.0))
 - **Features Audited**: **194** discrete business and platform capabilities
 - **Mathematical Integrity (Implementation Status)**: Exactly 194 features classified into controlled status tokens (Sum = 194):
-  - **CURRENT-VERIFIED**: 87 (Operational capabilities verified in runtime codebase and covered by static automated test suites)
-  - **PARTIAL**: 28 (Core code exists, but secondary paths, safety invariants, or external integrations are incomplete)
+  - **CURRENT-VERIFIED**: 81 (Operational capabilities verified in runtime codebase and covered by static automated test suites)
+  - **PARTIAL**: 30 (Core code exists, but secondary paths, safety invariants, or external integrations are incomplete)
   - **ACTIVE-DEFECT**: 14 (FEAT-005, FEAT-014, FEAT-023, FEAT-024, FEAT-074, FEAT-075, FEAT-085, FEAT-091, FEAT-096, FEAT-098, FEAT-099, FEAT-119, FEAT-122, FEAT-139)
   - **UNWIRED**: 5 (FEAT-103, FEAT-126, FEAT-127, FEAT-151, FEAT-152)
-  - **TARGET / MISSING**: 60 (Roadmap capabilities across Domains M, N, O and target engines)
-  - **TOTAL FEATURES**: 194 (87 + 28 + 14 + 5 + 60 = 194)
+  - **TARGET / MISSING**: 64 (Roadmap capabilities across Domains M, N, O and target engines)
+  - **TOTAL FEATURES**: 194 (81 + 30 + 14 + 5 + 64 = 194)
 - **Mathematical Integrity (Production Readiness)**: Exactly 194 features classified into mutually exclusive readiness categories (Sum = 194):
-  - **READY**: 87 (Operational on Fastify production runtime, validated by test suites, free from release blockers)
+  - **READY**: 81 (Operational on Fastify production runtime, validated by test suites, free from release blockers)
   - **READY-WITH-BLOCKERS**: 22 (14 ACTIVE-DEFECT features with direct feature-level blockers + 8 PARTIAL features impacted by platform-level release blockers RB-05 through RB-12; not every affected feature has a blocker recorded in its individual row-level Blockers field)
-  - **UNVERIFIED**: 20 (Code exists, but external third-party production infrastructure or secondary flows unverified in sandbox)
-  - **NOT-READY**: 65 (60 TARGET / MISSING roadmap features + 5 UNWIRED queue tasks)
-  - **TOTAL READINESS**: 194 (87 + 22 + 20 + 65 = 194)
+  - **UNVERIFIED**: 22 (Code exists, but external third-party production infrastructure or secondary flows unverified in sandbox)
+  - **NOT-READY**: 69 (64 TARGET / MISSING roadmap features + 5 UNWIRED queue tasks)
+  - **TOTAL READINESS**: 194 (81 + 22 + 22 + 69 = 194)
 - **Consequential Action Taxonomy Audited**: **12/12** (5 recognized in approvalEngine and consequential router; 9 handled in applySideEffect; known auto-approval bypass RB-07 and onboarding direct transition bypass RB-08 documented)
 - **Declared AI Queue Tasks Audited**: **6/6** (4 operational handlers verified: `parse_cv`, `draft_outreach`, `classify_reply`, `score_match`; 2 unwired: `send_reminder`, `reconcile_invoice`)
 - **Active Release Blockers Documented**: **RB-05, RB-07, RB-08, RB-09, RB-10, RB-11, RB-12**
@@ -143,8 +143,8 @@ DOMAINS OVERVIEW:
 | **FEAT-015** | ENG-008 | Hiring Signal Extraction | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
 | **FEAT-016** | ENG-008 | Automated Career Page Scraping | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET| NO | None | None |
 | **FEAT-017** | ENG-009 | Company Entity Management | **CURRENT-VERIFIED** | `companies` | `prospects.list` | Viewer+ | NO | N/A | N/A | YES | `server/routers/companyKyb.test.ts` [DIRECT] | None |
-| **FEAT-018** | ENG-010 | Contact Creation & Deduplication | **CURRENT-VERIFIED** | `contacts` | `prospects.createContact`| Recruiter+| NO | N/A | N/A | YES | Source/schema verified; no dedicated test identified | None |
-| **FEAT-019** | ENG-010 | Decision Maker Role Tagging | **CURRENT-VERIFIED** | `contacts.role` | `prospects.createContact`| Recruiter+| NO | N/A | N/A | NO | Source/schema verified; no dedicated test identified | None |
+| **FEAT-018** | ENG-010 | Contact Creation & Deduplication | **PARTIAL** | `contacts` | `prospects.addContact` | Recruiter+ | NO | N/A | N/A | YES | Source/schema verified (prospects.addContact); deduplication absent | None |
+| **FEAT-019** | ENG-010 | Decision Maker Role Tagging | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-020** | ENG-011 | Client KYB Document Upload | **CURRENT-VERIFIED** | Storage / DB | `prospects.uploadKyb` | Recruiter+ | NO | N/A | N/A | YES | `server/routers/companyKyb.test.ts` [DIRECT] | None |
 | **FEAT-021** | ENG-011 | KYB Verification Audit Record | **CURRENT-VERIFIED** | `companies.verificationState`| `prospects.uploadKyb`| Owner | NO | N/A | N/A | YES | `server/routers/companyKyb.test.ts` [DIRECT] | None |
 | **FEAT-022** | ENG-012 | Client Onboarding Approval Request | **PARTIAL** | `approvals` | `prospects.requestOnboarding`| Recruiter+| YES | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [DIRECT] | None (Direct; impacted by RB-08 in Sec 25) |
@@ -158,14 +158,14 @@ DOMAINS OVERVIEW:
 
 | Feat ID | Engine | Feature Name | Status | DB | API / Router | Auth | Appr | AI | Auto | Audit | Tests | Blockers |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
-| **FEAT-026** | ENG-014 | Fee Proposal Creation | **CURRENT-VERIFIED** | `feeProposals` | `agreements.proposeFee` | Recruiter+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [DIRECT] | None |
-| **FEAT-027** | ENG-014 | Fee Proposal Client Acceptance | **CURRENT-VERIFIED** | `feeProposals` | `agreements.acceptFee` | Owner | NO | N/A | N/A | YES | `server/workflow.test.ts` [SUPPORTING] | None |
+| **FEAT-026** | ENG-014 | Fee Proposal Creation | **CURRENT-VERIFIED** | `feeProposals` | `agreements.draft` | Recruiter+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [DIRECT] | None |
+| **FEAT-027** | ENG-014 | Fee Proposal Client Acceptance | **CURRENT-VERIFIED** | `feeProposals` | `agreements.recordAcceptance` | Owner | NO | N/A | N/A | YES | `server/workflow.test.ts` [SUPPORTING] | None |
 | **FEAT-028** | ENG-014 | Digital E-Signature Integration | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-029** | ENG-015 | Percentage Fee Calculation | **CURRENT-VERIFIED** | `feeProposals` | `agreements.proposeFee` | Recruiter+ | NO | N/A | N/A | NO | `server/e2eHappyPath.workflow.test.ts` [SUPPORTING] | None |
+| **FEAT-029** | ENG-015 | Percentage Fee Calculation | **PARTIAL** | `feeProposals.feeType` | `agreements.draft` | Recruiter+ | NO | N/A | N/A | NO | Source/schema verified (stores fee config; calculation absent) | None |
 | **FEAT-030** | ENG-015 | Dynamic Commercial Margin Rules | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
 | **FEAT-031** | ENG-016 | Internal Sourcing Commission Splits| **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-032** | ENG-017 | Standard Commercial Terms Catalog | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-033** | ENG-018 | Invoice Credit Term Configuration | **CURRENT-VERIFIED** | `feeProposals.paymentTermsDays`| `agreements.proposeFee`| Recruiter+| NO | N/A | N/A | NO | `server/workflow.test.ts` [SUPPORTING] | None |
+| **FEAT-033** | ENG-018 | Invoice Credit Term Configuration | **CURRENT-VERIFIED** | `feeProposals.paymentTermsDays` | `agreements.draft` | Recruiter+ | NO | N/A | N/A | NO | `server/workflow.test.ts` [SUPPORTING] | None |
 | **FEAT-034** | ENG-018 | Overdue Penalty Computation | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 
 ---
@@ -175,15 +175,15 @@ DOMAINS OVERVIEW:
 | Feat ID | Engine | Feature Name | Status | DB | API / Router | Auth | Appr | AI | Auto | Audit | Tests | Blockers |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
 | **FEAT-035** | ENG-019 | Job Requisition Creation | **CURRENT-VERIFIED** | `jobs` | `jobs.create` | Recruiter+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [DIRECT] | None |
-| **FEAT-036** | ENG-020 | Scorecard Weight Sum Validation | **CURRENT-VERIFIED** | `jobs.scorecardWeights`| `jobs.create` | Recruiter+ | NO | N/A | N/A | NO | `server/e2eHappyPath.workflow.test.ts` [DIRECT] | None |
+| **FEAT-036** | ENG-020 | Scorecard Weight Sum Validation | **CURRENT-VERIFIED** | `jobs.scorecard` | `jobs.create` | Recruiter+ | NO | N/A | N/A | NO | `server/e2eHappyPath.workflow.test.ts` [DIRECT] | None |
 | **FEAT-037** | ENG-020 | Quality Threshold Gate | **CURRENT-VERIFIED** | Validation | `jobs.transition` | Recruiter+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [DIRECT] | None |
-| **FEAT-038** | ENG-021 | Salary Boundary Validation | **CURRENT-VERIFIED** | Zod Schema | `jobs.create` | Recruiter+ | NO | N/A | N/A | NO | `server/workflow.test.ts` [DIRECT] | None |
-| **FEAT-039** | ENG-021 | Workplace Type Validation | **CURRENT-VERIFIED** | Enum | `jobs.create` | Recruiter+ | NO | N/A | N/A | NO | `server/workflow.test.ts` [DIRECT] | None |
-| **FEAT-040** | ENG-022 | Mandatory Client Confirmation Gate | **CURRENT-VERIFIED** | `jobs.clientConfirmedBy`| `jobs.transition` | Recruiter+ | NO | N/A | N/A | YES | `server/workflow.test.ts` [DIRECT] | None |
+| **FEAT-038** | ENG-021 | Salary Boundary Validation | **CURRENT-VERIFIED** | `jobs.compensationMin, jobs.compensationMax` | `jobs.create` | Recruiter+ | NO | N/A | N/A | NO | `server/workflow.test.ts` [DIRECT] | None |
+| **FEAT-039** | ENG-021 | Workplace Type Validation | **CURRENT-VERIFIED** | `jobs.workModel` | `jobs.create` | Recruiter+ | NO | N/A | N/A | NO | `server/workflow.test.ts` [DIRECT] | None |
+| **FEAT-040** | ENG-022 | Mandatory Client Confirmation Gate | **CURRENT-VERIFIED** | `jobs.clientConfirmedAt, jobs.clientConfirmedBy` | `jobs.transition` | Recruiter+ | NO | N/A | N/A | YES | `server/workflow.test.ts` [DIRECT] | None |
 | **FEAT-041** | ENG-022 | Job Internal Approval Flow | **PARTIAL** | `approvals` | `approvals.decide` | Owner | YES | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [SUPPORTING] | None |
 | **FEAT-042** | ENG-023 | Public Job Portal Syndication | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
-| **FEAT-043** | ENG-024 | Job State Machine Engine | **CURRENT-VERIFIED** | `jobs.state` | `jobs.transition` | Recruiter+ | NO | N/A | N/A | YES | `server/workflow.test.ts` [DIRECT] | None |
-| **FEAT-044** | ENG-024 | Job Cancellation & Archival | **CURRENT-VERIFIED** | `jobs.state` | `jobs.transition` | Owner | NO | N/A | N/A | YES | `server/workflow.test.ts` [DIRECT] | None |
+| **FEAT-043** | ENG-024 | Job State Machine Engine | **CURRENT-VERIFIED** | `jobs.pipelineState` | `jobs.transition` | Recruiter+ | NO | N/A | N/A | YES | `server/workflow.test.ts` [DIRECT] | None |
+| **FEAT-044** | ENG-024 | Job Cancellation & Archival | **CURRENT-VERIFIED** | `jobs.pipelineState` | `jobs.transition` | Owner | NO | N/A | N/A | YES | `server/workflow.test.ts` [DIRECT] | None |
 | **FEAT-045** | ENG-025 | Time-to-Fill SLA Tracking | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
 | **FEAT-046** | ENG-025 | Submittal SLA Breach Alerts | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
 
@@ -196,7 +196,7 @@ DOMAINS OVERVIEW:
 | **FEAT-047** | ENG-026 | Candidate Ingestion via API | **CURRENT-VERIFIED** | `candidates` | `candidates.create` | Recruiter+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [DIRECT] | None |
 | **FEAT-048** | ENG-026 | Public Candidate Self-Application | **TARGET / MISSING** | None | None | Public | NO | N/A | N/A | NO | None | None |
 | **FEAT-049** | ENG-027 | Candidate Phone & Email Fingerprinting| **CURRENT-VERIFIED** | `primaryEmailHash` | `candidates.create` | Recruiter+ | NO | N/A | N/A | NO | `server/routers/candidateDeletion.test.ts` [SUPPORTING] | None |
-| **FEAT-050** | ENG-028 | SHA-256 Collision Rejection | **CURRENT-VERIFIED** | DB Unique Index | `candidates.create` | Recruiter+ | NO | N/A | N/A | YES | `server/routers/candidateDeletion.test.ts` [DIRECT] | None |
+| **FEAT-050** | ENG-028 | SHA-256 Collision Rejection | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-051** | ENG-029 | Candidate Headline & Metadata Sync | **CURRENT-VERIFIED** | `candidates.headline`| `server/services/queue.ts (handleAiTaskResult)` | Worker | NO | EXTRACTION | QUEUE | YES | `server/services/queue.test.ts` [DIRECT] | None |
 | **FEAT-052** | ENG-030 | Private CV Document Storage (Local/S3)| **CURRENT-VERIFIED** | `candidateDocuments` | `documents.upload` | Recruiter+ | NO | N/A | N/A | YES | `server/services/privateStorage.test.ts` [DIRECT] | None |
 | **FEAT-053** | ENG-030 | Secure Document Download Stream | **CURRENT-VERIFIED** | Storage Adapter | `documents.access` | Recruiter+ | NO | N/A | N/A | YES | `server/routers/documentAccess.teamAccess.test.ts` [DIRECT] | None |
@@ -225,7 +225,7 @@ DOMAINS OVERVIEW:
 | **FEAT-069** | ENG-038 | Semantic AI Evidence Scoring (`score_match`)| **CURRENT-VERIFIED** | `matches.semanticScore`| `server/services/queue.ts (handleAiTaskResult)` | Worker | NO | SCORING | QUEUE | YES | `server/services/queue.test.ts` [DIRECT] | None |
 | **FEAT-070** | ENG-038 | Vector Embedding Search | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
 | **FEAT-071** | ENG-039 | Screening Questionnaire Evaluation | **CURRENT-VERIFIED** | `screenings` | `candidateWorkflows.screenings`| Recruiter+| NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [SUPPORTING] | None |
-| **FEAT-072** | ENG-040 | Client Presentation Shortlist Creation | **CURRENT-VERIFIED** | `shortlists` | `matching.createShortlist`| Recruiter+| NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [SUPPORTING] | None |
+| **FEAT-072** | ENG-040 | Client Presentation Shortlist Creation | **CURRENT-VERIFIED** | `shortlists` | `matching.requestShareApproval` | Recruiter+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [SUPPORTING] | None |
 | **FEAT-073** | ENG-041 | Candidate Share Approval Request | **PARTIAL** | `approvals` | `matching.requestShareApproval`| Recruiter+| YES | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [SUPPORTING] | None |
 | **FEAT-074** | ENG-041 | Candidate Share Auto-Approval Vulnerability| **ACTIVE-DEFECT** | `approvals` | `requestOrAutoDecide`| Policy | AUTO | N/A | N/A | YES | `server/services/autoApprovalCallSites.test.ts` [DIRECT defect evidence] | **RB-07** |
 | **FEAT-075** | ENG-041 | Candidate Share Consequential Routing Disconnect| **ACTIVE-DEFECT** | `approvals` | `consequential.decide`| Owner | YES | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [DIRECT defect evidence] | **RB-09** |
@@ -234,14 +234,14 @@ DOMAINS OVERVIEW:
 | **FEAT-078** | ENG-043 | Email Communication Thread State | **PARTIAL**| `conversations` | `email.inbound` | System | NO | N/A | N/A | YES | `server/routers/email.test.ts` [DIRECT] | None (Direct; impacted by RB-10 in Sec 25) |
 | **FEAT-079** | ENG-044 | RFC 5545 `.ics` Calendar File Generation| **CURRENT-VERIFIED** | Memory | `interviews.exportIcs` | Recruiter+ | NO | N/A | N/A | NO | `server/services/calendar.test.ts` [DIRECT] | None |
 | **FEAT-080** | ENG-044 | Interview Calendar Feed Subscription | **CURRENT-VERIFIED** | HTTP Endpoint | `calendar.ts` | Feed Token | NO | N/A | N/A | NO | `server/services/calendar.test.ts` [DIRECT] | None |
-| **FEAT-081** | ENG-045 | Structured Recruiter Feedback Collection | **CURRENT-VERIFIED** | `feedback` | `feedback.submit` | Reviewer+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [SUPPORTING] | None |
+| **FEAT-081** | ENG-045 | Structured Recruiter Feedback Collection | **CURRENT-VERIFIED** | `feedback` | `feedback.record` | Reviewer+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [SUPPORTING] | None |
 | **FEAT-082** | ENG-046 | Commercial Job Offer Extension | **PARTIAL** | `placements` | `placements.create` | Recruiter+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [SUPPORTING] | None |
 | **FEAT-083** | ENG-047 | Placement Record Creation | **PARTIAL** | `placements` | `placements.create` | Recruiter+ | NO | N/A | N/A | YES | `server/e2eHappyPath.workflow.test.ts` [SUPPORTING] | None |
 | **FEAT-084** | ENG-047 | Placement Confirmation Approval Gate | **PARTIAL** | `approvals` | `placements.transition` | Recruiter+ | YES | N/A | N/A | YES | `server/services/autoApprovalCallSites.test.ts` [DIRECT] | None (Direct; impacted by RB-07 in Sec 25) |
 | **FEAT-085** | ENG-047 | Placement Consequential Policy Bypass | **ACTIVE-DEFECT** | `approvals` | `requestOrAutoDecide`| Policy | AUTO | N/A | N/A | YES | `server/services/autoApprovalCallSites.test.ts` [DIRECT defect evidence] | **RB-07** |
 | **FEAT-086** | ENG-048 | Candidate Joining Confirmation Side Effect | **PARTIAL** | `placements.state` | `applyApprovalDecision`| Owner | YES | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [SUPPORTING] | None (Direct; impacted by RB-11 in Sec 25) |
 | **FEAT-087** | ENG-049 | Guarantee Replacement Case Opening | **CURRENT-VERIFIED** | `approvals` | `consequential.requestReplacement`| Owner | YES | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [DIRECT] | None |
-| **FEAT-088** | ENG-050 | Guarantee Period Active Tracking | **PARTIAL** | `placements.guaranteeEndDate`| `placements.list` | Viewer+ | NO | N/A | N/A | NO | `server/workflow.test.ts` [SUPPORTING] | None |
+| **FEAT-088** | ENG-050 | Guarantee Period Active Tracking | **PARTIAL** | `placements.guaranteeStartAt` | `placements.list` | Viewer+ | NO | N/A | N/A | NO | `server/workflow.test.ts` [SUPPORTING] | None |
 
 ---
 
@@ -254,13 +254,13 @@ DOMAINS OVERVIEW:
 | **FEAT-091** | ENG-051 | Invoice Issue Consequential Approval Gate| **ACTIVE-DEFECT**| `approvals` | `invoices.requestIssue` | Recruiter+ | YES | N/A | N/A | YES | `server/services/autoApprovalCallSites.test.ts` [DIRECT defect evidence] | **RB-07, RB-09** |
 | **FEAT-092** | ENG-052 | Payment Link Generation Stubs | **CURRENT-VERIFIED** | Provider Stubs | `invoices.createPaymentLink`| Recruiter+| NO | N/A | N/A | YES | `server/routers/invoices.workflow.test.ts` [DIRECT] | None |
 | **FEAT-093** | ENG-052 | Manual Payment Recording | **CURRENT-VERIFIED** | `payments` | `invoices.recordPayment`| Owner | NO | N/A | N/A | YES | `server/routers/invoices.workflow.test.ts` [DIRECT] | None |
-| **FEAT-094** | ENG-053 | Accounts Receivable Aging Reports | **PARTIAL** | SQL Aggregates | `operations.dashboard` | Viewer+ | NO | N/A | N/A | NO | Source verified (operations.dashboard); no dedicated test identified | None |
+| **FEAT-094** | ENG-053 | Accounts Receivable Aging Reports | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-095** | ENG-054 | Client Invoice Dispute Registration | **PARTIAL** | `approvals` | `consequential.requestInvoiceAction`| Owner | YES | N/A | N/A | YES | `server/routers/invoices.workflow.test.ts` [DIRECT] | None (Direct; impacted by RB-11 in Sec 25) |
 | **FEAT-096** | ENG-054 | Dispute Consequential Policy Bypass | **ACTIVE-DEFECT** | `approvals` | `requestOrAutoDecide`| Policy | AUTO | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [DIRECT defect evidence] | **RB-07** |
 | **FEAT-097** | ENG-055 | Consequential Invoice Credit Note | **PARTIAL** | `approvals` | `consequential.requestInvoiceAction`| Owner | YES | N/A | N/A | YES | `server/routers/invoices.workflow.test.ts` [DIRECT] | None |
 | **FEAT-098** | ENG-055 | Credit Note Consequential Policy Bypass| **ACTIVE-DEFECT** | `approvals` | `requestOrAutoDecide`| Policy | AUTO | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [DIRECT defect evidence] | **RB-07** |
 | **FEAT-099** | ENG-056 | Bad Debt Write-Off Action Execution | **ACTIVE-DEFECT**| `invoices` | None | Owner | YES | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [DIRECT defect evidence] | **RB-09** |
-| **FEAT-100** | ENG-057 | Realized Placement Revenue Aggregation | **PARTIAL** | SQL Sum | `operations.dashboard` | Viewer+ | NO | N/A | N/A | NO | Source/schema verified; no dedicated test identified | None |
+| **FEAT-100** | ENG-057 | Realized Placement Revenue Aggregation | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-101** | ENG-058 | Recruiter Commission Ledger | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-102** | ENG-059 | Automated Stripe Payout Disbursement | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
 | **FEAT-103** | ENG-052 | AI Invoice Reconciliation (`reconcile_invoice`)| **UNWIRED** | `automationQueue` | `server/services/queue.ts (handleAiTaskResult; unwired)` | Worker | NO | EXTRACTION | QUEUE | NO | No operational handler; unwired in queue | **RB-05** |
@@ -279,7 +279,7 @@ DOMAINS OVERVIEW:
 | **FEAT-109** | ENG-062 | Automated Candidate Stale Data Purge | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
 | **FEAT-110** | ENG-063 | Immutable Consent Version Ledger | **PARTIAL** | consents (noticeVersion) | server/routers/candidates.ts | protectedProcedure | NO | N/A | N/A | YES | `server/routers/candidateConsentTransition.test.ts` [DIRECT] | Target immutable append-only version ledger |
 | **FEAT-111** | ENG-064 | Append-Only Audit Event Recording | **CURRENT-VERIFIED** | `auditEvents` | `server/db.ts:recordAudit`| System | NO | N/A | N/A | YES | `server/services/approvalEngine.test.ts` [DIRECT] | None |
-| **FEAT-112** | ENG-064 | Audit Log Querying & Filtering | **CURRENT-VERIFIED** | `auditEvents` | `operations.audits` | Owner | NO | N/A | N/A | NO | Source/schema verified; no dedicated test identified | None |
+| **FEAT-112** | ENG-064 | Audit Log Querying & Filtering | **PARTIAL** | `auditEvents` | `operations.audits.list` | Owner | NO | N/A | N/A | NO | Source verified (list endpoint only; filtering absent) | None |
 | **FEAT-113** | ENG-065 | Static Document Byte & Header Heuristics| **PARTIAL** | Memory | `documentScanner.ts` | System | NO | N/A | N/A | YES | `server/services/documentScanner.test.ts` [DIRECT] | None |
 | **FEAT-114** | ENG-065 | Live Antivirus Daemon (ClamAV) Scan | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-115** | ENG-066 | Client Staff Anti-Poaching Rule Check | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
@@ -352,7 +352,7 @@ DOMAINS OVERVIEW:
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
 | **FEAT-155** | ENG-094 | MySQL 8.0 Connection Pool Management | **CURRENT-VERIFIED** | `server/db.ts` | `requireDb()` | System | NO | N/A | N/A | NO | `server/p02b.test.ts` [DIRECT] | None |
 | **FEAT-156** | ENG-094 | Eager Startup Database Ping (`SELECT 1`)| **CURRENT-VERIFIED** | Connection | `verifyDatabaseConnectivity`| Startup | NO | N/A | N/A | NO | `server/p02b.test.ts` [DIRECT] | None |
-| **FEAT-157** | ENG-095 | Drizzle Schema Migrations Engine | **CURRENT-VERIFIED** | `drizzle/` | Drizzle Kit | DevOps | NO | N/A | N/A | NO | `server/p02b.test.ts` [SUPPORTING]; schema verified | None |
+| **FEAT-157** | ENG-095 | Drizzle Schema Migrations Engine | **PARTIAL** | `drizzle.config.ts, drizzle/` | Drizzle Kit CLI | DevOps | NO | N/A | N/A | NO | CLI configuration verified; in-process automated runner absent | None |
 | **FEAT-158** | ENG-096 | Local Filesystem Private Storage Adapter| **CURRENT-VERIFIED** | Disk | `privateStorage.ts` | System | NO | N/A | N/A | YES | `server/services/privateStorage.test.ts` [DIRECT] | None |
 | **FEAT-159** | ENG-096 | AWS S3 Compatible Private Storage Adapter| **CURRENT-VERIFIED** | S3 API | `privateStorage.ts` | System | NO | N/A | N/A | YES | `server/services/privateStorage.test.ts` [DIRECT] | None |
 | **FEAT-160** | ENG-097 | EICAR Test String Malware Signature Check| **CURRENT-VERIFIED** | Memory | `documentScanner.ts` | System | NO | N/A | N/A | YES | `server/services/documentScanner.test.ts` [DIRECT] | None |
@@ -515,13 +515,13 @@ The platform strictly decouples **Implementation Status** from **Production Read
 
 | Readiness Category | Definition | Count | Features in Category | Current Operational Posture |
 | :--- | :--- | :---: | :--- | :--- |
-| **READY** | Implemented, supported by static test suite coverage, and operates safely on Fastify production runtime without blocker contamination | **87** | FEAT-001, FEAT-002, FEAT-006, FEAT-007, FEAT-008, FEAT-009, FEAT-010, FEAT-011, FEAT-012, FEAT-013, FEAT-017, FEAT-018, FEAT-019, FEAT-020, FEAT-021, FEAT-026, FEAT-027, FEAT-029, FEAT-033, FEAT-035, FEAT-036, FEAT-037, FEAT-038, FEAT-039, FEAT-040, FEAT-043, FEAT-044, FEAT-047, FEAT-049, FEAT-050, FEAT-051, FEAT-052, FEAT-053, FEAT-054, FEAT-055, FEAT-058, FEAT-059, FEAT-060, FEAT-061, FEAT-062, FEAT-063, FEAT-064, FEAT-065, FEAT-068, FEAT-069, FEAT-071, FEAT-072, FEAT-076, FEAT-077, FEAT-079, FEAT-080, FEAT-081, FEAT-087, FEAT-092, FEAT-093, FEAT-104, FEAT-105, FEAT-106, FEAT-107, FEAT-111, FEAT-112, FEAT-117, FEAT-120, FEAT-121, FEAT-130, FEAT-131, FEAT-132, FEAT-136, FEAT-137, FEAT-138, FEAT-141, FEAT-142, FEAT-143, FEAT-144, FEAT-145, FEAT-147, FEAT-149, FEAT-150, FEAT-155, FEAT-156, FEAT-157, FEAT-158, FEAT-159, FEAT-160, FEAT-161, FEAT-164, FEAT-169 | Production capable on Fastify production runtime (`server/hostinger.ts`). |
+| **READY** | Implemented, supported by static test suite coverage, and operates safely on Fastify production runtime without blocker contamination | **81** | FEAT-001, FEAT-002, FEAT-006, FEAT-007, FEAT-008, FEAT-009, FEAT-010, FEAT-011, FEAT-012, FEAT-013, FEAT-017, FEAT-020, FEAT-021, FEAT-026, FEAT-027, FEAT-033, FEAT-035, FEAT-036, FEAT-037, FEAT-038, FEAT-039, FEAT-040, FEAT-043, FEAT-044, FEAT-047, FEAT-049, FEAT-051, FEAT-052, FEAT-053, FEAT-054, FEAT-055, FEAT-058, FEAT-059, FEAT-060, FEAT-061, FEAT-062, FEAT-063, FEAT-064, FEAT-065, FEAT-068, FEAT-069, FEAT-071, FEAT-072, FEAT-076, FEAT-077, FEAT-079, FEAT-080, FEAT-081, FEAT-087, FEAT-092, FEAT-093, FEAT-104, FEAT-105, FEAT-106, FEAT-107, FEAT-111, FEAT-117, FEAT-120, FEAT-121, FEAT-130, FEAT-131, FEAT-132, FEAT-136, FEAT-137, FEAT-138, FEAT-141, FEAT-142, FEAT-143, FEAT-144, FEAT-145, FEAT-147, FEAT-149, FEAT-150, FEAT-155, FEAT-156, FEAT-158, FEAT-159, FEAT-160, FEAT-161, FEAT-164, FEAT-169 | Production capable on Fastify production runtime (`server/hostinger.ts`). |
 | **READY-WITH-BLOCKERS** | Functional core exists in code, but production deployment is compromised by an active release blocker (RB-05 to RB-12) | **22** | FEAT-005, FEAT-014, FEAT-022, FEAT-023, FEAT-024, FEAT-074, FEAT-075, FEAT-078, FEAT-084, FEAT-085, FEAT-086, FEAT-091, FEAT-095, FEAT-096, FEAT-098, FEAT-099, FEAT-119, FEAT-122, FEAT-133, FEAT-134, FEAT-135, FEAT-139 | Blocked from production release until designated release blockers are remediated. |
-| **UNVERIFIED** | Code exists, but external third-party production infrastructure (live IdP, live Hostinger mailbox, live AV sandbox) or secondary paths cannot be certified in sandbox | **20** | FEAT-003, FEAT-004, FEAT-025, FEAT-041, FEAT-066, FEAT-073, FEAT-082, FEAT-083, FEAT-088, FEAT-089, FEAT-090, FEAT-094, FEAT-097, FEAT-100, FEAT-110, FEAT-113, FEAT-118, FEAT-123, FEAT-124, FEAT-170 | Requires live external staging verification before production deployment. |
-| **NOT-READY** | Feature cannot execute due to zero codebase implementation (Target) or missing background queue handlers (Unwired) | **65** | 60 Roadmap Target Features (FEAT-015, FEAT-016, FEAT-028, FEAT-030, FEAT-031, FEAT-032, FEAT-034, FEAT-042, FEAT-045, FEAT-046, FEAT-048, FEAT-056, FEAT-057, FEAT-067, FEAT-070, FEAT-101, FEAT-102, FEAT-108, FEAT-109, FEAT-114, FEAT-115, FEAT-116, FEAT-125, FEAT-128, FEAT-129, FEAT-140, FEAT-146, FEAT-148, FEAT-153, FEAT-154, FEAT-162, FEAT-163, FEAT-165, FEAT-166, FEAT-167, FEAT-168, FEAT-171 to FEAT-194) + 5 Unwired Queue Features (FEAT-103, FEAT-126, FEAT-127, FEAT-151, FEAT-152) | Excluded from current production release scope. |
+| **UNVERIFIED** | Code exists, but external third-party production infrastructure (live IdP, live Hostinger mailbox, live AV sandbox) or secondary paths cannot be certified in sandbox | **22** | FEAT-003, FEAT-004, FEAT-018, FEAT-025, FEAT-029, FEAT-041, FEAT-066, FEAT-073, FEAT-082, FEAT-083, FEAT-088, FEAT-089, FEAT-090, FEAT-097, FEAT-110, FEAT-112, FEAT-113, FEAT-118, FEAT-123, FEAT-124, FEAT-157, FEAT-170 | Requires live external staging verification before production deployment. |
+| **NOT-READY** | Feature cannot execute due to zero codebase implementation (Target) or missing background queue handlers (Unwired) | **69** | 64 Roadmap Target Features (FEAT-015, FEAT-016, FEAT-019, FEAT-028, FEAT-030, FEAT-031, FEAT-032, FEAT-034, FEAT-042, FEAT-045, FEAT-046, FEAT-048, FEAT-050, FEAT-056, FEAT-057, FEAT-067, FEAT-070, FEAT-094, FEAT-100, FEAT-101, FEAT-102, FEAT-108, FEAT-109, FEAT-114, FEAT-115, FEAT-116, FEAT-125, FEAT-128, FEAT-129, FEAT-140, FEAT-146, FEAT-148, FEAT-153, FEAT-154, FEAT-162, FEAT-163, FEAT-165, FEAT-166, FEAT-167, FEAT-168, FEAT-171 to FEAT-194) + 5 Unwired Queue Features (FEAT-103, FEAT-126, FEAT-127, FEAT-151, FEAT-152) | Excluded from current production release scope. |
 
 **Mathematical Reconciliation of Production Readiness**:  
-`87 (READY) + 22 (READY-WITH-BLOCKERS) + 20 (UNVERIFIED) + 65 (NOT-READY) = 194 Features`
+`81 (READY) + 22 (READY-WITH-BLOCKERS) + 22 (UNVERIFIED) + 69 (NOT-READY) = 194 Features`
 
 ---
 

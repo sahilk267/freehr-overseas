@@ -57,15 +57,15 @@ In addition to the operational status token, each engine is assigned an architec
 ### 1.4 Master Engine Counts & Implementation Statistics
 
 - **TOTAL MASTER ENGINE COUNT**: **129**
-- **CURRENT-VERIFIED ENGINE COUNT**: **42**
+- **CURRENT-VERIFIED ENGINE COUNT**: **41**
 - **PARTIAL ENGINE COUNT**: **31**
 - **ACTIVE-DEFECT ENGINE COUNT**: **11**
 - **UNWIRED ENGINE COUNT**: **4**
-- **TARGET / MISSING ENGINE COUNT**: **41**
+- **TARGET / MISSING ENGINE COUNT**: **42**
 - **TOTAL ARCHITECTURAL DOMAINS**: **15**
 
 **Mathematical Reconciliation**:  
-`42 (CURRENT-VERIFIED) + 31 (PARTIAL) + 11 (ACTIVE-DEFECT) + 4 (UNWIRED) + 41 (TARGET / MISSING) = 129 Engines`
+`41 (CURRENT-VERIFIED) + 31 (PARTIAL) + 11 (ACTIVE-DEFECT) + 4 (UNWIRED) + 42 (TARGET / MISSING) = 129 Engines`
 
 ---
 
@@ -198,7 +198,7 @@ To eliminate duplicate capability ownership and false `TARGET / MISSING` classif
 | **ENG-025** | Job / Requirement | SLA Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
 | **ENG-026** | Candidate | Candidate Acquisition Engine | CURRENT-VERIFIED | `candidates` Table | None |
 | **ENG-027** | Candidate | Candidate Identity Engine | CURRENT-VERIFIED | `candidates` Table | None |
-| **ENG-028** | Candidate | Candidate Deduplication Engine | CURRENT-VERIFIED | SHA-256 Email/Phone Hashes | None |
+| **ENG-028** | Candidate | Candidate Deduplication Engine | TARGET / MISSING | None (Target Roadmap) | None |
 | **ENG-029** | Candidate | Candidate Profile Engine | CURRENT-VERIFIED | `candidates` Metadata | None |
 | **ENG-030** | Candidate | Candidate Document Engine | CURRENT-VERIFIED | `candidateDocuments` Table | None |
 | **ENG-031** | Candidate | Resume Parsing Engine | CURRENT-VERIFIED | `candidateDocuments.parseState` | None |
@@ -2698,73 +2698,73 @@ Owns and governs candidate deduplication engine capabilities within the Candidat
 Provide production-grade, enterprise-compliant candidate deduplication engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**CURRENT-VERIFIED** (Maturity: LEVEL 4)
+**TARGET / MISSING** (Maturity: LEVEL 0)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Target roadmap capability. Candidate email/phone SHA-256 hashing is implemented in ENG-027, but automated duplicate detection, collision rejection, and record merge logic are not implemented.
 
 #### 6. Repository Evidence
-- Primary Evidence: SHA-256 Email/Phone Hashes
-- Downstream Integrations: SHA-256 Hasher, DB
-- Router / Service: `recruitment.candidates.create`
-- Database Table: `candidates`
+- Primary Evidence: None (Target Roadmap)
+- Downstream Integrations: None
+- Router / Service: None
+- Database Table: None
 
 #### 7. Sub-Capabilities
 | Sub-Capability | Status | Evidence |
 | :--- | :--- | :--- |
-| Core Candidate Deduplication Engine | CURRENT-VERIFIED | SHA-256 Email/Phone Hashes |
-| Secondary / Edge Handling | CURRENT-VERIFIED | `recruitment.candidates.create` |
-| Audit & Compliance Hook | CURRENT-VERIFIED | `candidate.created` |
+| Core Candidate Deduplication Engine | TARGET / MISSING | None (Target Roadmap) |
+| Secondary / Edge Handling | TARGET / MISSING | None (Target Roadmap) |
+| Audit & Compliance Hook | TARGET / MISSING | None (Target Roadmap) |
 
 #### 8. Database Ownership
-`candidates`
+None
 
 #### 9. API / Router Ownership
-`recruitment.candidates.create`
+None
 
 #### 10. Workflow Ownership
-Candidate SHA-256 Deduplication
+Candidate Deduplication & Merge (Target)
 
 #### 11. State Ownership
-Duplicate match detection
+Duplicate match detection (Target)
 
 #### 12. Authorization
-`teamProcedure`
+Owner / RBAC (Target)
 
 #### 13. Approval
 None required
 
 #### 14. AI Role
-None (Current: None / Target: None)
+None (Current: None / Target: ML entity resolution)
 
 #### 15. Automation Role
-None (Current: None / Target: None)
+Background deduplication runner (Target)
 
 #### 16. Side Effects
-Database row mutations, state transition assertions, audit event recording.
+None
 
 #### 17. Audit
-`candidate.created`
+None (Target)
 
 #### 18. Tests
-`server/workflow.test.ts`
+None
 
 #### 19. E2E Scenarios
-Verified in SCEN-02, SCEN-04, SCEN-07, SCEN-12, or SCEN-21
+None
 
 #### 20. Dependencies
-- Internal: SHA-256 Hasher, DB
-- Database: `candidates`
+- Internal: None
+- Database: None
 - External: None
 
 #### 21. Known Defects
 None
 
 #### 22. Target Capability
-Comprehensive, fully automated enterprise capability supporting multi-tenant overseas recruitment at scale.
+Automated background candidate deduplication across phone/email hashes and fuzzy identity matching at scale.
 
 #### 23. Gap
-None for core capability; external integrations and edge-case scaling remain.
+Target roadmap capability. Core candidate deduplication, phone/email collision rejection, and record merge logic are not implemented.
 
 ---
 
