@@ -105,7 +105,7 @@ Every state transition governed by the core workflow engine must adhere to five 
 1. **Deterministic Legality Check**: Every proposed transition must pass `assertTransition(resource, fromState, toState)`. Any undefined or unlisted transition immediately aborts execution by throwing `TRPCError({ code: "BAD_REQUEST", message: "Invalid <resource> transition: <from> → <to>" })`.
 2. **Identity Self-Transition Exemption**: `if (from === to) return;` — No-op re-assertions of the current state are permitted without throwing an error.
 3. **Universal Erasure Reachability**: The `candidate` state machine explicitly enables transition to `deleted` from **ALL** 16 candidate states to guarantee statutory compliance with GDPR Article 17 and DPDP Section 12 (Right to Erasure).
-4. **Consequential Action Gating**: If an operation is registered in `isConsequentialAction(actionType)`, execution cannot proceed via automated or unprivileged execution; it requires an explicit approval request via `approvalEngine.requestApproval` or must be executed directly by the Primary Owner.
+4. **Consequential Action Gating (Intended Invariant vs. Current Reality)**: Consequential actions are intended to require explicit governed human approval; however, current implementation permits policy-based auto-approval in `requestOrAutoDecide()`, which is tracked as active release blocker **RB-07**.
 5. **Audit Logging Hook**: Every workflow-managed state change records an append-only audit row in `auditEvents` capturing `actorType`, `actorId`, `resourceType`, `resourceId`, `previousState`, `nextState`, and metadata (cryptographic hash chaining is an unverified roadmap target).
 
 ---
@@ -576,12 +576,13 @@ The platform gates 12 specific operations as consequential actions (`server/work
 11. `invoice_write_off` (Domain G)
 12. `automation_stop` (Domain J / L)
 
-Each action is intercepted by `approvalEngine.requestApproval` unless executed by the Primary Owner or covered by an active policy rule.
+**Intended Governance Invariant**: Every consequential action strictly requires mandatory human owner authorization without autonomous finalization.
+**Current Enforcement Reality (RB-07, RB-08, RB-09)**: In the current repository execution path, `approvalEngine.requestOrAutoDecide()` evaluates active policy rules and permits autonomous approval (`status = "approved"`, `decisionSource = "policy"`) without human owner intervention (RB-07). Furthermore, `prospects.transition` permits direct mutation from `converted → active` bypassing onboarding approval (RB-08), and only 5 of the 12 action types are explicitly recognized in `approvalEngine` and `consequential.ts` (RB-09).
 
 ### 4.2 Tamper-Resistant Audit Logging
 Implemented in `server/db.ts` (`recordAudit`):
 - Captures `actorType`, `actorId`, `action`, `resourceType`, `resourceId`, `previousState`, `nextState`, and JSON `metadata`.
-- Computes SHA-256 hash chaining over the event payload to detect unauthorized modifications.
+- Structured append-only audit event logging; cryptographic SHA-256 hash chaining is an unverified roadmap target.
 
 ---
 
@@ -598,7 +599,7 @@ Implemented in `server/db.ts` (`recordAudit`):
 
 ## 6. Complete Test Coverage & Verification Matrix
 
-The repository test suite consists of **36 test files** executing **205 automated tests** across Vitest:
+The repository test suite consists of **36 test files** containing **205 statically identified test declarations** across unit, integration, and security suites:
 
 | Test File | Test Count | Primary Workflows Verified |
 | :--- | :---: | :--- |
@@ -647,5 +648,5 @@ The repository test suite consists of **36 test files** executing **205 automate
 To transition from this Forensic Inventory to the formal **State Machine Catalog (P0.5)**:
 1. **Remediate Defect D-02 (Transactional Cascades)**: Ensure `fulfillDeletion` executes within a single `db.transaction` to guarantee atomic compliance with GDPR/DPDP erasure.
 2. **Standardize Auth Context (Defect D-01)**: Remove unauthenticated `owner_dev` fallback in development to ensure uniform behavior across dev and production.
-3. **Formalize State Machine Catalog (P0.5)**: Compile the authoritative mathematical transition matrix, guard tables, and visual state diagrams for all 11 active state machines.
+3. **Formalize State Machine Catalog (P0.5)**: Compile the authoritative mathematical transition matrix, guard tables, and visual state diagrams for all 12 active state machines.
 4. **Draft Domain M/N/O Schemas**: Define migration roadmaps for the 27 target engines when marketplace and cross-border capabilities are scheduled for development.
