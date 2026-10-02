@@ -190,7 +190,7 @@ To eliminate duplicate capability ownership and false `TARGET / MISSING` classif
 | **ENG-017** | Commercial | Contract / Terms Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
 | **ENG-018** | Commercial | Billing Terms Engine | PARTIAL | `feeProposals.paymentTermsDays` | None |
 | **ENG-019** | Job / Requirement | Job Intake Engine | CURRENT-VERIFIED | `jobs` Table | None |
-| **ENG-020** | Job / Requirement | Job Quality Engine | CURRENT-VERIFIED | `jobs.scorecardWeights` | None |
+| **ENG-020** | Job / Requirement | Job Quality Engine | CURRENT-VERIFIED | `jobs.scorecard` | None |
 | **ENG-021** | Job / Requirement | Job Validation Engine | CURRENT-VERIFIED | Job Zod Schemas | None |
 | **ENG-022** | Job / Requirement | Job Approval Engine | CURRENT-VERIFIED | `jobs.approvedAt` | None |
 | **ENG-023** | Job / Requirement | Job Publication Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
@@ -2048,7 +2048,7 @@ Provide production-grade, enterprise-compliant job quality engine functionality 
 Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
 
 #### 6. Repository Evidence
-- Primary Evidence: `jobs.scorecardWeights`
+- Primary Evidence: `jobs.scorecard`
 - Downstream Integrations: Scorecard Sum Rule (=100)
 - Router / Service: `recruitment.jobs.create`
 - Database Table: `jobs`
@@ -2056,7 +2056,7 @@ Fully implemented in runtime codebase, backed by database persistence, wired to 
 #### 7. Sub-Capabilities
 | Sub-Capability | Status | Evidence |
 | :--- | :--- | :--- |
-| Core Job Quality Engine | CURRENT-VERIFIED | `jobs.scorecardWeights` |
+| Core Job Quality Engine | CURRENT-VERIFIED | `jobs.scorecard` |
 | Secondary / Edge Handling | CURRENT-VERIFIED | `recruitment.jobs.create` |
 | Audit & Compliance Hook | CURRENT-VERIFIED | `job.created` |
 
