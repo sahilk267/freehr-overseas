@@ -1,27 +1,33 @@
 # FreelanceHR Feature Completion Matrix
 
-**Document Version**: 1.1.0 (P0.3-F Forensic Verification & Freeze)  
-**Governance Alignment**: Strictly synchronized with frozen `docs/PLATFORM_SOURCE_OF_TRUTH.md` (P0.1-F) and `docs/ENGINE_REGISTRY.md` (v1.0.0)  
+**Document Version**: 1.2.0 (P0.2-B.2 Final Forensic Reconciliation & Production Readiness Freeze)  
+**Governance Alignment**: Strictly synchronized with frozen `docs/PLATFORM_SOURCE_OF_TRUTH.md` and `docs/ENGINE_REGISTRY.md` (v1.1.0)  
 **Verification Level**: Forensic Evidence-Audited Baseline (Zero Speculation)  
-**Last Verified Date**: 2026-09-29  
+**Last Verified Date**: 2026-10-01  
 
 ---
 
 ## 0.0 Forensic Verification Status & Freeze Baseline
 
-This document is the canonical, independently verified **Feature Completion Matrix** for the FreelanceHR platform, audited under phase **P0.2-B.1 (Feature Completion Matrix Forensic Verification & Re-Freeze)**.
+This document is the canonical, independently verified **Feature Completion Matrix** for the FreelanceHR platform, audited under phase **P0.2-B.2 (Feature Completion Matrix Final Reconciliation & Production Readiness Freeze)**.
 
 - **Baseline Status**: **FROZEN**
 - **Audit Date**: 2026-10-01
 - **Engines Audited**: **129/129** (100% represented across 15 domains, strictly aligned with frozen `docs/ENGINE_REGISTRY.md` v1.1.0)
 - **Features Audited**: **194** discrete business and platform capabilities
-- **Mathematical Integrity**: Exactly 194 features classified into controlled status tokens (Sum = 194):
+- **Mathematical Integrity (Implementation Status)**: Exactly 194 features classified into controlled status tokens (Sum = 194):
   - **CURRENT-VERIFIED**: 87 (Operational capabilities verified in runtime codebase and passing automated test suites)
   - **PARTIAL**: 28 (Core code exists, but secondary paths, safety invariants, or external integrations are incomplete)
   - **ACTIVE-DEFECT**: 14 (FEAT-005, FEAT-014, FEAT-023, FEAT-024, FEAT-074, FEAT-075, FEAT-085, FEAT-091, FEAT-096, FEAT-098, FEAT-099, FEAT-119, FEAT-122, FEAT-139)
   - **UNWIRED**: 5 (FEAT-103, FEAT-126, FEAT-127, FEAT-151, FEAT-152)
   - **TARGET / MISSING**: 60 (Roadmap capabilities across Domains M, N, O and target engines)
-  - **TOTAL FEATURES**: 194
+  - **TOTAL FEATURES**: 194 (87 + 28 + 14 + 5 + 60 = 194)
+- **Mathematical Integrity (Production Readiness)**: Exactly 194 features classified into mutually exclusive readiness categories (Sum = 194):
+  - **READY**: 87 (Operational on Fastify production runtime, validated by test suites, free from release blockers)
+  - **READY-WITH-BLOCKERS**: 22 (14 ACTIVE-DEFECT + 8 PARTIAL features directly compromised by RB-05 through RB-12)
+  - **UNVERIFIED**: 20 (Code exists, but external third-party production infrastructure or secondary flows unverified in sandbox)
+  - **NOT-READY**: 65 (60 TARGET / MISSING roadmap features + 5 UNWIRED queue tasks)
+  - **TOTAL READINESS**: 194 (87 + 22 + 20 + 65 = 194)
 - **Consequential Action Taxonomy Audited**: **12/12** (5 recognized in approvalEngine and consequential router; 9 handled in applySideEffect; known auto-approval bypass RB-07 and onboarding direct transition bypass RB-08 documented)
 - **Declared AI Queue Tasks Audited**: **6/6** (4 operational handlers verified: `parse_cv`, `draft_outreach`, `classify_reply`, `score_match`; 2 unwired: `send_reminder`, `reconcile_invoice`)
 - **Active Release Blockers Documented**: **RB-05, RB-07, RB-08, RB-09, RB-10, RB-11, RB-12**
@@ -367,36 +373,36 @@ All features within Domains M, N, and O are **TARGET / MISSING** (no codebase, s
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
 | **FEAT-171** | ENG-106 | Open Freelance Recruiter Directory | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-172** | ENG-107 | Public Recruiter Profile & Portfolios | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-173** | ENG-108 | Recruiter KYC & Credential Verification| **TARGET / MISSING** | None | None | N/A | YES | N/A | N/A |
-| **FEAT-174** | ENG-109 | Automated Job Broadcasting & Claiming | **TARGET / MISSING** | None | None | N/A | YES | TARGET | TARGET|
-| **FEAT-175** | ENG-110 | Recruiter Delivery Rating Algorithm | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET|
+| **FEAT-173** | ENG-108 | Recruiter KYC & Credential Verification | **TARGET / MISSING** | None | None | N/A | YES | N/A | N/A | NO | None | None |
+| **FEAT-174** | ENG-109 | Automated Job Broadcasting & Claiming | **TARGET / MISSING** | None | None | N/A | YES | TARGET | TARGET | NO | None | None |
+| **FEAT-175** | ENG-110 | Recruiter Delivery Rating Algorithm | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
 | **FEAT-176** | ENG-111 | Marketplace Split Commission Ledger | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-177** | ENG-112 | Recruiter Stripe Connect Automated Payout| **TARGET / MISSING** | None | None | N/A | YES | N/A | TARGET|
-| **FEAT-178** | ENG-113 | Cross-Recruiter Candidate Anti-Poaching| **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET|
+| **FEAT-177** | ENG-112 | Recruiter Stripe Connect Automated Payout | **TARGET / MISSING** | None | None | N/A | YES | N/A | TARGET | NO | None | None |
+| **FEAT-178** | ENG-113 | Cross-Recruiter Candidate Anti-Poaching | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET | NO | None | None |
 
 ### 17.2 Domain N: International Recruitment (ENG-114 to ENG-120)
 | Feat ID | Engine | Feature Name | Status | DB | API / Router | Auth | Appr | AI | Auto | Audit | Tests | Blockers |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
 | **FEAT-179** | ENG-114 | Destination Country Legal Hiring Rules | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-180** | ENG-115 | Work Permit & Visa Application Tracker | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET|
+| **FEAT-180** | ENG-115 | Work Permit & Visa Application Tracker | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET | NO | None | None |
 | **FEAT-181** | ENG-116 | Cross-Border Labor Mobility Compliance | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
 | **FEAT-182** | ENG-117 | Overseas Employer Verification Portal | **TARGET / MISSING** | None | None | N/A | YES | N/A | N/A | NO | None | None |
 | **FEAT-183** | ENG-118 | Emigration Clearance & Passport Audit | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-184** | ENG-119 | International Placement Agency Contracts| **TARGET / MISSING** | None | None | N/A | YES | N/A | N/A |
+| **FEAT-184** | ENG-119 | International Placement Agency Contracts | **TARGET / MISSING** | None | None | N/A | YES | N/A | N/A | NO | None | None |
 | **FEAT-185** | ENG-120 | Country-Specific Document Checklists | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 
 ### 17.3 Domain O: Growth & Marketing (ENG-121 to ENG-129)
 | Feat ID | Engine | Feature Name | Status | DB | API / Router | Auth | Appr | AI | Auto | Audit | Tests | Blockers |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
-| **FEAT-186** | ENG-121 | Overseas Salary & Demand Intelligence | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET|
-| **FEAT-187** | ENG-122 | Recruitment Thought Leadership AI Drafter| **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A |
-| **FEAT-188** | ENG-123 | High-Intent SEO Keyword Discovery | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET|
-| **FEAT-189** | ENG-124 | Automated LinkedIn / Twitter Post Scheduler| **TARGET / MISSING** | None | None | N/A | YES | N/A | TARGET|
-| **FEAT-190** | ENG-125 | Social Comment & Inbound Message Monitor| **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET|
-| **FEAT-191** | ENG-126 | Automated Prospect Ingestion (Apollo API)| **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET|
-| **FEAT-192** | ENG-127 | Multi-Stage Email Drip Campaign Engine | **TARGET / MISSING** | None | None | N/A | YES | TARGET | TARGET|
+| **FEAT-186** | ENG-121 | Overseas Salary & Demand Intelligence | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
+| **FEAT-187** | ENG-122 | Recruitment Thought Leadership AI Drafter | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
+| **FEAT-188** | ENG-123 | High-Intent SEO Keyword Discovery | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
+| **FEAT-189** | ENG-124 | Automated LinkedIn / Twitter Post Scheduler | **TARGET / MISSING** | None | None | N/A | YES | N/A | TARGET | NO | None | None |
+| **FEAT-190** | ENG-125 | Social Comment & Inbound Message Monitor | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
+| **FEAT-191** | ENG-126 | Automated Prospect Ingestion (Apollo API) | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET | NO | None | None |
+| **FEAT-192** | ENG-127 | Multi-Stage Email Drip Campaign Engine | **TARGET / MISSING** | None | None | N/A | YES | TARGET | TARGET | NO | None | None |
 | **FEAT-193** | ENG-128 | Lead Source UTM Conversion Attribution | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-194** | ENG-129 | Funnel Visitor-to-Placement Analytics | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET|
+| **FEAT-194** | ENG-129 | Funnel Visitor-to-Placement Analytics | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET | NO | None | None |
 
 ---
 
@@ -411,19 +417,19 @@ FOLLOW-UP → NURTURE → CONVERT → DELIVER → MEASURE → LEARN → NEXT ACT
 
 | Lifecycle Stage | Client Loop | Candidate Loop | Recruiter Loop | Business Lead Loop | Marketing Loop |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. DISCOVER** | **PARTIAL** (Manual entry) | **CURRENT-VERIFIED** (API) | **PARTIAL** (Internal invite) | **TARGET / MISSING** | **TARGET** |
-| **2. RESEARCH** | **PARTIAL** (Manual signal) | **CURRENT-VERIFIED** (CV parse) | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
-| **3. QUALIFY** | **CURRENT-VERIFIED** (KYB doc)| **CURRENT-VERIFIED** (Dedup) | **CURRENT-VERIFIED** (Role)| **TARGET / MISSING** | **TARGET** |
-| **4. PRIORITIZE** | **PARTIAL** (Pipeline state)| **CURRENT-VERIFIED** (Match) | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
-| **5. CONTACT** | **CURRENT-VERIFIED** (Outreach)| **CURRENT-VERIFIED** (Outreach)| **CURRENT-VERIFIED** (Email)| **TARGET / MISSING** | **TARGET** |
-| **6. CONVERSE** | **PARTIAL** (RB-10 threading) | **PARTIAL** (RB-10 threading) | **PARTIAL** (Hostinger Mail) | **TARGET / MISSING** | **TARGET** |
-| **7. FOLLOW-UP** | **PARTIAL** (Manual tasks) | **UNWIRED** (RB-05 reminders) | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
-| **8. NURTURE** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
-| **9. CONVERT** | **ACTIVE-DEFECT** (RB-08 bypass)| **PARTIAL** (RB-07 approval)| **CURRENT-VERIFIED** (Accept)| **TARGET / MISSING** | **TARGET** |
-| **10. DELIVER** | **CURRENT-VERIFIED** (Jobs) | **CURRENT-VERIFIED** (Shortlist)| **CURRENT-VERIFIED** (Screen)| **TARGET / MISSING** | **TARGET** |
-| **11. MEASURE** | **PARTIAL** (KPI dashboard) | **CURRENT-VERIFIED** (Feedback)| **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
-| **12. LEARN** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
-| **13. NEXT ACTION**| **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
+| **1. DISCOVER** | **PARTIAL** (Manual entry) | **CURRENT-VERIFIED** (API) | **PARTIAL** (Internal invite) | **TARGET / MISSING** | **TARGET / MISSING** |
+| **2. RESEARCH** | **PARTIAL** (Manual signal) | **CURRENT-VERIFIED** (CV parse) | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** |
+| **3. QUALIFY** | **CURRENT-VERIFIED** (KYB doc)| **CURRENT-VERIFIED** (Dedup) | **CURRENT-VERIFIED** (Role)| **TARGET / MISSING** | **TARGET / MISSING** |
+| **4. PRIORITIZE** | **PARTIAL** (Pipeline state)| **CURRENT-VERIFIED** (Match) | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** |
+| **5. CONTACT** | **CURRENT-VERIFIED** (Outreach)| **CURRENT-VERIFIED** (Outreach)| **CURRENT-VERIFIED** (Email)| **TARGET / MISSING** | **TARGET / MISSING** |
+| **6. CONVERSE** | **PARTIAL** (RB-10 threading) | **PARTIAL** (RB-10 threading) | **PARTIAL** (Hostinger Mail) | **TARGET / MISSING** | **TARGET / MISSING** |
+| **7. FOLLOW-UP** | **PARTIAL** (Manual tasks) | **UNWIRED** (RB-05 reminders) | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** |
+| **8. NURTURE** | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** |
+| **9. CONVERT** | **ACTIVE-DEFECT** (RB-08 bypass)| **PARTIAL** (RB-07 approval)| **CURRENT-VERIFIED** (Accept)| **TARGET / MISSING** | **TARGET / MISSING** |
+| **10. DELIVER** | **CURRENT-VERIFIED** (Jobs) | **CURRENT-VERIFIED** (Shortlist)| **CURRENT-VERIFIED** (Screen)| **TARGET / MISSING** | **TARGET / MISSING** |
+| **11. MEASURE** | **PARTIAL** (KPI dashboard) | **CURRENT-VERIFIED** (Feedback)| **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** |
+| **12. LEARN** | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** |
+| **13. NEXT ACTION**| **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** | **TARGET / MISSING** |
 
 ---
 
@@ -490,56 +496,50 @@ Mapping of features to canonical business scenarios from `docs/PLATFORM_SOURCE_O
 | **SCEN-19** | AI Candidate-Job Match Scoring | FEAT-068, 069 | **CURRENT-VERIFIED** | Fully verified |
 | **SCEN-20** | AI Cold Outreach Drafting | FEAT-076, 077 | **CURRENT-VERIFIED** | Fully verified |
 | **SCEN-21** | Automation Queue Execution | FEAT-131, 132, 133, 136 | **PARTIAL / RELEASE-BLOCKED** | RB-05 |
-| **SCEN-22** | Workspace Emergency Stop | FEAT-141 | **TARGET / MISSING** | Target capability |
+| **SCEN-22** | Workspace Emergency Stop | FEAT-141 | **CURRENT-VERIFIED** | Verified by server/services/queue.test.ts |
 | **SCEN-23** | Production Startup & DB Ping | FEAT-155, 156 | **CURRENT-VERIFIED** | Fully verified |
-| **SCEN-24** | Hostinger Deploy & Bundle Asset | FEAT-169 | **TARGET / MISSING** | Target capability |
+| **SCEN-24** | Hostinger Deploy & Bundle Asset | FEAT-169 | **CURRENT-VERIFIED** | Verified by scripts/verify-hostinger.ts (21 passed) |
 
 ---
 
 ## 24. Production Readiness by Feature
 
-| Readiness Category | Definition | Features in Category | Current Operational Posture |
-| :--- | :--- | :--- | :--- |
-| **READY** | Implemented, tested, and satisfies production safety invariants | 81 Features (e.g. FEAT-001, 006, 007, 008, 009, 010, 011, 013, 017, 018, 019, 020, 021, 026, 027, 028, 029, 030, 031, 034, 035, 036, 037, 038, 039, 040, 041, 042, 043, 044, 045, 046, 047, 049, 050, 051, 052, 053, 054, 055, 058, 059, 060, 061, 062, 063, 064, 065, 068, 069, 071, 072, 076, 077, 079, 080, 081, 087, 092, 093, 094, 104, 105, 106, 107, 112, 113, 114, 115, 116, 117, 120, 121, 124, 125, 131, 132, 142, 144, 155, 156, 157, 158, 159, 160, 164) | Production capable on Fastify runtime |
-| **READY-WITH-BLOCKERS** | Feature core works, but boundary is compromised by an active release blocker | 40 Features (14 ACTIVE-DEFECT + 26 PARTIAL) | Blocked from production release until remediated |
-| **UNWIRED** | Declared in queue or prompt, but missing runtime handler | 5 Features (FEAT-103, FEAT-126, FEAT-127, FEAT-151, FEAT-152) | Results trapped in database; side-effects inert |
-| **TARGET / MISSING** | Conceptual roadmap feature with no codebase implementation | 68 Features (Domains M, N, O, and target features in B, C, D, E, F, G, H, I, J, K, L) | Excluded from current production release scope |
+The platform strictly decouples **Implementation Status** from **Production Readiness**. A feature being `CURRENT-VERIFIED` indicates code and test existence, but production readiness requires satisfying operational invariants and freedom from release blockers. Conversely, `PARTIAL` features are evaluated on whether their operational core is independently viable or compromised by platform blockers.
+
+### 24.1 Production Readiness Classification Framework
+
+| Readiness Category | Definition | Count | Features in Category | Current Operational Posture |
+| :--- | :--- | :---: | :--- | :--- |
+| **READY** | Implemented, validated by test suite, and operates safely on Fastify production runtime without blocker contamination | **87** | FEAT-001, FEAT-002, FEAT-006, FEAT-007, FEAT-008, FEAT-009, FEAT-010, FEAT-011, FEAT-012, FEAT-013, FEAT-017, FEAT-018, FEAT-019, FEAT-020, FEAT-021, FEAT-026, FEAT-027, FEAT-029, FEAT-033, FEAT-035, FEAT-036, FEAT-037, FEAT-038, FEAT-039, FEAT-040, FEAT-043, FEAT-044, FEAT-047, FEAT-049, FEAT-050, FEAT-051, FEAT-052, FEAT-053, FEAT-054, FEAT-055, FEAT-058, FEAT-059, FEAT-060, FEAT-061, FEAT-062, FEAT-063, FEAT-064, FEAT-065, FEAT-068, FEAT-069, FEAT-071, FEAT-072, FEAT-076, FEAT-077, FEAT-079, FEAT-080, FEAT-081, FEAT-087, FEAT-092, FEAT-093, FEAT-104, FEAT-105, FEAT-106, FEAT-107, FEAT-111, FEAT-112, FEAT-117, FEAT-120, FEAT-121, FEAT-130, FEAT-131, FEAT-132, FEAT-136, FEAT-137, FEAT-138, FEAT-141, FEAT-142, FEAT-143, FEAT-144, FEAT-145, FEAT-147, FEAT-149, FEAT-150, FEAT-155, FEAT-156, FEAT-157, FEAT-158, FEAT-159, FEAT-160, FEAT-161, FEAT-164, FEAT-169 | Production capable on Fastify production runtime (`server/hostinger.ts`). |
+| **READY-WITH-BLOCKERS** | Functional core exists in code, but production deployment is compromised by an active release blocker (RB-05 to RB-12) | **22** | FEAT-005, FEAT-014, FEAT-022, FEAT-023, FEAT-024, FEAT-074, FEAT-075, FEAT-078, FEAT-084, FEAT-085, FEAT-086, FEAT-091, FEAT-095, FEAT-096, FEAT-098, FEAT-099, FEAT-119, FEAT-122, FEAT-133, FEAT-134, FEAT-135, FEAT-139 | Blocked from production release until designated release blockers are remediated. |
+| **UNVERIFIED** | Code exists, but external third-party production infrastructure (live IdP, live Hostinger mailbox, live AV sandbox) or secondary paths cannot be certified in sandbox | **20** | FEAT-003, FEAT-004, FEAT-025, FEAT-041, FEAT-066, FEAT-073, FEAT-082, FEAT-083, FEAT-088, FEAT-089, FEAT-090, FEAT-094, FEAT-097, FEAT-100, FEAT-110, FEAT-113, FEAT-118, FEAT-123, FEAT-124, FEAT-170 | Requires live external staging verification before production deployment. |
+| **NOT-READY** | Feature cannot execute due to zero codebase implementation (Target) or missing background queue handlers (Unwired) | **65** | 60 Roadmap Target Features (FEAT-015, FEAT-016, FEAT-028, FEAT-030, FEAT-031, FEAT-032, FEAT-034, FEAT-042, FEAT-045, FEAT-046, FEAT-048, FEAT-056, FEAT-057, FEAT-067, FEAT-070, FEAT-101, FEAT-102, FEAT-108, FEAT-109, FEAT-114, FEAT-115, FEAT-116, FEAT-125, FEAT-128, FEAT-129, FEAT-140, FEAT-146, FEAT-148, FEAT-153, FEAT-154, FEAT-162, FEAT-163, FEAT-165, FEAT-166, FEAT-167, FEAT-168, FEAT-171 to FEAT-194) + 5 Unwired Queue Features (FEAT-103, FEAT-126, FEAT-127, FEAT-151, FEAT-152) | Excluded from current production release scope. |
+
+**Mathematical Reconciliation of Production Readiness**:  
+`87 (READY) + 22 (READY-WITH-BLOCKERS) + 20 (UNVERIFIED) + 65 (NOT-READY) = 194 Features`
 
 ---
 
-## 25. Release Blockers by Feature
+## 25. Release Blockers Cross-Reference Ledger
 
-Direct cross-reference mapping of active release blockers to affected features:
+Comprehensive cross-reference mapping of active release blockers to affected features, engines, and operational impact:
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                        ACTIVE RELEASE BLOCKERS                         │
-├─────────┬──────────────────────────────────────────────────────────────┤
-│ RB-05   │ Unwired Automation Queue Handlers                            │
-│         │ Affected: FEAT-103, FEAT-126, FEAT-127, FEAT-133,            │
-│         │           FEAT-134, FEAT-135, FEAT-151, FEAT-152             │
-├─────────┼──────────────────────────────────────────────────────────────┤
-│ RB-07   │ Consequential Actions Bypass Mandatory Human Approval        │
-│         │ Affected: FEAT-024, FEAT-074, FEAT-085, FEAT-091,            │
-│         │           FEAT-096, FEAT-098                                 │
-├─────────┼──────────────────────────────────────────────────────────────┤
-│ RB-08   │ Client Onboarding Direct Transition Bypass                   │
-│         │ Affected: FEAT-014, FEAT-023, FEAT-139                       │
-├─────────┼──────────────────────────────────────────────────────────────┤
-│ RB-09   │ Consequential Action Taxonomy Mismatch & Routing Disconnect  │
-│         │ Affected: FEAT-075, FEAT-085, FEAT-091, FEAT-099             │
-├─────────┼──────────────────────────────────────────────────────────────┤
-│ RB-10   │ Outbound Email Provider Message ID Hardcoded Null            │
-│         │ Affected: FEAT-078, FEAT-119, FEAT-122                       │
-├─────────┼──────────────────────────────────────────────────────────────┤
-│ RB-11   │ Non-Atomic Sequential Approval Execution (Lacks db.transact) │
-│         │ Affected: FEAT-024, FEAT-074, FEAT-086, FEAT-095             │
-├─────────┼──────────────────────────────────────────────────────────────┤
-│ RB-12   │ Express Context Unconditional Owner Fallback (`owner_dev`)   │
-│         │ Affected: FEAT-005                                           │
-└─────────┴──────────────────────────────────────────────────────────────┘
-```
-```
+| Blocker ID | Title & Root Cause | Affected Engine IDs | Affected Feature IDs | Production Impact | Blocker Status |
+| :--- | :--- | :--- | :--- | :--- | :---: |
+| **RB-05** | **Unwired Automation Queue Handlers**<br>Queue declares 6 AI task types, but `handleAiTaskResult` in `server/services/queue.ts` implements handlers for only 4 (`parse_cv`, `draft_outreach`, `classify_reply`, `score_match`). Handlers for `send_reminder` and `reconcile_invoice` are missing. | ENG-048, ENG-067, ENG-076, ENG-084, ENG-091, ENG-092 | FEAT-103, FEAT-126, FEAT-127, FEAT-133, FEAT-134, FEAT-135, FEAT-151, FEAT-152 | Automated interview reminders and invoice reconciliation tasks are enqueued but never processed; tasks remain in queue indefinitely. | **ACTIVE-BLOCKER** |
+| **RB-07** | **Consequential Actions Bypass Mandatory Human Approval**<br>`requestOrAutoDecide()` in `server/services/approvalEngine.ts` evaluates policy rules and marks approvals `status = "approved"` with `decisionSource = "policy"` without human owner sign-off. | ENG-014, ENG-041, ENG-047, ENG-051, ENG-054, ENG-055, ENG-056 | FEAT-024, FEAT-074, FEAT-084, FEAT-085, FEAT-091, FEAT-096, FEAT-098 | Violates core architectural invariant requiring human owner authorization for commercial contracts, candidate sharing, placement confirmation, and invoice issuance. | **ACTIVE-BLOCKER** |
+| **RB-08** | **Client Onboarding Direct Transition Bypass**<br>`prospects.transition` in `server/routers/recruitment.ts` permits direct mutation of company state from `converted → active` without requiring onboarding approval. | ENG-007, ENG-012, ENG-080 | FEAT-014, FEAT-022, FEAT-023, FEAT-139 | Recruiter can bypass client onboarding approval and activate accounts without owner sign-off or KYB verification. | **ACTIVE-BLOCKER** |
+| **RB-09** | **Consequential Action Taxonomy Mismatch & Routing Disconnect**<br>`server/workflow.ts` defines 12 consequential actions, but `approvalEngine.ts` and `server/routers/consequential.ts` explicitly recognize only 5. Unrecognized actions throw 404 or fail closed. | ENG-041, ENG-047, ENG-051, ENG-057 | FEAT-075, FEAT-085, FEAT-091, FEAT-099 | Candidate sharing, placement confirmation, and invoice issuance approvals cannot be routed or decided through standard consequential endpoints. | **ACTIVE-BLOCKER** |
+| **RB-10** | **Outbound Email Provider Message ID Hardcoded Null**<br>`server/services/hostingerMail.ts` returns `providerMessageId: null`. Inbound webhook ingestion expects provider/thread references for correlation. | ENG-071, ENG-073, ENG-075 | FEAT-078, FEAT-119, FEAT-122 | Prevents reliable bidirectional email conversation threading; inbound candidate replies cannot be correlated to outbound message threads. | **ACTIVE-BLOCKER** |
+| **RB-11** | **Non-Atomic Sequential Approval Execution**<br>`applyApprovalDecision` in `server/services/approvalEngine.ts` executes decision recording, side-effect invocation, and audit logging sequentially without an enclosing `db.transaction()`. | ENG-014, ENG-041, ENG-049, ENG-052 | FEAT-024, FEAT-074, FEAT-086, FEAT-095 | Partial failure during side-effect execution leaves the approval marked "approved" while domain state mutation fails, creating database inconsistency. | **ACTIVE-BLOCKER** |
+| **RB-12** | **Express Context Unconditional Owner Fallback**<br>`server/_core/context.ts` unconditionally assigns `owner_dev` ("Sahil (Owner)", role: "admin") when unauthenticated, without a production environment check. | ENG-002, ENG-005 | FEAT-005 | Security vulnerability if the legacy Express development entry point is exposed in production. (Mitigated on Fastify production runtime `server/hostinger.ts`). | **ACTIVE-BLOCKER** |
+
+### 25.1 Historical Resolved Release Blockers (Archival Record)
+- **RB-01 (Database Connectivity on Cold Start)**: Resolved via `verifyDatabaseConnectivity` ping (`SELECT 1`) on server initialization (`server/db.ts`, `p02b.test.ts`).
+- **RB-02 (Cron Route Authentication Timing Attack)**: Resolved via `crypto.timingSafeEqual` in Fastify CRON_SECRET handler (`server/hostinger.ts`, `verify-hostinger.ts`).
+- **RB-03 (Right-to-Erasure Managed Storage Mode Deletion Failure)**: Resolved via fail-closed physical storage deletion handler (`candidateWorkflows.ts`, `candidateDeletion.test.ts`).
+- **RB-04 (Hostinger Fastify Route Inactive for S3 Storage Mode)**: Resolved via explicit 404 handler when storage mode is S3 (`server/hostinger.ts`, `verify-hostinger.ts`).
+- **RB-06 (Fastify HTTP Body Limit Ceiling Denial of Service)**: Resolved via explicit `bodyLimit: 10485760` (10MB) configuration (`server/hostinger.ts`, `verify-hostinger.ts`).
 
 ---
 
