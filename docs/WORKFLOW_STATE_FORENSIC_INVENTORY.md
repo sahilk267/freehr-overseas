@@ -22,7 +22,7 @@ The objective of this forensic inventory is to establish with cryptographic and 
 6. **WHAT APPROVAL EXISTS**: Consequential action gating via `approvalEngine` and human-in-the-loop controls.
 7. **WHAT POLICY EXISTS**: Configurable business rule evaluation and delayed auto-approval via `policyEngine`.
 8. **WHAT SIDE EFFECTS EXIST**: Secondary table mutations, notification dispatch, document generation, and cache invalidation.
-9. **WHAT AUDIT EXISTS**: Tamper-resistant append-only event logging with SHA-256 hash chaining.
+9. **WHAT AUDIT EXISTS**: Append-only structured event logging in `auditEvents` table recording `actorType`, `actorId`, `resourceType`, `resourceId`, `previousState`, `nextState`, and metadata (cryptographic SHA-256 hash chaining is an unverified roadmap target).
 10. **WHAT AUTOMATION EXISTS**: Background queue processing, scheduled cron triggers, and lock contention handling.
 11. **WHAT AI EXISTS**: Model routing, OpenRouter execution, fallback cascading, and safe AI text filtering.
 12. **WHAT ROLLBACK EXISTS**: Error recovery mechanisms, transactional rollbacks, and compensating state transitions.
@@ -72,14 +72,14 @@ Across the 15 engine domains (ENG-001 through ENG-129):
 | **M** | Recruiter Marketplace | ENG-106 – ENG-113 | 8 | 0 | 0 | 0 | 8 | *None (Target Domain)* |
 | **N** | International Recruitment | ENG-114 – ENG-120 | 7 | 0 | 0 | 0 | 7 | *None (Target Domain)* |
 | **O** | Growth & Marketing | ENG-121 – ENG-129 | 9 | 0 | 0 | 0 | 9 | *None (Target Domain)* |
-| **TOTAL** | **15 Domains** | **ENG-001 – ENG-129** | **129** | **60** | **42** | **0** | **27** | **11 Formally Enforced State Machines** |
+| **TOTAL** | **15 Domains** | **ENG-001 – ENG-129** | **129** | **60** | **42** | **0** | **27** | **12 Formally Enforced State Machines** |
 
 ---
 
 ## 2. Forensic State Machine Architecture & Invariant Rules
 
-### 2.1 The 11 Formally Enforced State Machines
-The platform contains 11 explicitly coded finite state machines governed by the transition assertion engine in `server/workflow.ts` (`assertTransition`):
+### 2.1 The 12 Formally Enforced State Machines
+The platform contains 12 explicitly coded finite state machines governed by the transition assertion engine in `server/workflow.ts` (`assertTransition`):
 
 ```
                                   ┌────────────────────────┐
@@ -98,7 +98,7 @@ The platform contains 11 explicitly coded finite state machines governed by the 
    11. placement       12. invoice
 ```
 
-*(Note: While `server/workflow.ts` defines 12 resources in its `transitions` dictionary, `automation_job` and `incident` bring the runtime verified total to 12 state graphs).*
+*(Note: `server/workflow.ts` defines exactly 12 resources in its `transitions` dictionary: `company`, `job`, `candidate`, `interview`, `screening`, `shortlist`, `match`, `automation_job`, `rights_request`, `incident`, `placement`, and `invoice`).*
 
 ### 2.2 Global State Transition Invariants
 Every state transition governed by the core workflow engine must adhere to five mandatory invariants:
@@ -106,7 +106,7 @@ Every state transition governed by the core workflow engine must adhere to five 
 2. **Identity Self-Transition Exemption**: `if (from === to) return;` — No-op re-assertions of the current state are permitted without throwing an error.
 3. **Universal Erasure Reachability**: The `candidate` state machine explicitly enables transition to `deleted` from **ALL** 16 candidate states to guarantee statutory compliance with GDPR Article 17 and DPDP Section 12 (Right to Erasure).
 4. **Consequential Action Gating**: If an operation is registered in `isConsequentialAction(actionType)`, execution cannot proceed via automated or unprivileged execution; it requires an explicit approval request via `approvalEngine.requestApproval` or must be executed directly by the Primary Owner.
-5. **Tamper-Resistant Audit Hook**: Every state change must record an immutable audit row in `auditEvents` recording `actorType`, `actorId`, `resourceType`, `resourceId`, `previousState`, `nextState`, and a cryptographic hash.
+5. **Audit Logging Hook**: Every workflow-managed state change records an append-only audit row in `auditEvents` capturing `actorType`, `actorId`, `resourceType`, `resourceId`, `previousState`, `nextState`, and metadata (cryptographic hash chaining is an unverified roadmap target).
 
 ---
 

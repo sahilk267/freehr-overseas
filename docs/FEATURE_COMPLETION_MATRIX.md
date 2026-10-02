@@ -9,23 +9,24 @@
 
 ## 0.0 Forensic Verification Status & Freeze Baseline
 
-This document is the canonical, independently verified **Feature Completion Matrix** for the FreelanceHR platform, audited under phase **P0.2-B (Feature Completion Matrix Forensic Verification & Freeze)**.
+This document is the canonical, independently verified **Feature Completion Matrix** for the FreelanceHR platform, audited under phase **P0.2-B.1 (Feature Completion Matrix Forensic Verification & Re-Freeze)**.
 
 - **Baseline Status**: **FROZEN**
 - **Audit Date**: 2026-10-01
-- **Engines Audited**: **129/129** (100% represented across 15 domains, strictly aligned with frozen `docs/ENGINE_REGISTRY.md`)
+- **Engines Audited**: **129/129** (100% represented across 15 domains, strictly aligned with frozen `docs/ENGINE_REGISTRY.md` v1.1.0)
 - **Features Audited**: **194** discrete business and platform capabilities
 - **Mathematical Integrity**: Exactly 194 features classified into controlled status tokens (Sum = 194):
-  - **CURRENT-VERIFIED**: 81
-  - **PARTIAL**: 26
+  - **CURRENT-VERIFIED**: 87 (Operational capabilities verified in runtime codebase and passing automated test suites)
+  - **PARTIAL**: 28 (Core code exists, but secondary paths, safety invariants, or external integrations are incomplete)
   - **ACTIVE-DEFECT**: 14 (FEAT-005, FEAT-014, FEAT-023, FEAT-024, FEAT-074, FEAT-075, FEAT-085, FEAT-091, FEAT-096, FEAT-098, FEAT-099, FEAT-119, FEAT-122, FEAT-139)
   - **UNWIRED**: 5 (FEAT-103, FEAT-126, FEAT-127, FEAT-151, FEAT-152)
-  - **TARGET / MISSING**: 68 (Roadmap capabilities across Domains M, N, O and target engines)
+  - **TARGET / MISSING**: 60 (Roadmap capabilities across Domains M, N, O and target engines)
   - **TOTAL FEATURES**: 194
-- **Consequential Actions Verified**: **12/12**
-- **AI Queue Jobs Verified**: **6/6**
+- **Consequential Action Taxonomy Audited**: **12/12** (5 recognized in approvalEngine and consequential router; 9 handled in applySideEffect; known auto-approval bypass RB-07 and onboarding direct transition bypass RB-08 documented)
+- **Declared AI Queue Tasks Audited**: **6/6** (4 operational handlers verified: `parse_cv`, `draft_outreach`, `classify_reply`, `score_match`; 2 unwired: `send_reminder`, `reconcile_invoice`)
 - **Active Release Blockers Documented**: **RB-05, RB-07, RB-08, RB-09, RB-10, RB-11, RB-12**
-- **Implementation Changes**: **0 (Zero code, schema, migration, or test changes)**
+- **Test Inventory**: **36 test files, 205 static tests across unit, integration, and security suites**
+- **Implementation Changes**: **0 (Zero application code, schema, or test modifications)**
 
 ---
 
@@ -50,28 +51,21 @@ The purpose is to determine the exact, independently proven completion status of
 
 ## 2. Status Vocabulary
 
+The Feature Completion Matrix strictly enforces the 5 canonical status tokens aligned with `docs/ENGINE_REGISTRY.md`:
+
 | Status Token | Definition |
 | :--- | :--- |
-| **CURRENT-VERIFIED** | Code exists, is wired into the runtime execution path, executes without violating security/business invariants, and is supported by repository evidence. |
-| **VERIFIED-TEST** | Verified by an automated test in the repository test suite that cleanly passes in Vitest. |
-| **PARTIAL** | Core code exists and executes, but boundary cases, secondary paths, safety invariants, or integrations are incomplete. |
-| **INCOMPLETE** | Partially drafted or scaffolded in code, but missing essential business logic or persistence. |
-| **MISSING** | Required by target architecture, but has zero code, schema, or route presence in the repository. |
+| **CURRENT-VERIFIED** | Code exists, is wired into the runtime execution path, executes without violating security/business invariants, and is supported by repository evidence and passing tests. |
+| **PARTIAL** | Core code exists and executes, but boundary cases, secondary paths, safety invariants, or external integrations are incomplete. |
+| **ACTIVE-DEFECT** | Code contains a proven bug, security bypass, or data integrity flaw requiring immediate remediation (associated with release blockers RB-05 through RB-12). |
 | **UNWIRED** | Code, schema, or prompt exists, but is disconnected from the operational event loop or domain state persistence. |
-| **BLOCKED** | Implementation cannot proceed due to an internal architectural conflict or failing invariant. |
-| **BLOCKED-EXTERNAL** | Requires third-party credentials, DNS records, external APIs, or SaaS provisioning to function. |
-| **UNVERIFIED** | Present in code, but cannot be proven operational without live external infrastructure or mocks. |
-| **TARGET** | Intended product roadmap capability; explicitly NOT implemented in the current repository. |
-| **PLANNED** | Scheduled for implementation in an upcoming sprint or migration phase. |
-| **DEPRECATED** | Obsolete code or legacy pattern slated for removal; must not be extended. |
-| **ACTIVE-DEFECT** | Code contains a proven bug, security bypass, or data integrity flaw requiring immediate remediation. |
-| **RELEASE-BLOCKER** | Critical defect, security bypass, or unwired core capability that prohibits production release until remediated. |
+| **TARGET / MISSING** | Conceptual product roadmap capability; explicitly NOT implemented in the current repository codebase. |
 
 ---
 
 ## 3. Completion Definition & Dimension Keys
 
-A feature is evaluated across 16 rigorous dimensions:
+A feature is evaluated across 12 rigorous architectural dimensions (persisted via the 9 core tabular dimensions in each domain ledger, supplemented by Error Handling, UI Verification, and End-to-End Test traceability):
 - **DB**: Database table(s) supporting persistent state.
 - **API**: tRPC router / Express / Fastify endpoint exposing the capability.
 - **Auth**: Authentication and RBAC permission checks enforced.
@@ -135,8 +129,8 @@ DOMAINS OVERVIEW:
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
 | **FEAT-013** | ENG-007 | Prospect Account Ingestion | **CURRENT-VERIFIED** | `companies` | `prospects.create` | Recruiter+ | NO | N/A | N/A | YES | `prospects.test.ts` | None |
 | **FEAT-014** | ENG-007 | Prospect State Transitions | **ACTIVE-DEFECT**| `companies` | `prospects.transition`| Recruiter+ | NO | N/A | N/A | YES | `prospects.test.ts` | **RB-08** |
-| **FEAT-015** | ENG-008 | Hiring Signal Extraction | **TARGET** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
-| **FEAT-016** | ENG-008 | Automated Career Page Scraping | **TARGET** | None | None | N/A | NO | TARGET | TARGET| NO | None | None |
+| **FEAT-015** | ENG-008 | Hiring Signal Extraction | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
+| **FEAT-016** | ENG-008 | Automated Career Page Scraping | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET| NO | None | None |
 | **FEAT-017** | ENG-009 | Company Entity Management | **CURRENT-VERIFIED** | `companies` | `prospects.list` | Viewer+ | NO | N/A | N/A | YES | `prospects.test.ts` | None |
 | **FEAT-018** | ENG-010 | Contact Creation & Deduplication | **CURRENT-VERIFIED** | `contacts` | `prospects.createContact`| Recruiter+| NO | N/A | N/A | YES | `contacts.test.ts` | None |
 | **FEAT-019** | ENG-010 | Decision Maker Role Tagging | **CURRENT-VERIFIED** | `contacts.role` | `prospects.createContact`| Recruiter+| NO | N/A | N/A | NO | `contacts.test.ts` | None |
@@ -155,13 +149,13 @@ DOMAINS OVERVIEW:
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
 | **FEAT-026** | ENG-014 | Fee Proposal Creation | **CURRENT-VERIFIED** | `feeProposals` | `agreements.proposeFee` | Recruiter+ | NO | N/A | N/A | YES | `agreements.test.ts` | None |
 | **FEAT-027** | ENG-014 | Fee Proposal Client Acceptance | **CURRENT-VERIFIED** | `feeProposals` | `agreements.acceptFee` | Owner | NO | N/A | N/A | YES | `agreements.test.ts` | None |
-| **FEAT-028** | ENG-014 | Digital E-Signature Integration | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-028** | ENG-014 | Digital E-Signature Integration | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-029** | ENG-015 | Percentage Fee Calculation | **CURRENT-VERIFIED** | `feeProposals` | `agreements.proposeFee` | Recruiter+ | NO | N/A | N/A | NO | Unit calculations | None |
-| **FEAT-030** | ENG-015 | Dynamic Commercial Margin Rules | **TARGET** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
-| **FEAT-031** | ENG-016 | Internal Sourcing Commission Splits| **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-032** | ENG-017 | Standard Commercial Terms Catalog | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-030** | ENG-015 | Dynamic Commercial Margin Rules | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
+| **FEAT-031** | ENG-016 | Internal Sourcing Commission Splits| **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-032** | ENG-017 | Standard Commercial Terms Catalog | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-033** | ENG-018 | Invoice Credit Term Configuration | **CURRENT-VERIFIED** | `feeProposals.paymentTermsDays`| `agreements.proposeFee`| Recruiter+| NO | N/A | N/A | NO | `agreements.test.ts` | None |
-| **FEAT-034** | ENG-018 | Overdue Penalty Computation | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-034** | ENG-018 | Overdue Penalty Computation | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 
 ---
 
@@ -176,11 +170,11 @@ DOMAINS OVERVIEW:
 | **FEAT-039** | ENG-021 | Workplace Type Validation | **CURRENT-VERIFIED** | Enum | `jobs.create` | Recruiter+ | NO | N/A | N/A | NO | `jobs.test.ts` | None |
 | **FEAT-040** | ENG-022 | Mandatory Client Confirmation Gate | **CURRENT-VERIFIED** | `jobs.clientConfirmedBy`| `jobs.transition` | Recruiter+ | NO | N/A | N/A | YES | `jobs.test.ts` | None |
 | **FEAT-041** | ENG-022 | Job Internal Approval Flow | **PARTIAL** | `approvals` | `approvals.decide` | Owner | YES | N/A | N/A | YES | `approvals.test.ts`| None |
-| **FEAT-042** | ENG-023 | Public Job Portal Syndication | **TARGET** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
+| **FEAT-042** | ENG-023 | Public Job Portal Syndication | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
 | **FEAT-043** | ENG-024 | Job State Machine Engine | **CURRENT-VERIFIED** | `jobs.state` | `jobs.transition` | Recruiter+ | NO | N/A | N/A | YES | `jobs.test.ts` | None |
 | **FEAT-044** | ENG-024 | Job Cancellation & Archival | **CURRENT-VERIFIED** | `jobs.state` | `jobs.transition` | Owner | NO | N/A | N/A | YES | `jobs.test.ts` | None |
-| **FEAT-045** | ENG-025 | Time-to-Fill SLA Tracking | **TARGET** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
-| **FEAT-046** | ENG-025 | Submittal SLA Breach Alerts | **TARGET** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
+| **FEAT-045** | ENG-025 | Time-to-Fill SLA Tracking | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
+| **FEAT-046** | ENG-025 | Submittal SLA Breach Alerts | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
 
 ---
 
@@ -189,7 +183,7 @@ DOMAINS OVERVIEW:
 | Feat ID | Engine | Feature Name | Status | DB | API / Router | Auth | Appr | AI | Auto | Audit | Tests | Blockers |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
 | **FEAT-047** | ENG-026 | Candidate Ingestion via API | **CURRENT-VERIFIED** | `candidates` | `candidates.create` | Recruiter+ | NO | N/A | N/A | YES | `candidates.test.ts`| None |
-| **FEAT-048** | ENG-026 | Public Candidate Self-Application | **TARGET** | None | None | Public | NO | N/A | N/A | NO | None | None |
+| **FEAT-048** | ENG-026 | Public Candidate Self-Application | **TARGET / MISSING** | None | None | Public | NO | N/A | N/A | NO | None | None |
 | **FEAT-049** | ENG-027 | Candidate Phone & Email Fingerprinting| **CURRENT-VERIFIED** | `primaryEmailHash` | `candidates.create` | Recruiter+ | NO | N/A | N/A | NO | `candidates.test.ts`| None |
 | **FEAT-050** | ENG-028 | SHA-256 Collision Rejection | **CURRENT-VERIFIED** | DB Unique Index | `candidates.create` | Recruiter+ | NO | N/A | N/A | YES | `candidates.test.ts`| None |
 | **FEAT-051** | ENG-029 | Candidate Headline & Metadata Sync | **CURRENT-VERIFIED** | `candidates.headline`| `queue.ts:65` | Worker | NO | EXTRACTION | QUEUE | YES | `queue.test.ts` | None |
@@ -197,8 +191,8 @@ DOMAINS OVERVIEW:
 | **FEAT-053** | ENG-030 | Secure Document Download Stream | **CURRENT-VERIFIED** | Storage Adapter | `documents.access` | Recruiter+ | NO | N/A | N/A | YES | `verify-hostinger.ts`| None |
 | **FEAT-054** | ENG-031 | AI CV Text Extraction (`parse_cv`)| **CURRENT-VERIFIED** | `candidateDocuments` | `queue.ts:22` | Worker | NO | EXTRACTION | QUEUE | YES | `queue.test.ts` | None |
 | **FEAT-055** | ENG-031 | CV Parse Error Backoff Handling | **CURRENT-VERIFIED** | `automationQueue` | `queue.ts:480` | Worker | NO | N/A | QUEUE | YES | `queue.test.ts` | None |
-| **FEAT-056** | ENG-032 | LinkedIn Profile Enrichment | **TARGET** | None | None | N/A | NO | TARGET | TARGET| NO | None | None |
-| **FEAT-057** | ENG-032 | GitHub Coding Footprint Enrichment | **TARGET** | None | None | N/A | NO | TARGET | TARGET| NO | None | None |
+| **FEAT-056** | ENG-032 | LinkedIn Profile Enrichment | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET| NO | None | None |
+| **FEAT-057** | ENG-032 | GitHub Coding Footprint Enrichment | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET| NO | None | None |
 | **FEAT-058** | ENG-033 | Versioned Consent Grant Recording | **CURRENT-VERIFIED** | `consents` | `candidates.grantConsent`| Recruiter+| NO | N/A | N/A | YES | `consents.test.ts` | None |
 | **FEAT-059** | ENG-033 | Explicit Consent Withdrawal | **CURRENT-VERIFIED** | `consents` | `candidates.withdraw` | Recruiter+| NO | N/A | N/A | YES | `consents.test.ts` | None |
 | **FEAT-060** | ENG-034 | GDPR/DPDP Fail-Closed Document Deletion| **CURRENT-VERIFIED** | Storage / DB | `candidateWorkflows.privacy`| Owner | NO | N/A | N/A | YES | `candidateDeletion.test.ts`| None |
@@ -215,10 +209,10 @@ DOMAINS OVERVIEW:
 | Feat ID | Engine | Feature Name | Status | DB | API / Router | Auth | Appr | AI | Auto | Audit | Tests | Blockers |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
 | **FEAT-066** | ENG-037 | Internal Candidate Skill Search | **PARTIAL** | SQL LIKE | `candidates.search` | Recruiter+ | NO | N/A | N/A | NO | `candidates.test.ts`| None |
-| **FEAT-067** | ENG-037 | Multi-Board External Sourcing Engine | **TARGET** | None | None | N/A | NO | TARGET | TARGET| NO | None | None |
+| **FEAT-067** | ENG-037 | Multi-Board External Sourcing Engine | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET| NO | None | None |
 | **FEAT-068** | ENG-038 | Rule-Based Weighted Scorecard Matching | **CURRENT-VERIFIED** | `matches.ruleScore` | `queue.ts:220` | Worker | NO | N/A | QUEUE | YES | `queue.test.ts` | None |
 | **FEAT-069** | ENG-038 | Semantic AI Evidence Scoring (`score_match`)| **CURRENT-VERIFIED** | `matches.semanticScore`| `queue.ts:178` | Worker | NO | SCORING | QUEUE | YES | `queue.test.ts` | None |
-| **FEAT-070** | ENG-038 | Vector Embedding Search | **TARGET** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
+| **FEAT-070** | ENG-038 | Vector Embedding Search | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
 | **FEAT-071** | ENG-039 | Screening Questionnaire Evaluation | **CURRENT-VERIFIED** | `screenings` | `candidateWorkflows.screenings`| Recruiter+| NO | N/A | N/A | YES | `screenings.test.ts`| None |
 | **FEAT-072** | ENG-040 | Client Presentation Shortlist Creation | **CURRENT-VERIFIED** | `shortlists` | `matching.createShortlist`| Recruiter+| NO | N/A | N/A | YES | `shortlists.test.ts`| None |
 | **FEAT-073** | ENG-041 | Candidate Share Approval Request | **PARTIAL** | `approvals` | `matching.requestShareApproval`| Recruiter+| YES | N/A | N/A | YES | `approvals.test.ts`| None |
@@ -256,8 +250,8 @@ DOMAINS OVERVIEW:
 | **FEAT-098** | ENG-055 | Credit Note Consequential Policy Bypass| **ACTIVE-DEFECT** | `approvals` | `requestOrAutoDecide`| Policy | AUTO | N/A | N/A | YES | `approvalEngine.test.ts`| **RB-07** |
 | **FEAT-099** | ENG-056 | Bad Debt Write-Off Action Execution | **ACTIVE-DEFECT**| `invoices` | None | Owner | YES | N/A | N/A | YES | Code audit | **RB-09** |
 | **FEAT-100** | ENG-057 | Realized Placement Revenue Aggregation | **PARTIAL** | SQL Sum | `operations.dashboard` | Viewer+ | NO | N/A | N/A | NO | `operations.test.ts`| None |
-| **FEAT-101** | ENG-058 | Recruiter Commission Ledger | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-102** | ENG-059 | Automated Stripe Payout Disbursement | **TARGET** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
+| **FEAT-101** | ENG-058 | Recruiter Commission Ledger | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-102** | ENG-059 | Automated Stripe Payout Disbursement | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
 | **FEAT-103** | ENG-052 | AI Invoice Reconciliation (`reconcile_invoice`)| **UNWIRED** | `automationQueue` | `queue.ts:240` | Worker | NO | EXTRACTION | QUEUE | NO | Code audit | **RB-05** |
 
 ---
@@ -270,15 +264,15 @@ DOMAINS OVERVIEW:
 | **FEAT-105** | ENG-060 | Discrimination Risk Ingestion Gate | **CURRENT-VERIFIED** | Code Rules | `workflow.ts` | System | NO | N/A | N/A | YES | `safeAiText.test.ts`| None |
 | **FEAT-106** | ENG-061 | Statutory Deletion Right Fulfillment | **CURRENT-VERIFIED** | `rightsRequests` | `candidateWorkflows.privacy`| Owner | NO | N/A | N/A | YES | `candidateDeletion.test.ts`| None |
 | **FEAT-107** | ENG-061 | Fail-Closed Physical Document Purging | **CURRENT-VERIFIED** | Storage Adapter | `deletePrivateDocument`| System | NO | N/A | N/A | YES | `p02b.test.ts` | None |
-| **FEAT-108** | ENG-062 | Data Retention Schedule Definition | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-109** | ENG-062 | Automated Candidate Stale Data Purge | **TARGET** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
-| **FEAT-110** | ENG-063 | Immutable Consent Version Ledger | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-108** | ENG-062 | Data Retention Schedule Definition | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-109** | ENG-062 | Automated Candidate Stale Data Purge | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
+| **FEAT-110** | ENG-063 | Immutable Consent Version Ledger | **PARTIAL** | consents (noticeVersion) | server/routers/candidates.ts | protectedProcedure | NO | N/A | N/A | YES | candidateConsentTransition.test.ts | Target immutable append-only version ledger |
 | **FEAT-111** | ENG-064 | Append-Only Audit Event Recording | **CURRENT-VERIFIED** | `auditEvents` | `server/db.ts:recordAudit`| System | NO | N/A | N/A | YES | Across test suites | None |
 | **FEAT-112** | ENG-064 | Audit Log Querying & Filtering | **CURRENT-VERIFIED** | `auditEvents` | `operations.audits` | Owner | NO | N/A | N/A | NO | `operations.test.ts`| None |
 | **FEAT-113** | ENG-065 | Static Document Byte & Header Heuristics| **PARTIAL** | Memory | `documentScanner.ts` | System | NO | N/A | N/A | YES | `documentScanner.test.ts`| None |
-| **FEAT-114** | ENG-065 | Live Antivirus Daemon (ClamAV) Scan | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-115** | ENG-066 | Client Staff Anti-Poaching Rule Check | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-116** | ENG-067 | Automated SLA Breach Escalation | **TARGET** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
+| **FEAT-114** | ENG-065 | Live Antivirus Daemon (ClamAV) Scan | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-115** | ENG-066 | Client Staff Anti-Poaching Rule Check | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-116** | ENG-067 | Automated SLA Breach Escalation | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
 | **FEAT-117** | ENG-068 | Unmatched Webhook Incident Logging | **CURRENT-VERIFIED** | `incidents` | `operations.exceptions`| System | NO | N/A | N/A | YES | `email.test.ts` | None |
 
 ---
@@ -294,11 +288,11 @@ DOMAINS OVERVIEW:
 | **FEAT-122** | ENG-071 | Thread Matching via In-Reply-To | **ACTIVE-DEFECT**| `conversations` | `email.inbound.recordByThread`| System | NO | N/A | N/A | YES | `email.test.ts` | **RB-10** |
 | **FEAT-123** | ENG-071 | Unsolicited Cold Inbound Incident Route | **PARTIAL** | `incidents` | `email.inbound.recordByThread`| System | NO | N/A | N/A | YES | `email.test.ts` | None |
 | **FEAT-124** | ENG-072 | Team In-App Incident Notifications | **PARTIAL** | UI State | `operations.exceptions`| Viewer+ | NO | N/A | N/A | NO | UI review | None |
-| **FEAT-125** | ENG-072 | Automated SMS / WhatsApp Alerts | **TARGET** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
+| **FEAT-125** | ENG-072 | Automated SMS / WhatsApp Alerts | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
 | **FEAT-126** | ENG-073 | Upcoming Interview Reminder Scanner | **UNWIRED** | `interviews.reminderSentAt`| `interviewReminders.ts`| Cron | NO | N/A | CRON | YES | `interviewReminders.test.ts`| **RB-05** |
 | **FEAT-127** | ENG-073 | Interview Reminder Dispatch Execution | **UNWIRED** | `automationQueue` | `queue.ts:240` | Worker | NO | DRAFTING| QUEUE | NO | Code audit | **RB-05** |
-| **FEAT-128** | ENG-074 | System Communication Email Layouts | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-129** | ENG-074 | Dynamic Recruiter Email Template Editor | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-128** | ENG-074 | System Communication Email Layouts | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-129** | ENG-074 | Dynamic Recruiter Email Template Editor | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 | **FEAT-130** | ENG-075 | Pre-Flight Outbound Approval Gate | **CURRENT-VERIFIED** | `messages.status` | `email.outbound.deliverApproved`| Owner | YES | N/A | N/A | YES | `email.test.ts` | None |
 
 ---
@@ -316,8 +310,8 @@ DOMAINS OVERVIEW:
 | **FEAT-137** | ENG-078 | Dead-Letter / Permanently Failed State | **CURRENT-VERIFIED** | `automationQueue.status`| `queue.ts` | System | NO | N/A | QUEUE | YES | `queue.test.ts` | None |
 | **FEAT-138** | ENG-079 | Queue Idempotency Keys | **CURRENT-VERIFIED** | `automationQueue.idempotencyKey`| `queue.ts:enqueue` | System | NO | N/A | QUEUE | NO | `queue.test.ts` | None |
 | **FEAT-139** | ENG-080 | State Machine Transition Enforcer | **ACTIVE-DEFECT** | Code Maps | `workflow.ts:assertTransition`| System | NO | N/A | N/A | YES | `workflow.test.ts` | **RB-08** |
-| **FEAT-140** | ENG-081 | Distributed Event Bus / Webhooks Out | **TARGET** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
-| **FEAT-141** | ENG-082 | Workspace Queue Emergency Stop Flag | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-140** | ENG-081 | Distributed Event Bus / Webhooks Out | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET| NO | None | None |
+| **FEAT-141** | ENG-082 | Workspace Queue Emergency Stop Flag | **CURRENT-VERIFIED** | workspaceSettings (emergencyStop) | operations.setEmergencyStop | ownerProcedure | NO | N/A | QUEUE | YES | server/services/queue.test.ts | None |
 
 ---
 
@@ -328,16 +322,16 @@ DOMAINS OVERVIEW:
 | **FEAT-142** | ENG-083 | OpenRouter SDK Client Adapter | **CURRENT-VERIFIED** | None | `server/services/openrouter.ts`| System | NO | GATEWAY | N/A | NO | `openrouter.test.ts`| None |
 | **FEAT-143** | ENG-083 | AI Payload Input Truncation (12k Chars)| **CURRENT-VERIFIED** | Code Guard | `openrouter.ts` | System | NO | GATEWAY | N/A | NO | `openrouter.test.ts`| None |
 | **FEAT-144** | ENG-084 | Model Preference Router (`manus-1.6-lite`)| **CURRENT-VERIFIED** | None | `server/services/aiRouting.ts`| System | NO | ROUTING | N/A | NO | `aiRouting.test.ts` | None |
-| **FEAT-145** | ENG-085 | Resume Parsing & Entity Extraction | **TARGET** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
-| **FEAT-146** | ENG-086 | AI Job Requirement Generator | **TARGET** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
-| **FEAT-147** | ENG-087 | Evidence-Based Match Scoring (`score_match`)| **TARGET** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
-| **FEAT-148** | ENG-088 | Screening Scorecard Recommendation | **TARGET** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
-| **FEAT-149** | ENG-089 | Personalized Cold Outreach Drafting | **TARGET** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
-| **FEAT-150** | ENG-090 | Inbound Sentiment & Opt-Out Classifier | **TARGET** | None | None | N/A | NO | TARGET | TARGET | NO | None | None |
+| **FEAT-145** | ENG-085 | Resume Parsing & Entity Extraction | **CURRENT-VERIFIED** | candidateDocuments (parsedData) | server/services/queue.ts | internal / worker | NO | EXTRACTION | QUEUE | YES | server/services/queue.test.ts | None |
+| **FEAT-146** | ENG-086 | AI Job Requirement Generator | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
+| **FEAT-147** | ENG-087 | Evidence-Based Match Scoring (`score_match`) | **CURRENT-VERIFIED** | matches (semanticScore, evidence) | server/services/queue.ts | internal / worker | NO | SCORING | QUEUE | YES | server/services/queue.test.ts | None |
+| **FEAT-148** | ENG-088 | Screening Scorecard Recommendation | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
+| **FEAT-149** | ENG-089 | Personalized Cold Outreach Drafting | **CURRENT-VERIFIED** | messages (draft_ready) | server/services/queue.ts | internal / worker | NO | DRAFTING | QUEUE | YES | server/services/queue.test.ts | None |
+| **FEAT-150** | ENG-090 | Inbound Sentiment & Opt-Out Classifier | **CURRENT-VERIFIED** | suppressionList, conversations | server/services/queue.ts | internal / worker | NO | CLASSIFICATION | QUEUE | YES | server/services/queue.test.ts | None |
 | **FEAT-151** | ENG-091 | AI Reminder Notification Drafter | **UNWIRED** | `automationQueue` | `queue.ts:240` | Worker | NO | DRAFTING| QUEUE | NO | Code review | **RB-05** |
 | **FEAT-152** | ENG-092 | AI Invoice Reconciliation Agent | **UNWIRED** | `automationQueue` | `queue.ts:240` | Worker | NO | EXTRACTION | QUEUE | NO | Code review | **RB-05** |
-| **FEAT-153** | ENG-093 | Sourcing Predictive Analytics | **TARGET** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
-| **FEAT-154** | ENG-093 | Client Dispute Risk Scoring | **TARGET** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
+| **FEAT-153** | ENG-093 | Sourcing Predictive Analytics | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
+| **FEAT-154** | ENG-093 | Client Dispute Risk Scoring | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
 
 ---
 
@@ -352,15 +346,15 @@ DOMAINS OVERVIEW:
 | **FEAT-159** | ENG-096 | AWS S3 Compatible Private Storage Adapter| **CURRENT-VERIFIED** | S3 API | `privateStorage.ts` | System | NO | N/A | N/A | YES | `privateStorage.test.ts`| None |
 | **FEAT-160** | ENG-097 | EICAR Test String Malware Signature Check| **CURRENT-VERIFIED** | Memory | `documentScanner.ts` | System | NO | N/A | N/A | YES | `documentScanner.test.ts`| None |
 | **FEAT-161** | ENG-097 | Executable Header (ELF/MZ) Block Check | **CURRENT-VERIFIED** | Memory | `documentScanner.ts` | System | NO | N/A | N/A | YES | `documentScanner.test.ts`| None |
-| **FEAT-162** | ENG-098 | Relational SQL Filter & Search Engine | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-163** | ENG-098 | Elasticsearch / Vector Search | **TARGET** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
+| **FEAT-162** | ENG-098 | Relational SQL Filter & Search Engine | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-163** | ENG-098 | Elasticsearch / Vector Search | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
 | **FEAT-164** | ENG-099 | tRPC End-to-End Type-Safe API Graph | **CURRENT-VERIFIED** | tRPC Router | `server/routers.ts` | Procedure | NO | N/A | N/A | NO | Suite-wide | None |
-| **FEAT-165** | ENG-100 | Standardized Exception Sanitization | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-166** | ENG-101 | Fastify Structured Pino Logging | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-167** | ENG-102 | HTTP `/healthz` Health Check Endpoint | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-168** | ENG-103 | Automated Database Backup Runbook | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-169** | ENG-104 | Production Builder (`build-hostinger.mjs`)| **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-170** | ENG-105 | Hostinger Mail API SDK Client | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-165** | ENG-100 | Standardized Exception Sanitization | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-166** | ENG-101 | Fastify Structured Pino Logging | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-167** | ENG-102 | HTTP `/healthz` Health Check Endpoint | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-168** | ENG-103 | Automated Database Backup Runbook | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-169** | ENG-104 | Production Builder (`build-hostinger.mjs`) | **CURRENT-VERIFIED** | dist/ bundle artifacts | scripts/build-hostinger.mjs | CLI / build | NO | N/A | N/A | NO | scripts/verify-hostinger.ts | None |
+| **FEAT-170** | ENG-105 | Hostinger Mail API SDK Client | **PARTIAL** | messages | server/services/hostingerMail.ts | internal / mail | NO | N/A | N/A | YES | server/services/hostingerMail.test.ts | External live API credential configuration unverified |
 
 ---
 
@@ -371,38 +365,38 @@ All features within Domains M, N, and O are **TARGET / MISSING** (no codebase, s
 ### 17.1 Domain M: Recruiter Marketplace (ENG-106 to ENG-113)
 | Feat ID | Engine | Feature Name | Status | DB | API / Router | Auth | Appr | AI | Auto | Audit | Tests | Blockers |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
-| **FEAT-171** | ENG-106 | Open Freelance Recruiter Directory | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-172** | ENG-107 | Public Recruiter Profile & Portfolios | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-173** | ENG-108 | Recruiter KYC & Credential Verification| **TARGET** | None | None | N/A | YES | N/A | N/A |
-| **FEAT-174** | ENG-109 | Automated Job Broadcasting & Claiming | **TARGET** | None | None | N/A | YES | TARGET | TARGET|
-| **FEAT-175** | ENG-110 | Recruiter Delivery Rating Algorithm | **TARGET** | None | None | N/A | NO | TARGET | TARGET|
-| **FEAT-176** | ENG-111 | Marketplace Split Commission Ledger | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-177** | ENG-112 | Recruiter Stripe Connect Automated Payout| **TARGET** | None | None | N/A | YES | N/A | TARGET|
-| **FEAT-178** | ENG-113 | Cross-Recruiter Candidate Anti-Poaching| **TARGET** | None | None | N/A | NO | N/A | TARGET|
+| **FEAT-171** | ENG-106 | Open Freelance Recruiter Directory | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-172** | ENG-107 | Public Recruiter Profile & Portfolios | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-173** | ENG-108 | Recruiter KYC & Credential Verification| **TARGET / MISSING** | None | None | N/A | YES | N/A | N/A |
+| **FEAT-174** | ENG-109 | Automated Job Broadcasting & Claiming | **TARGET / MISSING** | None | None | N/A | YES | TARGET | TARGET|
+| **FEAT-175** | ENG-110 | Recruiter Delivery Rating Algorithm | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET|
+| **FEAT-176** | ENG-111 | Marketplace Split Commission Ledger | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-177** | ENG-112 | Recruiter Stripe Connect Automated Payout| **TARGET / MISSING** | None | None | N/A | YES | N/A | TARGET|
+| **FEAT-178** | ENG-113 | Cross-Recruiter Candidate Anti-Poaching| **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET|
 
 ### 17.2 Domain N: International Recruitment (ENG-114 to ENG-120)
 | Feat ID | Engine | Feature Name | Status | DB | API / Router | Auth | Appr | AI | Auto | Audit | Tests | Blockers |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
-| **FEAT-179** | ENG-114 | Destination Country Legal Hiring Rules | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-180** | ENG-115 | Work Permit & Visa Application Tracker | **TARGET** | None | None | N/A | NO | N/A | TARGET|
-| **FEAT-181** | ENG-116 | Cross-Border Labor Mobility Compliance | **TARGET** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
-| **FEAT-182** | ENG-117 | Overseas Employer Verification Portal | **TARGET** | None | None | N/A | YES | N/A | N/A | NO | None | None |
-| **FEAT-183** | ENG-118 | Emigration Clearance & Passport Audit | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-184** | ENG-119 | International Placement Agency Contracts| **TARGET** | None | None | N/A | YES | N/A | N/A |
-| **FEAT-185** | ENG-120 | Country-Specific Document Checklists | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-179** | ENG-114 | Destination Country Legal Hiring Rules | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-180** | ENG-115 | Work Permit & Visa Application Tracker | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET|
+| **FEAT-181** | ENG-116 | Cross-Border Labor Mobility Compliance | **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A | NO | None | None |
+| **FEAT-182** | ENG-117 | Overseas Employer Verification Portal | **TARGET / MISSING** | None | None | N/A | YES | N/A | N/A | NO | None | None |
+| **FEAT-183** | ENG-118 | Emigration Clearance & Passport Audit | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-184** | ENG-119 | International Placement Agency Contracts| **TARGET / MISSING** | None | None | N/A | YES | N/A | N/A |
+| **FEAT-185** | ENG-120 | Country-Specific Document Checklists | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
 
 ### 17.3 Domain O: Growth & Marketing (ENG-121 to ENG-129)
 | Feat ID | Engine | Feature Name | Status | DB | API / Router | Auth | Appr | AI | Auto | Audit | Tests | Blockers |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: | :---: | :---: | :---: | :--- | :--- |
-| **FEAT-186** | ENG-121 | Overseas Salary & Demand Intelligence | **TARGET** | None | None | N/A | NO | TARGET | TARGET|
-| **FEAT-187** | ENG-122 | Recruitment Thought Leadership AI Drafter| **TARGET** | None | None | N/A | NO | TARGET | N/A |
-| **FEAT-188** | ENG-123 | High-Intent SEO Keyword Discovery | **TARGET** | None | None | N/A | NO | TARGET | TARGET|
-| **FEAT-189** | ENG-124 | Automated LinkedIn / Twitter Post Scheduler| **TARGET** | None | None | N/A | YES | N/A | TARGET|
-| **FEAT-190** | ENG-125 | Social Comment & Inbound Message Monitor| **TARGET** | None | None | N/A | NO | TARGET | TARGET|
-| **FEAT-191** | ENG-126 | Automated Prospect Ingestion (Apollo API)| **TARGET** | None | None | N/A | NO | N/A | TARGET|
-| **FEAT-192** | ENG-127 | Multi-Stage Email Drip Campaign Engine | **TARGET** | None | None | N/A | YES | TARGET | TARGET|
-| **FEAT-193** | ENG-128 | Lead Source UTM Conversion Attribution | **TARGET** | None | None | N/A | NO | N/A | N/A | NO | None | None |
-| **FEAT-194** | ENG-129 | Funnel Visitor-to-Placement Analytics | **TARGET** | None | None | N/A | NO | N/A | TARGET|
+| **FEAT-186** | ENG-121 | Overseas Salary & Demand Intelligence | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET|
+| **FEAT-187** | ENG-122 | Recruitment Thought Leadership AI Drafter| **TARGET / MISSING** | None | None | N/A | NO | TARGET | N/A |
+| **FEAT-188** | ENG-123 | High-Intent SEO Keyword Discovery | **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET|
+| **FEAT-189** | ENG-124 | Automated LinkedIn / Twitter Post Scheduler| **TARGET / MISSING** | None | None | N/A | YES | N/A | TARGET|
+| **FEAT-190** | ENG-125 | Social Comment & Inbound Message Monitor| **TARGET / MISSING** | None | None | N/A | NO | TARGET | TARGET|
+| **FEAT-191** | ENG-126 | Automated Prospect Ingestion (Apollo API)| **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET|
+| **FEAT-192** | ENG-127 | Multi-Stage Email Drip Campaign Engine | **TARGET / MISSING** | None | None | N/A | YES | TARGET | TARGET|
+| **FEAT-193** | ENG-128 | Lead Source UTM Conversion Attribution | **TARGET / MISSING** | None | None | N/A | NO | N/A | N/A | NO | None | None |
+| **FEAT-194** | ENG-129 | Funnel Visitor-to-Placement Analytics | **TARGET / MISSING** | None | None | N/A | NO | N/A | TARGET|
 
 ---
 
@@ -417,19 +411,19 @@ FOLLOW-UP → NURTURE → CONVERT → DELIVER → MEASURE → LEARN → NEXT ACT
 
 | Lifecycle Stage | Client Loop | Candidate Loop | Recruiter Loop | Business Lead Loop | Marketing Loop |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. DISCOVER** | **PARTIAL** (Manual entry) | **CURRENT-VERIFIED** (API) | **PARTIAL** (Internal invite) | **TARGET** | **TARGET** |
-| **2. RESEARCH** | **PARTIAL** (Manual signal) | **CURRENT-VERIFIED** (CV parse) | **TARGET** | **TARGET** | **TARGET** |
-| **3. QUALIFY** | **CURRENT-VERIFIED** (KYB doc)| **CURRENT-VERIFIED** (Dedup) | **CURRENT-VERIFIED** (Role)| **TARGET** | **TARGET** |
-| **4. PRIORITIZE** | **PARTIAL** (Pipeline state)| **CURRENT-VERIFIED** (Match) | **TARGET** | **TARGET** | **TARGET** |
-| **5. CONTACT** | **CURRENT-VERIFIED** (Outreach)| **CURRENT-VERIFIED** (Outreach)| **CURRENT-VERIFIED** (Email)| **TARGET** | **TARGET** |
-| **6. CONVERSE** | **PARTIAL** (RB-10 threading) | **PARTIAL** (RB-10 threading) | **PARTIAL** (Hostinger Mail) | **TARGET** | **TARGET** |
-| **7. FOLLOW-UP** | **PARTIAL** (Manual tasks) | **UNWIRED** (RB-05 reminders) | **TARGET** | **TARGET** | **TARGET** |
-| **8. NURTURE** | **TARGET** | **TARGET** | **TARGET** | **TARGET** | **TARGET** |
-| **9. CONVERT** | **ACTIVE-DEFECT** (RB-08 bypass)| **PARTIAL** (RB-07 approval)| **CURRENT-VERIFIED** (Accept)| **TARGET** | **TARGET** |
-| **10. DELIVER** | **CURRENT-VERIFIED** (Jobs) | **CURRENT-VERIFIED** (Shortlist)| **CURRENT-VERIFIED** (Screen)| **TARGET** | **TARGET** |
-| **11. MEASURE** | **PARTIAL** (KPI dashboard) | **CURRENT-VERIFIED** (Feedback)| **TARGET** | **TARGET** | **TARGET** |
-| **12. LEARN** | **TARGET** | **TARGET** | **TARGET** | **TARGET** | **TARGET** |
-| **13. NEXT ACTION**| **TARGET** | **TARGET** | **TARGET** | **TARGET** | **TARGET** |
+| **1. DISCOVER** | **PARTIAL** (Manual entry) | **CURRENT-VERIFIED** (API) | **PARTIAL** (Internal invite) | **TARGET / MISSING** | **TARGET** |
+| **2. RESEARCH** | **PARTIAL** (Manual signal) | **CURRENT-VERIFIED** (CV parse) | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
+| **3. QUALIFY** | **CURRENT-VERIFIED** (KYB doc)| **CURRENT-VERIFIED** (Dedup) | **CURRENT-VERIFIED** (Role)| **TARGET / MISSING** | **TARGET** |
+| **4. PRIORITIZE** | **PARTIAL** (Pipeline state)| **CURRENT-VERIFIED** (Match) | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
+| **5. CONTACT** | **CURRENT-VERIFIED** (Outreach)| **CURRENT-VERIFIED** (Outreach)| **CURRENT-VERIFIED** (Email)| **TARGET / MISSING** | **TARGET** |
+| **6. CONVERSE** | **PARTIAL** (RB-10 threading) | **PARTIAL** (RB-10 threading) | **PARTIAL** (Hostinger Mail) | **TARGET / MISSING** | **TARGET** |
+| **7. FOLLOW-UP** | **PARTIAL** (Manual tasks) | **UNWIRED** (RB-05 reminders) | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
+| **8. NURTURE** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
+| **9. CONVERT** | **ACTIVE-DEFECT** (RB-08 bypass)| **PARTIAL** (RB-07 approval)| **CURRENT-VERIFIED** (Accept)| **TARGET / MISSING** | **TARGET** |
+| **10. DELIVER** | **CURRENT-VERIFIED** (Jobs) | **CURRENT-VERIFIED** (Shortlist)| **CURRENT-VERIFIED** (Screen)| **TARGET / MISSING** | **TARGET** |
+| **11. MEASURE** | **PARTIAL** (KPI dashboard) | **CURRENT-VERIFIED** (Feedback)| **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
+| **12. LEARN** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
+| **13. NEXT ACTION**| **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** | **TARGET** | **TARGET / MISSING** |
 
 ---
 
@@ -496,9 +490,9 @@ Mapping of features to canonical business scenarios from `docs/PLATFORM_SOURCE_O
 | **SCEN-19** | AI Candidate-Job Match Scoring | FEAT-068, 069 | **CURRENT-VERIFIED** | Fully verified |
 | **SCEN-20** | AI Cold Outreach Drafting | FEAT-076, 077 | **CURRENT-VERIFIED** | Fully verified |
 | **SCEN-21** | Automation Queue Execution | FEAT-131, 132, 133, 136 | **PARTIAL / RELEASE-BLOCKED** | RB-05 |
-| **SCEN-22** | Workspace Emergency Stop | FEAT-141 | **TARGET** | Target capability |
+| **SCEN-22** | Workspace Emergency Stop | FEAT-141 | **TARGET / MISSING** | Target capability |
 | **SCEN-23** | Production Startup & DB Ping | FEAT-155, 156 | **CURRENT-VERIFIED** | Fully verified |
-| **SCEN-24** | Hostinger Deploy & Bundle Asset | FEAT-169 | **TARGET** | Target capability |
+| **SCEN-24** | Hostinger Deploy & Bundle Asset | FEAT-169 | **TARGET / MISSING** | Target capability |
 
 ---
 
@@ -509,7 +503,7 @@ Mapping of features to canonical business scenarios from `docs/PLATFORM_SOURCE_O
 | **READY** | Implemented, tested, and satisfies production safety invariants | 81 Features (e.g. FEAT-001, 006, 007, 008, 009, 010, 011, 013, 017, 018, 019, 020, 021, 026, 027, 028, 029, 030, 031, 034, 035, 036, 037, 038, 039, 040, 041, 042, 043, 044, 045, 046, 047, 049, 050, 051, 052, 053, 054, 055, 058, 059, 060, 061, 062, 063, 064, 065, 068, 069, 071, 072, 076, 077, 079, 080, 081, 087, 092, 093, 094, 104, 105, 106, 107, 112, 113, 114, 115, 116, 117, 120, 121, 124, 125, 131, 132, 142, 144, 155, 156, 157, 158, 159, 160, 164) | Production capable on Fastify runtime |
 | **READY-WITH-BLOCKERS** | Feature core works, but boundary is compromised by an active release blocker | 40 Features (14 ACTIVE-DEFECT + 26 PARTIAL) | Blocked from production release until remediated |
 | **UNWIRED** | Declared in queue or prompt, but missing runtime handler | 5 Features (FEAT-103, FEAT-126, FEAT-127, FEAT-151, FEAT-152) | Results trapped in database; side-effects inert |
-| **TARGET** | Conceptual roadmap feature with no codebase implementation | 68 Features (Domains M, N, O, and target features in B, C, D, E, F, G, H, I, J, K, L) | Excluded from current production release scope |
+| **TARGET / MISSING** | Conceptual roadmap feature with no codebase implementation | 68 Features (Domains M, N, O, and target features in B, C, D, E, F, G, H, I, J, K, L) | Excluded from current production release scope |
 
 ---
 

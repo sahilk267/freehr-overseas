@@ -57,15 +57,15 @@ In addition to the operational status token, each engine is assigned an architec
 ### 1.4 Master Engine Counts & Implementation Statistics
 
 - **TOTAL MASTER ENGINE COUNT**: **129**
-- **CURRENT-VERIFIED ENGINE COUNT**: **36**
-- **PARTIAL ENGINE COUNT**: **25**
+- **CURRENT-VERIFIED ENGINE COUNT**: **42**
+- **PARTIAL ENGINE COUNT**: **31**
 - **ACTIVE-DEFECT ENGINE COUNT**: **11**
 - **UNWIRED ENGINE COUNT**: **4**
-- **TARGET / MISSING ENGINE COUNT**: **53**
+- **TARGET / MISSING ENGINE COUNT**: **41**
 - **TOTAL ARCHITECTURAL DOMAINS**: **15**
 
 **Mathematical Reconciliation**:  
-`36 (CURRENT-VERIFIED) + 25 (PARTIAL) + 11 (ACTIVE-DEFECT) + 4 (UNWIRED) + 53 (TARGET / MISSING) = 129 Engines`
+`42 (CURRENT-VERIFIED) + 31 (PARTIAL) + 11 (ACTIVE-DEFECT) + 4 (UNWIRED) + 41 (TARGET / MISSING) = 129 Engines`
 
 ---
 
@@ -147,6 +147,24 @@ Cross-Cutting Layers:
 - **AI Intelligence Layer** (OpenRouter Gateway, CV Parsing, Semantic Matching, Reply Classification) feeds into Candidate, Matching, and Outreach engines.
 - **Automation Layer** (Fastify CRON_SECRET Scheduler, Priority Queue, Emergency Stop) drives background parsing, reminder scanning, and queue execution.
 
+### 3.1 Architectural Taxonomy Disambiguation (Domain vs. Intelligence vs. Platform)
+To eliminate duplicate capability ownership and false `TARGET / MISSING` classifications, the 129 engines enforce strict separation of concerns across 3 functional tiers:
+1. **Domain Engines (Business Logic, State Mutation & Database Persistence)**:
+   - `ENG-031` (Resume Parsing Engine): File ingestion, MIME validation, document storage, and raw text extraction (`candidateDocuments`).
+   - `ENG-037` (Candidate Search Engine): Candidate-scoped SQL filtering over structured fields (`name`, `headline`, `location`).
+   - `ENG-038` (Matching Engine): Deterministic SQL rules matching, threshold calculation, and `ruleScore` assignment.
+   - `ENG-042` (Outreach Engine): Communication dispatch, outbound message approval requirement, and delivery tracking.
+2. **AI Intelligence Engines (Model Ingestion, Prompt Execution & Semantic Inference)**:
+   - `ENG-085` (CV Intelligence Engine): AI LLM entity extraction pipeline (`parse_cv` in `queue.ts`), OpenRouter prompts, and JSON candidate profiling (`parsedData`).
+   - `ENG-087` (Candidate Matching Intelligence Engine): AI semantic score evaluation (`score_match` in `queue.ts`), OpenRouter prompts, computes `semanticScore`, `confidence`, and evidence strings.
+   - `ENG-089` (Outreach Intelligence Engine): AI personalized cold outreach copy generation (`draft_outreach` in `queue.ts`), OpenRouter prompts, saves draft to `messages` as `draft_ready`.
+   - `ENG-090` (Reply Classification Engine): AI inbound sentiment and opt-out classification (`classify_reply` in `queue.ts`), automatic suppression and candidate DNC flagging.
+3. **Platform Infrastructure Engines (Runtime & Hosting)**:
+   - `ENG-098` (Platform Search Engine): Generalized cross-platform full-text / vector search engine (Roadmap TARGET; distinct from candidate SQL search `ENG-037`).
+   - `ENG-102` (Health / Readiness Engine): Operational health endpoint at `GET /api/health` in `server/hostinger.ts` (PARTIAL; standard `/healthz` target).
+   - `ENG-104` (Deployment Engine): Hostinger production builder (`scripts/build-hostinger.mjs`) and bundle runtime (`dist/hostinger.js`) (CURRENT-VERIFIED).
+   - `ENG-105` (Integration Engine): Hostinger Mail SDK, OpenRouter SDK, and S3 SDK integration adapters (PARTIAL).
+
 ---
 
 ## 4. Master Engine Status Summary Table (All 129 Engines)
@@ -215,7 +233,7 @@ Cross-Cutting Layers:
 | **ENG-060** | Compliance / Risk | Compliance Rule Engine | CURRENT-VERIFIED | AI Safety Rails | None |
 | **ENG-061** | Compliance / Risk | Privacy Engine | CURRENT-VERIFIED | `rightsRequests` Table | None |
 | **ENG-062** | Compliance / Risk | Data Retention Engine | TARGET / MISSING | Retention Config | None (Target capability) |
-| **ENG-063** | Compliance / Risk | Consent Evidence Engine | TARGET / MISSING | `consents` Table | None (Target capability) |
+| **ENG-063** | Compliance / Risk | Consent Evidence Engine | PARTIAL | `consents` Table | `server/routers/candidates.ts` |
 | **ENG-064** | Compliance / Risk | Audit Engine | CURRENT-VERIFIED | `auditEvents` Table | None |
 | **ENG-065** | Compliance / Risk | Fraud / Risk Engine | PARTIAL | Heuristic Scanner | None |
 | **ENG-066** | Compliance / Risk | Anti-Poaching Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
@@ -226,7 +244,7 @@ Cross-Cutting Layers:
 | **ENG-071** | Communication | Conversation Engine | ACTIVE-DEFECT | `conversations` Table | RB-10 (Unmatched inbound emails create incident without notifying UI) |
 | **ENG-072** | Communication | Notification Engine | PARTIAL | Exception Alerts | None |
 | **ENG-073** | Communication | Reminder Engine | UNWIRED | `automationQueue` Jobs | RB-05 (Interview reminder queue job handler unwired in queue processor) |
-| **ENG-074** | Communication | Template Engine | TARGET / MISSING | Hardcoded Templates | None (Target capability) |
+| **ENG-074** | Communication | Template Engine | PARTIAL | Hardcoded Templates | `server/services/openrouter.ts` |
 | **ENG-075** | Communication | Message Approval Engine | PARTIAL | `messages.status` | None |
 | **ENG-076** | Automation | Scheduler Engine | CURRENT-VERIFIED | Fastify Cron Routes | None |
 | **ENG-077** | Automation | Automation Queue Engine | UNWIRED | `automationQueue` Table | RB-05 (2 of 6 job handlers in automationQueue lack execution logic) |
@@ -234,15 +252,15 @@ Cross-Cutting Layers:
 | **ENG-079** | Automation | Idempotency Engine | PARTIAL | Queue Unique Keys | None |
 | **ENG-080** | Automation | Workflow Engine | ACTIVE-DEFECT | `transitions` Maps | RB-08 (State machines lack pre-condition validation hooks before assertTransition) |
 | **ENG-081** | Automation | Event Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
-| **ENG-082** | Automation | Emergency Stop Engine | TARGET / MISSING | `workspaceSettings.emergencyStop` | None (Target capability) |
+| **ENG-082** | Automation | Emergency Stop Engine | CURRENT-VERIFIED | `workspaceSettings.emergencyStop` | `server/routers/operations.ts` |
 | **ENG-083** | AI | AI Gateway Engine | PARTIAL | OpenRouter Client | None |
 | **ENG-084** | AI | AI Model Router Engine | PARTIAL | Model Selector | None |
-| **ENG-085** | AI | CV Intelligence Engine | TARGET / MISSING | CV Extraction JSON | None (Target capability) |
+| **ENG-085** | AI | CV Intelligence Engine | CURRENT-VERIFIED | `candidateDocuments.parsedData` | `server/services/queue.ts` |
 | **ENG-086** | AI | Job Intelligence Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
-| **ENG-087** | AI | Candidate Matching Intelligence Engine | TARGET / MISSING | `matches` Evidence Scores | None (Target capability) |
+| **ENG-087** | AI | Candidate Matching Intelligence Engine | CURRENT-VERIFIED | `matches` Evidence Scores | `server/services/queue.ts` |
 | **ENG-088** | AI | Screening Intelligence Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
-| **ENG-089** | AI | Outreach Intelligence Engine | TARGET / MISSING | Outreach Draft Text | None (Target capability) |
-| **ENG-090** | AI | Reply Classification Engine | TARGET / MISSING | Sentiment & Opt-Out Tag | None (Target capability) |
+| **ENG-089** | AI | Outreach Intelligence Engine | CURRENT-VERIFIED | `messages` Table | `server/services/queue.ts` |
+| **ENG-090** | AI | Reply Classification Engine | CURRENT-VERIFIED | `suppressionList` Table | `server/services/queue.ts` |
 | **ENG-091** | AI | Interview Intelligence Engine | UNWIRED | Reminder Draft Text | RB-05 (Interview reminder text generation unwired from dispatch) |
 | **ENG-092** | AI | Invoice Intelligence Engine | UNWIRED | Invoice Reconciliation | RB-05 (reconcile_invoice in AI_JOB_TYPES has no execution handler) |
 | **ENG-093** | AI | Recruitment Analytics Intelligence Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
@@ -252,12 +270,12 @@ Cross-Cutting Layers:
 | **ENG-097** | Platform / Infra | Document Scan Engine | PARTIAL | Document Scan Metadata | None |
 | **ENG-098** | Platform / Infra | Search Engine | TARGET / MISSING | SQL Queries | None (Target capability) |
 | **ENG-099** | Platform / Infra | API Engine | PARTIAL | tRPC Route Graph | None |
-| **ENG-100** | Platform / Infra | Error Handling Engine | TARGET / MISSING | TRPCError & Fastify Handlers | None (Target capability) |
-| **ENG-101** | Platform / Infra | Logging Engine | TARGET / MISSING | Fastify Pino Logger | None (Target capability) |
-| **ENG-102** | Platform / Infra | Health / Readiness Engine | TARGET / MISSING | Health Route `/healthz` | None (Target capability) |
+| **ENG-100** | Platform / Infra | Error Handling Engine | PARTIAL | TRPCError & Fastify Handlers | `server/hostinger.ts` |
+| **ENG-101** | Platform / Infra | Logging Engine | PARTIAL | Fastify Pino Logger | `server/hostinger.ts` |
+| **ENG-102** | Platform / Infra | Health / Readiness Engine | PARTIAL | Health Route `/api/health` | `server/hostinger.ts` |
 | **ENG-103** | Platform / Infra | Backup / Recovery Engine | TARGET / MISSING | Database Dumps | None (Target capability) |
-| **ENG-104** | Platform / Infra | Deployment Engine | TARGET / MISSING | Build Artifacts (`dist/`) | None (Target capability) |
-| **ENG-105** | Platform / Infra | Integration Engine | TARGET / MISSING | External API Clients | None (Target capability) |
+| **ENG-104** | Platform / Infra | Deployment Engine | CURRENT-VERIFIED | Build Artifacts (`dist/`) | `scripts/build-hostinger.mjs` |
+| **ENG-105** | Platform / Infra | Integration Engine | PARTIAL | External API Clients | `server/services/hostingerMail.ts` |
 | **ENG-106** | Recruiter Marketplace | Recruiter Marketplace Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
 | **ENG-107** | Recruiter Marketplace | Recruiter Profile Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
 | **ENG-108** | Recruiter Marketplace | Recruiter Verification Engine | TARGET / MISSING | None (Missing) | None (Target capability) |
@@ -294,19 +312,19 @@ Cross-Cutting Layers:
 | **Domain C: Commercial** | 0 | 3 | 0 | 0 | 2 | 5 |
 | **Domain D: Job / Requirement** | 5 | 0 | 0 | 0 | 2 | 7 |
 | **Domain E: Candidate** | 10 | 0 | 0 | 0 | 1 | 11 |
-| **Domain F: Recruitment** | 4 | 7 | 3 | 0 | 0 | 14 |
-| **Domain G: Finance** | 1 | 2 | 3 | 0 | 3 | 9 |
-| **Domain H: Compliance / Risk** | 4 | 1 | 0 | 0 | 4 | 9 |
+| **Domain F: Recruitment** | 5 | 7 | 2 | 0 | 0 | 14 |
+| **Domain G: Finance** | 1 | 2 | 4 | 0 | 2 | 9 |
+| **Domain H: Compliance / Risk** | 4 | 2 | 0 | 0 | 3 | 9 |
 | **Domain I: Communication** | 1 | 3 | 2 | 1 | 0 | 7 |
-| **Domain J: Automation** | 1 | 3 | 1 | 1 | 1 | 7 |
-| **Domain K: AI** | 0 | 2 | 0 | 2 | 7 | 11 |
-| **Domain L: Platform & Infrastructure** | 1 | 3 | 0 | 0 | 8 | 12 |
+| **Domain J: Automation** | 2 | 2 | 1 | 1 | 1 | 7 |
+| **Domain K: AI** | 4 | 2 | 0 | 2 | 3 | 11 |
+| **Domain L: Platform & Infrastructure** | 1 | 9 | 0 | 0 | 2 | 12 |
 | **Domain M: Recruiter Marketplace** | 0 | 0 | 0 | 0 | 8 | 8 |
 | **Domain N: International Recruitment** | 0 | 0 | 0 | 0 | 7 | 7 |
 | **Domain O: Growth & Marketing** | 0 | 0 | 0 | 0 | 9 | 9 |
-| **TOTAL (All 15 Domains)** | **36** | **25** | **11** | **4** | **53** | **129** |
+| **TOTAL (All 15 Domains)** | **42** | **31** | **11** | **4** | **41** | **129** |
 
-*(Note: Exact status counts reconcile across all 15 domains: 36 CURRENT-VERIFIED + 25 PARTIAL + 11 ACTIVE-DEFECT + 4 UNWIRED + 53 TARGET / MISSING = 129).*
+*(Note: Exact status counts reconcile across all 15 domains: 42 CURRENT-VERIFIED + 31 PARTIAL + 11 ACTIVE-DEFECT + 4 UNWIRED + 41 TARGET / MISSING = 129).*
 
 ---
 
@@ -5550,10 +5568,10 @@ Owns and governs consent evidence engine capabilities within the Compliance / Ri
 Provide production-grade, enterprise-compliant consent evidence engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**PARTIAL** (Maturity: LEVEL 2)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Partially implemented; core consent verification enforced in candidate transitions, but immutable notice version ledger across policy updates is target.
 
 #### 6. Repository Evidence
 - Primary Evidence: `consents` Table
@@ -6452,10 +6470,10 @@ Owns and governs template engine capabilities within the Communication architect
 Provide production-grade, enterprise-compliant template engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**PARTIAL** (Maturity: LEVEL 2)
 
 #### 5. Current Implementation
-Partially implemented with functional core code, but subject to known gaps, secondary flow omissions, or active release blockers.
+Partially implemented; hardcoded system and prompt templates operational, dynamic user template CRUD is target.
 
 #### 6. Repository Evidence
 - Primary Evidence: Hardcoded Templates
@@ -7108,10 +7126,10 @@ Owns and governs emergency stop engine capabilities within the Automation archit
 Provide production-grade, enterprise-compliant emergency stop engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**CURRENT-VERIFIED** (Maturity: LEVEL 3)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Fully implemented in runtime codebase, backed by database persistence (`workspaceSettings.emergencyStop`), wired to tRPC mutation (`operations.setEmergencyStop`), queue batch bypass, UI switch, and unit tests.
 
 #### 6. Repository Evidence
 - Primary Evidence: `workspaceSettings.emergencyStop`
@@ -7354,10 +7372,10 @@ Owns and governs cv intelligence engine capabilities within the AI architectural
 Provide production-grade, enterprise-compliant cv intelligence engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**CURRENT-VERIFIED** (Maturity: LEVEL 3)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Fully implemented in runtime codebase; AI LLM entity extraction pipeline in queue (`handleAiTaskResult("parse_cv")`), OpenRouter prompt, JSON candidate extraction schema, distinct from domain file ingestion (ENG-031).
 
 #### 6. Repository Evidence
 - Primary Evidence: CV Extraction JSON
@@ -7518,10 +7536,10 @@ Owns and governs candidate matching intelligence engine capabilities within the 
 Provide production-grade, enterprise-compliant candidate matching intelligence engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**CURRENT-VERIFIED** (Maturity: LEVEL 3)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Fully implemented in runtime codebase; AI semantic match scoring in queue (`score_match`), OpenRouter prompt, generates semanticScore, confidence, evidence, missingEvidence, lowConfidence, distinct from deterministic rule matching (ENG-038).
 
 #### 6. Repository Evidence
 - Primary Evidence: `matches` Evidence Scores
@@ -7682,10 +7700,10 @@ Owns and governs outreach intelligence engine capabilities within the AI archite
 Provide production-grade, enterprise-compliant outreach intelligence engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**CURRENT-VERIFIED** (Maturity: LEVEL 3)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Fully implemented in runtime codebase; AI personalized cold outreach drafting in queue (`draft_outreach`), OpenRouter prompt, writes draft to `messages` as draft_ready with audit, distinct from dispatch sequence (ENG-042).
 
 #### 6. Repository Evidence
 - Primary Evidence: Outreach Draft Text
@@ -7764,10 +7782,10 @@ Owns and governs reply classification engine capabilities within the AI architec
 Provide production-grade, enterprise-compliant reply classification engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**CURRENT-VERIFIED** (Maturity: LEVEL 3)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Fully implemented in runtime codebase; AI sentiment and opt-out classification in queue (`classify_reply`), OpenRouter prompt, flags opt-outs, writes to suppressionList, updates candidate DNC flag and conversation status.
 
 #### 6. Repository Evidence
 - Primary Evidence: Sentiment & Opt-Out Tag
@@ -8423,7 +8441,7 @@ Provide production-grade, enterprise-compliant search engine functionality for t
 **TARGET / MISSING** (Maturity: LEVEL 0)
 
 #### 5. Current Implementation
-Partially implemented with functional core code, but subject to known gaps, secondary flow omissions, or active release blockers.
+Target product capability; no platform-wide full-text/vector search engine exists (candidate-specific SQL search is owned by Candidate domain ENG-037).
 
 #### 6. Repository Evidence
 - Primary Evidence: SQL Queries
@@ -8584,10 +8602,10 @@ Owns and governs error handling engine capabilities within the Platform / Infra 
 Provide production-grade, enterprise-compliant error handling engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**PARTIAL** (Maturity: LEVEL 2)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Partially implemented; standardized TRPCError hierarchy, Fastify error handler (`server/hostinger.ts`), and sanitized HTTP error responses operational; centralized unhandled exception registry / incident cataloging is partial.
 
 #### 6. Repository Evidence
 - Primary Evidence: TRPCError & Fastify Handlers
@@ -8666,10 +8684,10 @@ Owns and governs logging engine capabilities within the Platform / Infra archite
 Provide production-grade, enterprise-compliant logging engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**PARTIAL** (Maturity: LEVEL 2)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Partially implemented; Fastify built-in Pino structured logger active in production (`server/hostinger.ts: logger: true`); centralized external log sink / OpenTelemetry tracing is target.
 
 #### 6. Repository Evidence
 - Primary Evidence: Fastify Pino Logger
@@ -8748,29 +8766,29 @@ Owns and governs health / readiness engine capabilities within the Platform / In
 Provide production-grade, enterprise-compliant health / readiness engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**PARTIAL** (Maturity: LEVEL 2)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Partially implemented; live operational health endpoint at `GET /api/health` (`server/hostinger.ts:212`, checks DB `SELECT 1`, uptime, version; tested in `server/hostinger.test.ts`). Standard `/api/health` and `/readyz` probe aliases are target.
 
 #### 6. Repository Evidence
-- Primary Evidence: Health Route `/healthz`
+- Primary Evidence: Health Route `/api/health`
 - Downstream Integrations: Startup Ping `SELECT 1`
-- Router / Service: `server/hostinger.ts: /healthz`
+- Router / Service: `server/hostinger.ts: /api/health`
 - Database Table: None
 
 #### 7. Sub-Capabilities
 | Sub-Capability | Status | Evidence |
 | :--- | :--- | :--- |
-| Core Health / Readiness Engine | VERIFIED-TEST | Health Route `/healthz` |
-| Secondary / Edge Handling | CURRENT-VERIFIED | `server/hostinger.ts: /healthz` |
+| Core Health / Readiness Engine | VERIFIED-TEST | Health Route `/api/health` |
+| Secondary / Edge Handling | CURRENT-VERIFIED | `server/hostinger.ts: /api/health` |
 | Audit & Compliance Hook | CURRENT-VERIFIED | None (Target) |
 
 #### 8. Database Ownership
 None
 
 #### 9. API / Router Ownership
-`server/hostinger.ts: /healthz`
+`server/hostinger.ts: /api/health`
 
 #### 10. Workflow Ownership
 Health Check & Database Ping
@@ -8912,10 +8930,10 @@ Owns and governs deployment engine capabilities within the Platform / Infra arch
 Provide production-grade, enterprise-compliant deployment engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**CURRENT-VERIFIED** (Maturity: LEVEL 3)
 
 #### 5. Current Implementation
-Fully implemented in runtime codebase, backed by database persistence, wired to tRPC procedures, and validated by test suite.
+Fully implemented in runtime codebase; production builder `scripts/build-hostinger.mjs`, `package.json` build/start scripts, Fastify standalone bundle, static client asset distribution, verified by `npm run build` and `scripts/verify-hostinger.ts`.
 
 #### 6. Repository Evidence
 - Primary Evidence: Build Artifacts (`dist/`)
@@ -8994,10 +9012,10 @@ Owns and governs integration engine capabilities within the Platform / Infra arc
 Provide production-grade, enterprise-compliant integration engine functionality for the FreelanceHR Recruitment Operating System.
 
 #### 4. Current Status
-**TARGET / MISSING** (Maturity: LEVEL 0)
+**PARTIAL** (Maturity: LEVEL 2)
 
 #### 5. Current Implementation
-Partially implemented with functional core code, but subject to known gaps, secondary flow omissions, or active release blockers.
+Partially implemented; Hostinger Mail API SDK client (`server/services/hostingerMail.ts`), OpenRouter AI SDK adapter (`server/services/openrouter.ts`), AWS S3 SDK adapter (`server/services/privateStorage.ts`) operational. External runtime credential provisioning & webhook signature secret configuration unverified.
 
 #### 6. Repository Evidence
 - Primary Evidence: External API Clients
@@ -11099,14 +11117,14 @@ During the forensic consistency audit between the repository codebase and the fr
 - **Baseline Status**: **FROZEN**
 - **Total Recognized Platform Engines**: **129**
 - **Total Architectural Domains**: **15**
-- **CURRENT-VERIFIED Engines**: **36**
-- **PARTIAL Engines**: **25**
+- **CURRENT-VERIFIED Engines**: **42**
+- **PARTIAL Engines**: **31**
 - **ACTIVE-DEFECT Engines**: **11**
 - **UNWIRED Engines**: **4**
-- **TARGET / MISSING Engines**: **53**
-- **Mathematical Reconciliation**: `36 + 25 + 11 + 4 + 53 = 129`
-- **Engines with Verified Repository Evidence**: **76** (36 Current + 25 Partial + 11 Defective + 4 Unwired)
-- **Engines without Current Implementation (Target Only)**: **53** (24 in Domains M, N, O + 29 in Domains A through L)
+- **TARGET / MISSING Engines**: **41**
+- **Mathematical Reconciliation**: `42 + 31 + 11 + 4 + 41 = 129`
+- **Engines with Verified Repository Evidence**: **88** (42 Current + 31 Partial + 11 Defective + 4 Unwired)
+- **Engines without Current Implementation (Target Only)**: **41** (24 in Domains M, N, O + 17 in Domains A through L) (24 in Domains M, N, O + 29 in Domains A through L)
 - **Active Release Blockers Documented**: **7 (RB-05, RB-07, RB-08, RB-09, RB-10, RB-11, RB-12)**
 - **Historical Resolved Blockers Preserved**: **5 (RB-01, RB-02, RB-03, RB-04, RB-06)**
 - **Source of Truth Modifications**: **NONE (0 lines modified - strictly frozen)**
