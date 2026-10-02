@@ -1,7 +1,7 @@
 import { trpc } from "@/lib/trpc";
 import { COOKIE_NAME, UNAUTHED_ERR_MSG } from '@shared/const';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { httpBatchLink, TRPCClientError } from "@trpc/client";
+import { httpLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
@@ -44,8 +44,9 @@ queryClient.getQueryCache().subscribe(event => {
     const isUnauth = (error instanceof TRPCClientError && (error.data?.code === "UNAUTHORIZED" || error.data?.httpStatus === 401)) || error?.message === UNAUTHED_ERR_MSG;
     const isWarmupOrHtml = error instanceof TRPCClientError && (error.message?.includes("warming up") || error.message?.includes("temporarily unavailable"));
     const isSyntax = error instanceof SyntaxError && error.message.includes("is not valid JSON");
+    const isMissingResult = Boolean((error as any)?.message?.includes("Missing result"));
 
-    if (error && !isPending && !isUnauth && !isWarmupOrHtml && !isSyntax) {
+    if (error && !isPending && !isUnauth && !isWarmupOrHtml && !isSyntax && !isMissingResult) {
       console.error("[API Query Error]", error);
     }
   }
@@ -58,8 +59,9 @@ queryClient.getMutationCache().subscribe(event => {
     const isUnauth = (error instanceof TRPCClientError && (error.data?.code === "UNAUTHORIZED" || error.data?.httpStatus === 401)) || error?.message === UNAUTHED_ERR_MSG;
     const isWarmupOrHtml = error instanceof TRPCClientError && (error.message?.includes("warming up") || error.message?.includes("temporarily unavailable"));
     const isSyntax = error instanceof SyntaxError && error.message.includes("is not valid JSON");
+    const isMissingResult = Boolean((error as any)?.message?.includes("Missing result"));
 
-    if (error && !isUnauth && !isWarmupOrHtml && !isSyntax) {
+    if (error && !isUnauth && !isWarmupOrHtml && !isSyntax && !isMissingResult) {
       console.error("[API Mutation Error]", error);
     }
   }
@@ -67,7 +69,7 @@ queryClient.getMutationCache().subscribe(event => {
 
 const trpcClient = trpc.createClient({
   links: [
-    httpBatchLink({
+    httpLink({
       url: "/api/trpc",
       transformer: superjson as any,
       headers() {
@@ -114,29 +116,25 @@ const trpcClient = trpc.createClient({
             }
           }
 
-          const hasValidTrpcStructure = Array.isArray(parsed)
-            ? Boolean(parsed[0]?.error?.json || parsed[0]?.result)
-            : Boolean(parsed?.error?.json || parsed?.result);
+          const hasValidTrpcStructure = Boolean(parsed?.error?.json || parsed?.result || (Array.isArray(parsed) && (parsed[0]?.error?.json || parsed[0]?.result)));
 
           if (!hasValidTrpcStructure) {
             const isHtml = text.trim().startsWith("<") || contentType.includes("text/html");
             const isAuthRedirect = response.redirected || text.includes("applet-auth-bridge") || text.includes("cookie_check");
 
             if (isAuthRedirect) {
-              const synthesized = JSON.stringify([
-                {
-                  error: {
-                    json: {
-                      message: UNAUTHED_ERR_MSG,
-                      code: -32001,
-                      data: {
-                        code: "UNAUTHORIZED",
-                        httpStatus: 401,
-                      },
+              const synthesized = JSON.stringify({
+                error: {
+                  json: {
+                    message: UNAUTHED_ERR_MSG,
+                    code: -32001,
+                    data: {
+                      code: "UNAUTHORIZED",
+                      httpStatus: 401,
                     },
                   },
                 },
-              ]);
+              });
 
               return new Response(synthesized, {
                 status: 401,
@@ -157,20 +155,18 @@ const trpcClient = trpc.createClient({
               safeMessage = parsed.message || parsed.error || JSON.stringify(parsed);
             }
 
-            const synthesized = JSON.stringify([
-              {
-                error: {
-                  json: {
-                    message: safeMessage,
-                    code: -32603,
-                    data: {
-                      code: "INTERNAL_SERVER_ERROR",
-                      httpStatus: errorHttpStatus,
-                    },
+            const synthesized = JSON.stringify({
+              error: {
+                json: {
+                  message: safeMessage,
+                  code: -32603,
+                  data: {
+                    code: "INTERNAL_SERVER_ERROR",
+                    httpStatus: errorHttpStatus,
                   },
                 },
               },
-            ]);
+            });
 
             return new Response(synthesized, {
               status: errorHttpStatus,
