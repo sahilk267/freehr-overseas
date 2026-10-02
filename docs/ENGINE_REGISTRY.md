@@ -19,7 +19,7 @@
 1. **Canonical Scope**: The presence of an engine in this registry signifies: *"This is an acknowledged platform capability domain within the product architecture."*
 2. **Strict Verification**: The repository codebase, database schemas, and test suites are the sole source of implementation truth. Under no circumstances may documentation claim an engine is operational without verifiable repository citations.
 3. **No Hallucination**: Capabilities marked `TARGET` or `MISSING` have zero codebase implementation and must not be described as operational.
-4. **Aggregate Status Discipline**: An aggregate engine containing defective or partial sub-capabilities is classified as `PARTIAL` or `ACTIVE-DEFECT / RELEASE-BLOCKER`, never `CURRENT-VERIFIED`.
+4. **Engine Aggregate vs. Feature Status Discipline**: An engine evaluates a bounded domain service responsibility. When an engine's primary runtime path is intact and proven by repository tests, it may be classified as `CURRENT-VERIFIED` even if secondary, optional, or edge features are `PARTIAL`, `UNWIRED`, or `TARGET / MISSING` (e.g. ENG-007 prospect CRUD vs FEAT-014 transition defect; ENG-052 payment recording vs FEAT-103 unwired AI reconciliation). However, where an active release blocker breaks or compromises the engine's core operational integrity, the engine is strictly downgraded to `PARTIAL` or `ACTIVE-DEFECT` (e.g. ENG-012, ENG-041, ENG-047, ENG-056, ENG-080).
 
 ### 1.2 Status Vocabulary & Controlled Classifications
 Every engine is classified using the controlled status vocabulary established in `docs/PLATFORM_SOURCE_OF_TRUTH.md`:
@@ -338,18 +338,18 @@ To eliminate duplicate capability ownership and false `TARGET / MISSING` classif
 
 | Consequential Action | Domain Owner | Engine ID | Target Approval Requirement | Current Implementation Reality | Enforcement Point | Audit Action | Known Release Blocker |
 | :--- | :--- | :---: | :--- | :--- | :--- | :--- | :--- |
-| `client_onboarding` | Client Acquisition | ENG-012 | Mandatory Owner Sign-off | Direct transition bypass exists | `prospects.requestOnboardingApproval` | `company.onboarding_approved` | **RB-08** (Direct transition bypass) |
-| `candidate_share` | Recruitment | ENG-041 | Mandatory Owner Sign-off | Auto-approvable via policy engine | `matching.requestShareApproval` | `shortlist.state_changed` | **RB-07**, **RB-09** (Auto-approval bypass) |
-| `final_candidate_decision` | Candidate / Recruit. | ENG-039 | Mandatory Owner Sign-off | Explicit owner procedure enforced | `consequential.requestCandidateDecision` | `candidate.decision_approved` | None |
-| `candidate_final_decision` | Candidate / Recruit. | ENG-039 | Mandatory Owner Sign-off | Explicit owner procedure enforced | `consequential.requestCandidateDecision` | `candidate.decision_approved` | None |
-| `placement_confirmation` | Recruitment | ENG-047 | Mandatory Owner Sign-off | Auto-approvable via policy engine | `placements.transition` (`joining_confirmed`) | `placement.state_changed` | **RB-07**, **RB-09** (Auto-approval bypass) |
-| `replacement_case` | Recruitment | ENG-049 | Mandatory Owner Sign-off | Approval requested to owner | `consequential.requestReplacement` | `approval.requested` | None |
-| `invoice_issue` | Finance | ENG-051 | Mandatory Owner Sign-off | Auto-approvable via policy engine | `invoices.requestIssueApproval` | `invoice.issued` | **RB-07** |
-| `invoice_payment_status` | Finance | ENG-052 | Mandatory Owner Sign-off | Enforced via `ownerProcedure` | `invoices.recordPayment` | `invoice.payment_recorded` | None |
+| `client_onboarding` | Client Acquisition | ENG-012 | Mandatory Owner Sign-off | Direct transition bypass & auto-approval; unrouted in consequential router | `prospects.requestOnboardingApproval` | `company.onboarding_approved` | **RB-07**, **RB-08**, **RB-09** |
+| `candidate_share` | Recruitment | ENG-041 | Mandatory Owner Sign-off | Auto-approvable via policy engine; omitted from consequential router | `matching.requestShareApproval` | `shortlist.state_changed` | **RB-07**, **RB-09** |
+| `final_candidate_decision` | Candidate / Recruit. | ENG-039 | Mandatory Owner Sign-off | Workflow alias in `workflow.ts`; omitted from `consequentialActions` set (throws 404 on decide) | Unrouted alias (Omitted from consequential router) | `candidate.decision_approved` | **RB-09** |
+| `candidate_final_decision` | Candidate / Recruit. | ENG-039 | Mandatory Owner Sign-off | Explicit owner procedure implemented, but auto-approvable via policy engine | `consequential.requestCandidateDecision` | `candidate.decision_approved` | **RB-07** |
+| `placement_confirmation` | Recruitment | ENG-047 | Mandatory Owner Sign-off | Auto-approvable via policy engine; omitted from consequential router | `placements.transition` (`joining_confirmed`) | `placement.state_changed` | **RB-07**, **RB-09** |
+| `replacement_case` | Recruitment | ENG-049 | Mandatory Owner Sign-off | Explicit owner procedure implemented, but auto-approvable via policy engine | `consequential.requestReplacement` | `approval.requested` | **RB-07** |
+| `invoice_issue` | Finance | ENG-051 | Mandatory Owner Sign-off | Auto-approvable via policy engine; omitted from consequential router | `recruitment.invoices.requestIssueApproval` | `invoice.issued` | **RB-07**, **RB-09** |
+| `invoice_payment_status` | Finance | ENG-052 | Mandatory Owner Sign-off | Protected procedure (`invoices.recordPayment`) & consequential request; auto-approvable via policy | `consequential.requestInvoiceAction` | `invoice.payment_recorded` | **RB-07** |
 | `invoice_dispute` | Finance | ENG-054 | Mandatory Owner Sign-off | Auto-approvable via policy engine | `consequential.requestInvoiceAction` | `approval.requested` | **RB-07** |
 | `invoice_credit` | Finance | ENG-055 | Mandatory Owner Sign-off | Auto-approvable via policy engine | `consequential.requestInvoiceAction` | `approval.requested` | **RB-07** |
-| `invoice_write_off` | Finance | ENG-056 | Mandatory Owner Sign-off | Defective audit attribution | `consequential.requestInvoiceAction` | `approval.requested` | **RB-09** |
-| `automation_stop` | Automation / Plat. | ENG-004 | Mandatory Owner Sign-off | Enforced via `ownerProcedure` | `operations.settings.setEmergencyStop` | `automation.emergency_stopped` | None |
+| `invoice_write_off` | Finance | ENG-056 | Mandatory Owner Sign-off | No router procedure implemented; omitted from `consequential.requestInvoiceAction` and `applySideEffect` | None (Unrouted in consequential router) | `approval.requested` | **RB-09** |
+| `automation_stop` | Automation / Plat. | ENG-004 | Mandatory Owner Sign-off | Direct settings mutation on `workspaceSettings.emergencyStop` without approval routing | `operations.settings.setEmergencyStop` | `automation.emergency_stopped` | None |
 
 ---
 
@@ -5002,21 +5002,21 @@ Partially implemented with functional core code, but subject to known gaps, seco
 #### 6. Repository Evidence
 - Primary Evidence: `invoices.status = "written_off"`
 - Downstream Integrations: Consequential Router (RB-09)
-- Router / Service: `consequential.requestInvoiceAction`
+- Router / Service: None (Unrouted; omitted from consequential router) (RB-09)
 - Database Table: `invoices`, `approvals`
 
 #### 7. Sub-Capabilities
 | Sub-Capability | Status | Evidence |
 | :--- | :--- | :--- |
 | Core Write-off Engine | INCOMPLETE / ACTIVE-DEFECT | `invoices.status = "written_off"` |
-| Secondary / Edge Handling | PARTIAL | `consequential.requestInvoiceAction` |
+| Secondary / Edge Handling | PARTIAL | None (Unrouted in consequential router) (RB-09) |
 | Audit & Compliance Hook | CURRENT-VERIFIED | `approval.requested` |
 
 #### 8. Database Ownership
 `invoices`, `approvals`
 
 #### 9. API / Router Ownership
-`consequential.requestInvoiceAction`
+None (Unrouted; omitted from `consequential.requestInvoiceAction`) (RB-09)
 
 #### 10. Workflow Ownership
 Invoice Bad Debt Write-Off
@@ -5675,7 +5675,7 @@ Fully implemented in runtime codebase, backed by database persistence, wired to 
 `server/db.ts:recordAudit`, `operations.audits.list`
 
 #### 10. Workflow Ownership
-Append-Only SHA-256 Tamper-Resistant Audit Logging
+Append-Only Structured Event Logging (Cryptographic SHA-256 hash chaining is an unverified roadmap target)
 
 #### 11. State Ownership
 Immutable event log
@@ -8769,19 +8769,19 @@ Provide production-grade, enterprise-compliant health / readiness engine functio
 **PARTIAL** (Maturity: LEVEL 2)
 
 #### 5. Current Implementation
-Partially implemented; live operational health endpoint at `GET /api/health` (`server/hostinger.ts:212`, checks DB `SELECT 1`, uptime, version; tested in `server/hostinger.test.ts`). Standard `/api/health` and `/readyz` probe aliases are target.
+Partially implemented; basic operational health endpoint at `GET /api/health` (`server/hostinger.ts:212`, returns JSON status and timestamp; startup DB connectivity `SELECT 1` ping in `server/index.ts:32` tested in `server/p02b.test.ts`). Comprehensive probes with DB/uptime metrics and probe aliases (`/readyz`, `/livez`) are target.
 
 #### 6. Repository Evidence
-- Primary Evidence: Health Route `/api/health`
-- Downstream Integrations: Startup Ping `SELECT 1`
+- Primary Evidence: Health Route `GET /api/health`
+- Downstream Integrations: Startup Ping `SELECT 1` (`server/p02b.test.ts`)
 - Router / Service: `server/hostinger.ts: /api/health`
 - Database Table: None
 
 #### 7. Sub-Capabilities
 | Sub-Capability | Status | Evidence |
 | :--- | :--- | :--- |
-| Core Health / Readiness Engine | VERIFIED-TEST | Health Route `/api/health` |
-| Secondary / Edge Handling | CURRENT-VERIFIED | `server/hostinger.ts: /api/health` |
+| Core Health / Readiness Engine | CURRENT-VERIFIED | Basic JSON health route at `/api/health` |
+| Secondary / Edge Handling | PARTIAL | Startup DB ping tested in `server/p02b.test.ts`; probe aliases target |
 | Audit & Compliance Hook | CURRENT-VERIFIED | None (Target) |
 
 #### 8. Database Ownership

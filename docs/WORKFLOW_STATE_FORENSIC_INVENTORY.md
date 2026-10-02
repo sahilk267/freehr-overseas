@@ -258,7 +258,7 @@ Every state transition governed by the core workflow engine must adhere to five 
 
 #### Workflow D1: Job Intake, Quality Scoring & Lifecycle Pipeline (ENG-019 to ENG-025)
 - **Repository Evidence**: `server/routers/recruitment.ts` (`jobsRouter`), `server/workflow.ts`, `drizzle/schema.ts`.
-- **State Machine Definition** (`server/workflow.ts:19-32`):
+- **State Machine Definition** (`server/workflow.ts:19-36`):
   - `draft` → [`needs_information`, `client_confirmation`, `cancelled`]
   - `needs_information` → [`draft`, `client_confirmation`, `cancelled`]
   - `client_confirmation` → [`approved`, `needs_information`, `cancelled`]
@@ -579,7 +579,7 @@ The platform gates 12 specific operations as consequential actions (`server/work
 **Intended Governance Invariant**: Every consequential action strictly requires mandatory human owner authorization without autonomous finalization.
 **Current Enforcement Reality (RB-07, RB-08, RB-09)**: In the current repository execution path, `approvalEngine.requestOrAutoDecide()` evaluates active policy rules and permits autonomous approval (`status = "approved"`, `decisionSource = "policy"`) without human owner intervention (RB-07). Furthermore, `prospects.transition` permits direct mutation from `converted → active` bypassing onboarding approval (RB-08), and only 5 of the 12 action types are explicitly recognized in `approvalEngine` and `consequential.ts` (RB-09).
 
-### 4.2 Tamper-Resistant Audit Logging
+### 4.2 Structured Append-Only Audit Logging
 Implemented in `server/db.ts` (`recordAudit`):
 - Captures `actorType`, `actorId`, `action`, `resourceType`, `resourceId`, `previousState`, `nextState`, and JSON `metadata`.
 - Structured append-only audit event logging; cryptographic SHA-256 hash chaining is an unverified roadmap target.
@@ -592,8 +592,8 @@ Implemented in `server/db.ts` (`recordAudit`):
 | :--- | :---: | :--- | :--- | :--- | :--- |
 | **D-01** | High | `server/_core/context.ts` vs `server/hostinger.ts` | Express development context falls back to hardcoded `owner_dev` user when unauthenticated, whereas Fastify production context strictly sets `ctx.user = null`. | Unauthenticated API calls in dev mode inadvertently assume admin privileges. | Remove `owner_dev` fallback in `server/_core/context.ts` to align with Fastify strict null pattern. |
 | **D-02** | Medium | `server/routers/candidateWorkflows.ts:124-210` | `fulfillDeletion` executes multi-table cascade updates in sequential queries without an enclosing database transaction (`db.transaction`). | Partial failure during cascade could leave orphaned child records in inconsistent states. | Wrap cascade deletions inside a single atomic Drizzle transaction. |
-| **D-03** | Medium | `server/services/queue.ts:120-145` | Queue worker locks jobs using in-memory timestamp comparisons rather than atomic database row-level locking (`SELECT ... FOR UPDATE`). | Potential race condition if multiple server worker instances run simultaneously. | Introduce `FOR UPDATE SKIP LOCKED` or MySQL advisory locks for queue ingestion. |
-| **D-04** | Low | `server/services/hostingerWebhook.ts:85` | Webhook payload parses inbound status with fallback string rather than validating against `messageStatus` enum. | Malformed webhook payloads could insert unexpected status strings. | Validate webhook payloads against Zod enum schema before persistence. |
+| **D-03** | Medium | `server/services/queue.ts:248-266` | Queue worker locks jobs using in-memory timestamp comparisons rather than atomic database row-level locking (`SELECT ... FOR UPDATE`). | Potential race condition if multiple server worker instances run simultaneously. | Introduce `FOR UPDATE SKIP LOCKED` or MySQL advisory locks for queue ingestion. |
+| **D-04** | Low | `server/services/hostingerWebhook.ts:31,56` | Webhook payload parses inbound status with fallback string rather than validating against `messageStatus` enum. | Malformed webhook payloads could insert unexpected status strings. | Validate webhook payloads against Zod enum schema before persistence. |
 
 ---
 
