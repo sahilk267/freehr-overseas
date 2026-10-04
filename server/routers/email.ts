@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 import { approvals, conversations, emailIdentities, incidents, messages, suppressionList } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit, requireDb } from "../db";
-import { chooseThreadReference, detectOptOut, getHostingerMailApiStatus, isApprovedSenderAddress, sendViaHostingerMailApi, verifyHostingerMailApi, EMAIL_PURPOSES } from "../services/hostingerMail";
+import { chooseThreadReference, detectOptOut, getHostingerMailApiStatus, isApprovedSenderAddress, normalizeMessageRef, sendViaHostingerMailApi, verifyHostingerMailApi, EMAIL_PURPOSES } from "../services/hostingerMail";
 import { protectedProcedure, router } from "../_core/trpc";
 
 const identityInput = z.object({ email: z.string().email(), purpose: z.enum(EMAIL_PURPOSES), displayName: z.string().trim().min(2).max(160).default("FreelanceHR"), replyTo: z.string().email().optional() });
@@ -86,11 +86,18 @@ export const emailRouter = router({
       if (blocked?.active) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Recipient was suppressed before delivery." });
 
       try {
-        const result = await sendViaHostingerMailApi({ purpose: identity.purpose, to: approvedRecipient, displayName: identity.displayName, subject: message.subject ?? "", text: message.body });
+        const result = await sendViaHostingerMailApi({
+          purpose: identity.purpose,
+          to: approvedRecipient,
+          displayName: identity.displayName,
+          subject: message.subject ?? "",
+          text: message.body,
+          messageId: message.id,
+        });
         const now = new Date();
         await db.update(approvals).set({ actionedAt: now }).where(eq(approvals.id, approval.id));
         await db.update(messages).set({ status: "sent", providerMessageId: result.providerMessageId, sentAt: now }).where(eq(messages.id, message.id));
-        await recordAudit({ ownerId: ctx.user.id, actorType: "provider", actorId: "hostinger_mail_api", action: "email.sent", resourceType: "message", resourceId: message.id, previousState: message.status, nextState: "sent", metadata: { approvalId: approval.id, actionedAt: now.toISOString(), recipient: approvedRecipient } });
+        await recordAudit({ ownerId: ctx.user.id, actorType: "provider", actorId: "hostinger_mail_api", action: "email.sent", resourceType: "message", resourceId: message.id, previousState: message.status, nextState: "sent", metadata: { approvalId: approval.id, actionedAt: now.toISOString(), recipient: approvedRecipient, providerMessageId: result.providerMessageId } });
         return { success: true, providerMessageId: result.providerMessageId };
       } catch (error) {
         if (error instanceof TRPCError) throw error;
@@ -121,8 +128,105 @@ export const emailRouter = router({
       return { messageId: id, optedOut };
     }),
     recordByThread: protectedProcedure.input(z.object({ sender: z.string().email(), subject: z.string().max(255).optional(), body: z.string().trim().min(1).max(12000), providerMessageId: z.string().min(3).max(255), inReplyTo: z.string().max(255).optional(), references: z.array(z.string().max(255)).max(20).default([]) })).mutation(async ({ ctx, input }) => {
-      const db = await requireDb(); const reference = chooseThreadReference({ inReplyTo: input.inReplyTo, references: input.references || [] });
-      const parent = reference ? (await db.select().from(messages).where(and(eq(messages.ownerId, ctx.user.id), eq(messages.providerMessageId, reference))).limit(1))[0] : undefined;
+      const db = await requireDb();
+      const rawRefs = [input.inReplyTo, ...(input.references || [])].filter((r): r is string => Boolean(r && r.trim()));
+      const normalizedRefs = new Set<string>();
+      for (const r of rawRefs) {
+        normalizedRefs.add(r.trim());
+        const cleaned = normalizeMessageRef(r);
+        if (cleaned) {
+          normalizedRefs.add(cleaned);
+          normalizedRefs.add(`<${cleaned}>`);
+        }
+      }
+
+      let parent: typeof messages.$inferSelect | undefined;
+
+      // 1. Thread matching against providerMessageId or message id within the current user's workspace
+      if (normalizedRefs.size > 0) {
+        const refList = Array.from(normalizedRefs);
+        for (const ref of refList) {
+          const match = (
+            await db
+              .select()
+              .from(messages)
+              .where(and(eq(messages.ownerId, ctx.user.id), or(eq(messages.providerMessageId, ref), eq(messages.id, ref))))
+              .limit(1)
+          )[0];
+          if (match) {
+            parent = match;
+            break;
+          }
+        }
+      }
+
+      // 2. Fallback matching by sender email when headers are absent
+      if (!parent && input.sender) {
+        const candidateConvs = await db
+          .select()
+          .from(conversations)
+          .where(
+            and(
+              eq(conversations.ownerId, ctx.user.id),
+              inArray(conversations.status, ["open", "reply_received", "waiting"])
+            )
+          )
+          .limit(10);
+
+        const matchedConvs: typeof conversations.$inferSelect[] = [];
+        for (const conv of candidateConvs) {
+          const msgs = await db
+            .select()
+            .from(messages)
+            .where(and(eq(messages.ownerId, ctx.user.id), eq(messages.conversationId, conv.id)))
+            .limit(10);
+          const hasSender = msgs.some(m =>
+            m.body.toLowerCase().includes(input.sender.toLowerCase()) ||
+            (m.idempotencyKey && m.idempotencyKey.includes(input.sender.toLowerCase()))
+          );
+          if (hasSender) {
+            matchedConvs.push(conv);
+          }
+        }
+
+        if (matchedConvs.length === 1) {
+          const lastMsg = (
+            await db
+              .select()
+              .from(messages)
+              .where(and(eq(messages.ownerId, ctx.user.id), eq(messages.conversationId, matchedConvs[0].id)))
+              .orderBy(desc(messages.createdAt))
+              .limit(1)
+          )[0];
+          if (lastMsg) parent = lastMsg;
+        } else if (matchedConvs.length > 1) {
+          const incidentId = createId("inc_");
+          await db.insert(incidents).values({
+            id: incidentId,
+            ownerId: ctx.user.id,
+            incidentType: "ambiguous_inbound_email",
+            severity: "medium",
+            status: "detected",
+            affectedResourceType: "email",
+            affectedResourceId: input.providerMessageId,
+            summary: `Inbound mail matched multiple active conversations (${matchedConvs.length}) for sender ${input.sender}.`,
+          });
+          await recordAudit({
+            ownerId: ctx.user.id,
+            actorType: "provider",
+            actorId: "inbound_mail",
+            action: "email.inbound_ambiguous",
+            resourceType: "email",
+            resourceId: input.providerMessageId,
+            metadata: { incidentId, matchingConversationsCount: matchedConvs.length },
+          });
+          throw new TRPCError({
+            code: "PRECONDITION_FAILED",
+            message: "Inbound mail match was ambiguous across multiple conversations and has been routed to the exception center.",
+          });
+        }
+      }
+
       if (!parent) {
         const incidentId = createId("inc_");
         await db.insert(incidents).values({ id: incidentId, ownerId: ctx.user.id, incidentType: "unmatched_inbound_email", severity: "medium", status: "detected", affectedResourceType: "email", affectedResourceId: input.providerMessageId, summary: "Inbound mail did not contain a recognized message thread reference." });

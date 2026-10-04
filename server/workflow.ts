@@ -156,21 +156,159 @@ export function assertTransition(resource: keyof typeof transitions, from: strin
   }
 }
 
-export function isConsequentialAction(actionType: string) {
-  return new Set([
-    "client_onboarding",
-    "candidate_share",
-    "final_candidate_decision",
-    "candidate_final_decision",
-    "placement_confirmation",
-    "replacement_case",
-    "invoice_issue",
-    "invoice_payment_status",
-    "invoice_dispute",
-    "invoice_credit",
-    "invoice_write_off",
-    "automation_stop",
-  ]).has(actionType);
+export interface ConsequentialActionDefinition {
+  key: string;
+  aliasOf?: string;
+  description: string;
+  resourceType: string;
+  canRequest: boolean;
+  requiresApproval: boolean;
+  allowAutoApproval: boolean;
+  hasSideEffect: boolean;
+  sideEffectIdempotent: boolean;
+}
+
+export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialActionDefinition> = {
+  client_onboarding: {
+    key: "client_onboarding",
+    description: "Activate converted company into verified client status",
+    resourceType: "company",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  candidate_share: {
+    key: "candidate_share",
+    description: "Share candidate profile/shortlist with client company",
+    resourceType: "shortlist",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  candidate_final_decision: {
+    key: "candidate_final_decision",
+    description: "Final progression or rejection decision for a screened candidate",
+    resourceType: "screening",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  final_candidate_decision: {
+    key: "final_candidate_decision",
+    aliasOf: "candidate_final_decision",
+    description: "Canonical alias for candidate_final_decision",
+    resourceType: "screening",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  placement_confirmation: {
+    key: "placement_confirmation",
+    description: "Confirm candidate joining and activate placement guarantee",
+    resourceType: "placement",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  replacement_case: {
+    key: "replacement_case",
+    description: "Trigger commercial replacement obligation for departed candidate",
+    resourceType: "placement",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  invoice_issue: {
+    key: "invoice_issue",
+    description: "Issue commercial invoice to client for placement fees",
+    resourceType: "invoice",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  invoice_payment_status: {
+    key: "invoice_payment_status",
+    description: "Update payment status of issued invoice",
+    resourceType: "invoice",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  invoice_dispute: {
+    key: "invoice_dispute",
+    description: "Record dispute against an issued invoice",
+    resourceType: "invoice",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  invoice_credit: {
+    key: "invoice_credit",
+    description: "Credit note or credit reversal on an invoice",
+    resourceType: "invoice",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: true,
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  invoice_write_off: {
+    key: "invoice_write_off",
+    description: "Write off uncollectible debt on an overdue invoice",
+    resourceType: "invoice",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+  automation_stop: {
+    key: "automation_stop",
+    description: "Emergency circuit-breaker halt of background automation",
+    resourceType: "workspace",
+    canRequest: true,
+    requiresApproval: true,
+    allowAutoApproval: false, // Emergency action must not be auto-approved
+    hasSideEffect: true,
+    sideEffectIdempotent: true,
+  },
+};
+
+export const CANONICAL_CONSEQUENTIAL_ACTION_KEYS = Object.keys(
+  CANONICAL_CONSEQUENTIAL_ACTIONS
+) as ReadonlyArray<string>;
+
+export const CONSEQUENTIAL_ACTION_TYPES = new Set(CANONICAL_CONSEQUENTIAL_ACTION_KEYS);
+
+export function isConsequentialAction(actionType: string): boolean {
+  return CONSEQUENTIAL_ACTION_TYPES.has(actionType);
+}
+
+export function getConsequentialActionDefinition(actionType: string): ConsequentialActionDefinition | null {
+  const def = CANONICAL_CONSEQUENTIAL_ACTIONS[actionType];
+  if (!def) return null;
+  if (def.aliasOf && CANONICAL_CONSEQUENTIAL_ACTIONS[def.aliasOf]) {
+    return CANONICAL_CONSEQUENTIAL_ACTIONS[def.aliasOf];
+  }
+  return def;
 }
 
 export const SENSITIVE_TERMS = [

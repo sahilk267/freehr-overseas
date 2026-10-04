@@ -1,16 +1,17 @@
 import { and, asc, eq, inArray, lte, notInArray, sql } from "drizzle-orm";
-import { aiModelRoutes, aiUsage, approvals, automationQueue, candidateDocuments, candidates, contacts, conversations, matches, messages, suppressionList, workspaceSettings } from "../../drizzle/schema";
+import { aiModelRoutes, aiUsage, approvals, automationQueue, candidateDocuments, candidates, contacts, conversations, interviews, invoices, matches, messages, suppressionList, workspaceSettings } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit, requireDb } from "../db";
 import { OpenRouterConfigurationError, OpenRouterTransientError, OpenRouterValidationError, type AiTaskType } from "./openrouter";
 import { runControlledAiTask } from "./aiRouting";
 import { scanCandidateDocument } from "./documentScanner";
 import { applySideEffect } from "./approvalEngine";
+import { assertTransition } from "../workflow";
 
 const AI_JOB_TYPES = new Set<AiTaskType>(["classify_reply", "draft_outreach", "parse_cv", "score_match", "send_reminder", "reconcile_invoice"]);
 const calculateBackoff = (attempts: number) => Math.min(60 * 60 * 1000, 30_000 * 2 ** Math.max(0, attempts - 1));
 export const withinDailyAiBudget = (used: number, limit: number) => used < limit;
 
-async function handleAiTaskResult(
+export async function handleAiTaskResult(
   job: typeof automationQueue.$inferSelect,
   result: unknown,
   selectedModel: string,
@@ -235,6 +236,128 @@ async function handleAiTaskResult(
           recommendation: matchScore.recommendation,
         },
       });
+    }
+  } else if (job.jobType === "send_reminder") {
+    const interviewId = payload.interviewId ? String(payload.interviewId) : null;
+    const reminder = result as {
+      subject?: string;
+      body?: string;
+      channel?: "email" | "whatsapp" | "sms";
+      sendAfter?: string | null;
+    };
+
+    if (interviewId && reminder) {
+      const interview = (
+        await db
+          .select()
+          .from(interviews)
+          .where(and(eq(interviews.id, interviewId), eq(interviews.ownerId, ownerId)))
+          .limit(1)
+      )[0];
+
+      if (interview) {
+        // Enforce idempotent state transition: update status to reminder_sent if currently confirmed
+        if (interview.status === "confirmed") {
+          await db
+            .update(interviews)
+            .set({
+              status: "reminder_sent",
+              reminderSentAt: interview.reminderSentAt ?? new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(interviews.id, interviewId));
+        }
+
+        // Create draft reminder message if body is provided
+        if (reminder.body) {
+          const reminderMsgId = createId("msg_rem_");
+          await db.insert(messages).values({
+            id: reminderMsgId,
+            ownerId,
+            companyId: interview.companyId,
+            candidateId: interview.candidateId,
+            channel: reminder.channel ?? "email",
+            direction: "outbound",
+            status: "draft_ready",
+            subject: reminder.subject ?? "Interview Reminder",
+            body: reminder.body,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+
+        await recordAudit({
+          ownerId,
+          actorType: "ai",
+          actorId: selectedModel,
+          action: "interview.reminder_sent",
+          resourceType: "interview",
+          resourceId: interviewId,
+          previousState: interview.status,
+          nextState: interview.status === "confirmed" ? "reminder_sent" : interview.status,
+          metadata: {
+            channel: reminder.channel,
+            subject: reminder.subject,
+            sendAfter: reminder.sendAfter,
+          },
+        });
+      }
+    }
+  } else if (job.jobType === "reconcile_invoice") {
+    const invoiceId = payload.invoiceId ? String(payload.invoiceId) : null;
+    const reconciliation = result as {
+      status?: "payment_pending" | "partially_paid" | "paid" | "overdue" | "disputed" | "needs_owner_review";
+      confidence?: number;
+      rationale?: string;
+    };
+
+    if (invoiceId && reconciliation) {
+      const invoice = (
+        await db
+          .select()
+          .from(invoices)
+          .where(and(eq(invoices.id, invoiceId), eq(invoices.ownerId, ownerId)))
+          .limit(1)
+      )[0];
+
+      if (invoice) {
+        let nextInvoiceStatus = invoice.status;
+        // Invariant: Do not silently alter financial truth without authority.
+        // Only deterministic, non-monetary aging status ("overdue") can transition automatically if valid and confidence >= 80.
+        // Payment confirmation ("paid") or dispute ("disputed") require governed owner authorization or verified payment events.
+        if (reconciliation.status === "overdue" && (reconciliation.confidence ?? 0) >= 80) {
+          try {
+            assertTransition("invoice", invoice.status, "overdue");
+            nextInvoiceStatus = "overdue";
+            await db
+              .update(invoices)
+              .set({
+                status: nextInvoiceStatus,
+                updatedAt: new Date(),
+              })
+              .where(eq(invoices.id, invoiceId));
+          } catch {
+            // If transition not permitted from current state, maintain state
+          }
+        }
+
+        await recordAudit({
+          ownerId,
+          actorType: "ai",
+          actorId: selectedModel,
+          action: "invoice.reconciled",
+          resourceType: "invoice",
+          resourceId: invoiceId,
+          previousState: invoice.status,
+          nextState: nextInvoiceStatus,
+          metadata: {
+            suggestedStatus: reconciliation.status,
+            confidence: reconciliation.confidence,
+            rationale: reconciliation.rationale,
+            appliedStatusChange: nextInvoiceStatus !== invoice.status,
+          },
+        });
+      }
     }
   }
 }

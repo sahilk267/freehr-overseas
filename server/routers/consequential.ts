@@ -6,7 +6,7 @@ import { createId, recordAudit, requireDb } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 import { applyApprovalDecision, requestOrAutoDecide } from "../services/approvalEngine";
 
-const consequentialActions = new Set(["candidate_final_decision", "replacement_case", "invoice_payment_status", "invoice_dispute", "invoice_credit"]);
+import { isConsequentialAction } from "../workflow";
 
 async function requestApproval(
   ctx: {
@@ -48,19 +48,37 @@ export const consequentialRouter = router({
     if (!placement) throw new TRPCError({ code: "NOT_FOUND", message: "Placement was not found." });
     return { approvalId: await requestApproval(ctx, "replacement_case", "placement", placement.id, "Replacement cases change commercial obligations and require owner approval.", { reason: input.reason }) };
   }),
-  requestInvoiceAction: protectedProcedure.input(z.object({ invoiceId: z.string().min(4), action: z.enum(["payment_status", "dispute", "credit"]), status: z.enum(["payment_pending", "partially_paid", "paid", "overdue"]).optional(), evidence: z.string().trim().min(8).max(3000) })).mutation(async ({ ctx, input }) => {
+  requestInvoiceAction: protectedProcedure.input(z.object({ invoiceId: z.string().min(4), action: z.enum(["payment_status", "dispute", "credit", "write_off"]), status: z.enum(["payment_pending", "partially_paid", "paid", "overdue"]).optional(), evidence: z.string().trim().min(8).max(3000) })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     const invoice = (await db.select().from(invoices).where(and(eq(invoices.id, input.invoiceId), eq(invoices.ownerId, ctx.user.id))).limit(1))[0];
     if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice was not found." });
     if (input.action === "payment_status" && !input.status) throw new TRPCError({ code: "BAD_REQUEST", message: "A payment state is required." });
-    const actionType = input.action === "payment_status" ? "invoice_payment_status" : input.action === "dispute" ? "invoice_dispute" : "invoice_credit";
+    const actionType = input.action === "payment_status"
+      ? "invoice_payment_status"
+      : input.action === "dispute"
+        ? "invoice_dispute"
+        : input.action === "credit"
+          ? "invoice_credit"
+          : "invoice_write_off";
     return { approvalId: await requestApproval(ctx, actionType, "invoice", invoice.id, "This revenue action requires owner approval and supporting evidence.", { status: input.status, evidence: input.evidence }) };
+  }),
+  requestAutomationStop: protectedProcedure.input(z.object({ reason: z.string().trim().min(4).max(500) })).mutation(async ({ ctx, input }) => {
+    return {
+      approvalId: await requestApproval(
+        ctx,
+        "automation_stop",
+        "workspace",
+        String(ctx.user.id),
+        "Emergency halt of background automation requires owner approval.",
+        { reason: input.reason }
+      ),
+    };
   }),
   decide: protectedProcedure.input(z.object({ approvalId: z.string().min(4), decision: z.enum(["approved", "rejected"]), note: z.string().trim().max(1000).optional() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     const approval = (await db.select().from(approvals).where(and(eq(approvals.id, input.approvalId), eq(approvals.ownerId, ctx.user.id))).limit(1))[0];
-    if (!approval || !consequentialActions.has(approval.actionType)) throw new TRPCError({ code: "NOT_FOUND", message: "Consequential approval was not found." });
+    if (!approval || !isConsequentialAction(approval.actionType)) throw new TRPCError({ code: "NOT_FOUND", message: "Consequential approval was not found." });
     if (approval.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "This approval has already been decided." });
-    return applyApprovalDecision(db, approval, input.decision, ctx.user.id, input.note, "manual");
+    return applyApprovalDecision(db, approval, input.decision, ctx.user.id, input.note, "manual", "consequential");
   }),
 });

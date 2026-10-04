@@ -64,6 +64,10 @@ export function registerOAuthRoutes(app: Express) {
   });
 
   app.get("/api/auth/demo-login", async (req: Request, res: Response) => {
+    if (process.env.NODE_ENV === "production") {
+      res.status(404).json({ error: "Endpoint not available in production." });
+      return;
+    }
     try {
       const openId = "owner_dev";
       await db.upsertUser({

@@ -24,7 +24,11 @@ export async function createContext(
     user = null;
   }
 
-  if (!user) {
+  // RB-12: Unconditional owner fallback is removed.
+  // In production, missing or invalid authentication must fail closed (user remains null).
+  // Protected procedures will reject with UNAUTHORIZED (401).
+  // In non-production, only fall back if explicit DEV_FALLBACK_OWNER is enabled.
+  if (!user && process.env.NODE_ENV !== "production" && process.env.DEV_FALLBACK_OWNER === "true") {
     user = (await getUserByOpenId("owner_dev")) ?? {
       id: 1,
       openId: "owner_dev",

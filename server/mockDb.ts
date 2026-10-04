@@ -58,9 +58,30 @@ function getTableMap(store: StoreData, tableName: string) {
 }
 
 export function createMockDrizzle(store: StoreData) {
-  const db = {
+  const db: any = {
     async execute(_query?: any) {
       return [{ 1: 1 }];
+    },
+    async transaction(cb: (tx: any) => Promise<any>) {
+      // Snapshot the current store maps for transactional rollback (deep clone items)
+      const snapshot = new Map<string, Map<string | number, any>>();
+      for (const [table, map] of store.entries()) {
+        const clonedMap = new Map();
+        for (const [k, v] of map.entries()) {
+          clonedMap.set(k, { ...v });
+        }
+        snapshot.set(table, clonedMap);
+      }
+      try {
+        return await cb(db);
+      } catch (err) {
+        // Roll back store to pre-transaction snapshot
+        store.clear();
+        for (const [table, map] of snapshot.entries()) {
+          store.set(table, map);
+        }
+        throw err;
+      }
     },
     select(selection?: any) {
       let currentTable = "";

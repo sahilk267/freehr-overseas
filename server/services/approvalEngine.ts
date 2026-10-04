@@ -11,14 +11,13 @@ import {
 } from "../../drizzle/schema";
 import { createId, recordAudit, requireDb } from "../db";
 import { findMatchingRule, getPolicyGraceMinutes } from "./policyEngine";
+import {
+  CONSEQUENTIAL_ACTION_TYPES,
+  getConsequentialActionDefinition,
+  isConsequentialAction,
+} from "../workflow";
 
-export const consequentialActionTypes = new Set([
-  "candidate_final_decision",
-  "replacement_case",
-  "invoice_payment_status",
-  "invoice_dispute",
-  "invoice_credit",
-]);
+export const consequentialActionTypes = CONSEQUENTIAL_ACTION_TYPES;
 
 export interface ApprovalRecord {
   id: string;
@@ -131,8 +130,8 @@ export async function applySideEffect(
       );
   }
 
-  // 5) candidate_final_decision
-  if (approval.actionType === "candidate_final_decision") {
+  // 5) candidate_final_decision & alias final_candidate_decision
+  if (approval.actionType === "candidate_final_decision" || approval.actionType === "final_candidate_decision") {
     await db
       .update(screenings)
       .set({
@@ -185,6 +184,26 @@ export async function applySideEffect(
       })
       .where(eq(invoices.id, approval.resourceId));
   }
+
+  // 10) invoice_write_off
+  if (approval.actionType === "invoice_write_off") {
+    await db
+      .update(invoices)
+      .set({
+        status: "written_off",
+      })
+      .where(and(eq(invoices.id, approval.resourceId), eq(invoices.ownerId, approval.ownerId)));
+  }
+
+  // 11) automation_stop
+  if (approval.actionType === "automation_stop") {
+    await db
+      .update(workspaceSettings)
+      .set({
+        emergencyStop: true,
+      })
+      .where(eq(workspaceSettings.ownerId, approval.ownerId));
+  }
 }
 
 export async function applyApprovalDecision(
@@ -194,46 +213,93 @@ export async function applyApprovalDecision(
   decidedById: number,
   note?: string,
   source: "manual" | "policy" = "manual",
+  auditPrefix: "approval" | "consequential" = "approval",
 ) {
   const decidedAt = new Date();
   const finalReason = note ?? approval.reason;
 
-  // 1. Update the approvals row
-  await recordDecision(
-    db,
-    approval.id,
-    decision,
-    decidedById,
-    decidedAt,
-    finalReason,
-    source,
-  );
+  const runDecisionTransaction = async (tx: any) => {
+    // 1. Fetch current status within transaction to enforce concurrency and idempotency
+    const current = (
+      await tx
+        .select()
+        .from(approvals)
+        .where(eq(approvals.id, approval.id))
+        .limit(1)
+    )[0];
 
-  // 2. Run side-effects for all 9 action types when approved
-  if (decision === "approved") {
-    await applySideEffect(db, approval, decidedAt, decidedById);
-  }
+    if (current && current.status !== "pending") {
+      // Idempotent return if already decided with identical decision
+      if (current.status === decision) {
+        return { success: true, alreadyDecided: true };
+      }
+      throw new Error(`Approval ${approval.id} has already been decided (${current.status}).`);
+    }
 
-  // 3. Record audit event with the same shape plus source in metadata
-  const actionPrefix = consequentialActionTypes.has(approval.actionType)
-    ? "consequential"
-    : "approval";
-
-  await recordAudit({
-    ownerId: approval.ownerId,
-    actorType: "user",
-    actorId: String(decidedById),
-    action: `${actionPrefix}.${decision}`,
-    resourceType: approval.resourceType,
-    resourceId: approval.resourceId,
-    metadata: {
-      actionType: approval.actionType,
-      approvalId: approval.id,
+    // 2. Record decision in approvals row
+    await recordDecision(
+      tx,
+      approval.id,
+      decision,
+      decidedById,
+      decidedAt,
+      finalReason,
       source,
-    },
-  });
+    );
 
-  return { success: true };
+    // 3. Apply side-effect if approved
+    if (decision === "approved") {
+      await applySideEffect(tx, { ...approval, payload: current?.payload ?? approval.payload }, decidedAt, decidedById);
+    }
+
+    return { success: true };
+  };
+
+  try {
+    let result: { success: boolean; alreadyDecided?: boolean };
+    if (typeof db?.transaction === "function") {
+      result = await db.transaction(runDecisionTransaction);
+    } else {
+      result = await runDecisionTransaction(db);
+    }
+
+    // 4. Record audit on successful commit
+    await recordAudit({
+      ownerId: approval.ownerId,
+      actorType: "user",
+      actorId: String(decidedById),
+      action: `${auditPrefix}.${decision}`,
+      resourceType: approval.resourceType,
+      resourceId: approval.resourceId,
+      metadata: {
+        actionType: approval.actionType,
+        approvalId: approval.id,
+        source,
+      },
+    });
+
+    return result;
+  } catch (error) {
+    try {
+      await recordAudit({
+        ownerId: approval.ownerId,
+        actorType: "user",
+        actorId: String(decidedById),
+        action: "approval.execution_failed",
+        resourceType: approval.resourceType,
+        resourceId: approval.resourceId,
+        metadata: {
+          actionType: approval.actionType,
+          approvalId: approval.id,
+          source,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    } catch {
+      // ignore secondary audit error
+    }
+    throw error;
+  }
 }
 
 export async function requestOrAutoDecide(
@@ -261,8 +327,13 @@ export async function requestOrAutoDecide(
   )[0];
   const policyConfig = workspace?.policyConfig;
 
+  const actionDef = getConsequentialActionDefinition(actionType);
+  const allowAutoApproval = actionDef ? actionDef.allowAutoApproval : true;
+
   const safePayload = payload ?? {};
-  const matchedRule = findMatchingRule(policyConfig, actionType, safePayload);
+  const matchedRule = allowAutoApproval
+    ? findMatchingRule(policyConfig, actionType, safePayload)
+    : null;
   const shouldAutoApprove = matchedRule !== null;
 
   const approvalId = createId("apr_");

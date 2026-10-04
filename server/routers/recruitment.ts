@@ -97,7 +97,13 @@ export const prospectsRouter = router({
     const record = await db.select().from(companies).where(eq(companies.id, input.id)).limit(1);
     const company = await requireOwned(record[0], ctx.user.id, "Company");
     assertTransition("company", company.pipelineState, input.state);
-    await db.update(companies).set({ pipelineState: input.state, companyType: input.state === "active" ? "client" : company.companyType }).where(eq(companies.id, input.id));
+    if (input.state === "active") {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Direct transition to active client status is forbidden. Governed client onboarding approval is required.",
+      });
+    }
+    await db.update(companies).set({ pipelineState: input.state, companyType: company.companyType }).where(eq(companies.id, input.id));
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "company.state_changed", resourceType: "company", resourceId: input.id, previousState: company.pipelineState, nextState: input.state });
     return { success: true };
   }),

@@ -53,8 +53,9 @@ export function isPrimaryOwner(
     return true;
   }
 
-  // Always recognize dev owner identity in dev/test or local fallback
-  if (actor.openId === "owner_dev" || actorEmail === "owner@freelancehr.local") {
+  // Only recognize dev owner identity in dev/test, NEVER in strict production
+  const isStrictProduction = process.env.NODE_ENV === "production" && !process.env.VITEST;
+  if (!isStrictProduction && (actor.openId === "owner_dev" || actorEmail === "owner@freelancehr.local")) {
     return true;
   }
 

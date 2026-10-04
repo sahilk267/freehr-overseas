@@ -1,9 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, or } from "drizzle-orm";
 import { automationQueue, conversations, incidents, messages, suppressionList } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit, requireDb } from "../db";
 import { resolvePrimaryOwner } from "./primaryOwner";
-import { chooseThreadReference, detectOptOut } from "./hostingerMail";
+import { chooseThreadReference, detectOptOut, normalizeMessageRef } from "./hostingerMail";
 
 type UnknownRecord = Record<string, unknown>;
 const asRecord = (value: unknown): UnknownRecord => value && typeof value === "object" && !Array.isArray(value) ? value as UnknownRecord : {};
@@ -44,8 +44,29 @@ export async function processHostingerMailWebhook(input: { authorization?: strin
     return { statusCode: 202, body: { status: "routed_to_exception" } };
   }
   if (event.event !== "message.received") return { statusCode: 202, body: { status: "ignored", event: event.event } };
-  const reference = chooseThreadReference(event);
-  const parent = reference ? (await db.select().from(messages).where(and(eq(messages.ownerId, owner.id), eq(messages.providerMessageId, reference))).limit(1))[0] : undefined;
+  const rawRefs = [event.inReplyTo, ...(event.references || [])].filter((r): r is string => Boolean(r && r.trim()));
+  const normalizedRefs = new Set<string>();
+  for (const r of rawRefs) {
+    normalizedRefs.add(r.trim());
+    const cleaned = normalizeMessageRef(r);
+    if (cleaned) {
+      normalizedRefs.add(cleaned);
+      normalizedRefs.add(`<${cleaned}>`);
+    }
+  }
+
+  let parent: typeof messages.$inferSelect | undefined;
+  if (normalizedRefs.size > 0) {
+    const refList = Array.from(normalizedRefs);
+    for (const ref of refList) {
+      const match = (await db.select().from(messages).where(and(eq(messages.ownerId, owner.id), or(eq(messages.providerMessageId, ref), eq(messages.id, ref)))).limit(1))[0];
+      if (match) {
+        parent = match;
+        break;
+      }
+    }
+  }
+
   if (!parent) {
     const incidentId = createId("inc_");
     await db.insert(incidents).values({ id: incidentId, ownerId: owner.id, incidentType: "hostinger_mail_unmatched_event", severity: "medium", status: "detected", affectedResourceType: "email", affectedResourceId: event.providerMessageId, summary: "Hostinger Mail inbound event does not match an existing conversation." });

@@ -31,6 +31,13 @@ export function detectOptOut(text: string) {
   return /\b(stop|unsubscribe|do not contact|remove me|don't contact|dont contact)\b/i.test(text);
 }
 
+export function normalizeMessageRef(ref?: string | null): string | null {
+  if (!ref) return null;
+  const trimmed = ref.trim();
+  if (!trimmed) return null;
+  return trimmed.replace(/^<+/, "").replace(/>+$/, "");
+}
+
 export function chooseThreadReference(input: { inReplyTo?: string; references: string[] }) {
   return input.inReplyTo?.trim() || input.references.find(Boolean)?.trim() || null;
 }
@@ -56,11 +63,55 @@ export async function verifyHostingerMailApi() {
   }
 }
 
-export async function sendViaHostingerMailApi(input: { purpose: EmailPurpose; to: string; displayName: string; subject: string; text: string }) {
+export interface SendHostingerMailInput {
+  purpose: EmailPurpose;
+  to: string;
+  displayName: string;
+  subject: string;
+  text: string;
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string[];
+}
+
+export async function sendViaHostingerMailApi(input: SendHostingerMailInput) {
   const senderAddress = getSenderAddress(input.purpose);
   if (!isApprovedSenderAddress(senderAddress)) throw new Error("Selected sender is not in the approved domain allowlist.");
   const mailboxResourceId = process.env[mailboxResourceEnvKey[input.purpose]]?.trim();
   if (!mailboxResourceId) throw new Error(`Hostinger mailbox resource ID is not configured for ${input.purpose}.`);
-  await new SendApi(getClient()).sendEmail(mailboxResourceId, { to: [input.to], displayName: input.displayName, cc: [], bcc: [], subject: input.subject, text: input.text, html: "", attachments: [], inReplyTo: undefined as never, forwardOf: undefined as never });
-  return { providerMessageId: null, senderAddress, mailboxResourceId };
+
+  let response: any = null;
+  try {
+    response = await new SendApi(getClient()).sendEmail(mailboxResourceId, {
+      to: [input.to],
+      displayName: input.displayName,
+      cc: [],
+      bcc: [],
+      subject: input.subject,
+      text: input.text,
+      html: "",
+      attachments: [],
+      inReplyTo: undefined as never,
+      forwardOf: undefined as never,
+    });
+  } catch (error) {
+    throw error;
+  }
+
+  // Extract provider message ID if returned by API response/headers, otherwise format deterministic standard Message-ID
+  const rawApiId =
+    response?.data?.messageId ??
+    response?.data?.id ??
+    response?.headers?.["message-id"] ??
+    response?.headers?.["x-message-id"] ??
+    null;
+
+  const deterministicId = input.messageId
+    ? `<${input.messageId}@${approvedDomain}>`
+    : `<msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}@${approvedDomain}>`;
+
+  const providerMessageId =
+    typeof rawApiId === "string" && rawApiId.trim() ? rawApiId.trim() : deterministicId;
+
+  return { providerMessageId, senderAddress, mailboxResourceId };
 }
