@@ -60,6 +60,27 @@ export async function applySideEffect(
   decidedAt: Date,
   decidedById: number,
 ) {
+  const recognizedSideEffectActions = new Set([
+    "client_onboarding",
+    "candidate_share",
+    "placement_confirmation",
+    "invoice_issue",
+    "candidate_final_decision",
+    "final_candidate_decision",
+    "replacement_case",
+    "invoice_payment_status",
+    "invoice_dispute",
+    "invoice_credit",
+    "invoice_write_off",
+    "automation_stop",
+  ]);
+
+  if (!recognizedSideEffectActions.has(approval.actionType)) {
+    throw new Error(
+      `Unsupported consequential action side effect: "${approval.actionType}". Cannot execute unverified domain side effect.`,
+    );
+  }
+
   // 1) client_onboarding
   if (approval.actionType === "client_onboarding") {
     await db
@@ -137,7 +158,12 @@ export async function applySideEffect(
       .set({
         status: "owner_decided",
       })
-      .where(eq(screenings.id, approval.resourceId));
+      .where(
+        and(
+          eq(screenings.id, approval.resourceId),
+          eq(screenings.ownerId, approval.ownerId),
+        ),
+      );
   }
 
   // 6) replacement_case
@@ -148,7 +174,12 @@ export async function applySideEffect(
         status: "replacement_requested",
         replacementRequestedAt: decidedAt,
       })
-      .where(eq(placements.id, approval.resourceId));
+      .where(
+        and(
+          eq(placements.id, approval.resourceId),
+          eq(placements.ownerId, approval.ownerId),
+        ),
+      );
   }
 
   // 7) invoice_payment_status
@@ -160,7 +191,12 @@ export async function applySideEffect(
         status: payload?.status ?? "payment_pending",
         paidAt: payload?.status === "paid" ? decidedAt : null,
       })
-      .where(eq(invoices.id, approval.resourceId));
+      .where(
+        and(
+          eq(invoices.id, approval.resourceId),
+          eq(invoices.ownerId, approval.ownerId),
+        ),
+      );
   }
 
   // 8) invoice_dispute
@@ -172,7 +208,12 @@ export async function applySideEffect(
         status: "disputed",
         disputeReason: payload?.evidence ?? null,
       })
-      .where(eq(invoices.id, approval.resourceId));
+      .where(
+        and(
+          eq(invoices.id, approval.resourceId),
+          eq(invoices.ownerId, approval.ownerId),
+        ),
+      );
   }
 
   // 9) invoice_credit
@@ -182,7 +223,12 @@ export async function applySideEffect(
       .set({
         status: "credited",
       })
-      .where(eq(invoices.id, approval.resourceId));
+      .where(
+        and(
+          eq(invoices.id, approval.resourceId),
+          eq(invoices.ownerId, approval.ownerId),
+        ),
+      );
   }
 
   // 10) invoice_write_off

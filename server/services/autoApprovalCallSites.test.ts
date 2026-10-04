@@ -68,7 +68,7 @@ describe("Auto-approval call sites integration", () => {
       expect(foundInList?.decisionSource).toBe("manual");
     });
 
-    it("matching policy -> auto-approved, decisionSource policy, pipelineState active, companyType client", async () => {
+    it("matching policy cannot auto-approve client_onboarding (mandatory human approval)", async () => {
       await setPolicy([
         {
           id: "rule-onboarding-auto",
@@ -89,22 +89,19 @@ describe("Auto-approval call sites integration", () => {
 
       const res = await recruitmentCaller.prospects.requestOnboardingApproval({ id: companyId });
       expect(res.approvalId).toBeDefined();
-      expect(res.autoDecided).toBe(true);
+      expect(res.autoDecided).toBe(false);
 
       const [approval] = await db.select().from(approvals).where(eq(approvals.id, res.approvalId));
-      expect(approval.status).toBe("approved");
-      expect(approval.decisionSource).toBe("policy");
-      expect(approval.decidedById).toBe(ownerId);
+      expect(approval.status).toBe("pending");
+      expect(approval.decisionSource).toBe("manual");
 
       const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
-      expect(company.pipelineState).toBe("active");
-      expect(company.companyType).toBe("client");
-      expect(company.verificationState).toBe("verified");
+      expect(company.pipelineState).toBe("converted");
 
       const listed = await recruitmentCaller.approvals.list({});
       const foundInList = listed.find((a) => a.id === res.approvalId);
-      expect(foundInList?.decisionSource).toBe("policy");
-      expect(foundInList?.status).toBe("approved");
+      expect(foundInList?.decisionSource).toBe("manual");
+      expect(foundInList?.status).toBe("pending");
     });
   });
 
@@ -151,7 +148,7 @@ describe("Auto-approval call sites integration", () => {
       expect(foundInList?.decisionSource).toBe("manual");
     });
 
-    it("matching policy -> auto-approved, decisionSource policy, shortlist shared", async () => {
+    it("matching policy cannot auto-approve candidate_share (mandatory human approval)", async () => {
       await setPolicy([
         {
           id: "rule-share-auto",
@@ -186,18 +183,19 @@ describe("Auto-approval call sites integration", () => {
       });
 
       expect(res.approvalId).toBeDefined();
-      expect(res.autoDecided).toBe(true);
+      expect(res.autoDecided).toBe(false);
 
       const [approval] = await db.select().from(approvals).where(eq(approvals.id, res.approvalId));
-      expect(approval.status).toBe("approved");
-      expect(approval.decisionSource).toBe("policy");
+      expect(approval.status).toBe("pending");
+      expect(approval.decisionSource).toBe("manual");
 
       const [shortlist] = await db.select().from(shortlists).where(eq(shortlists.id, res.shortlistId));
-      expect(shortlist.status).toBe("shared");
+      expect(shortlist.status).toBe("prepared");
 
       const listed = await recruitmentCaller.approvals.list({});
       const foundInList = listed.find((a) => a.id === res.approvalId);
-      expect(foundInList?.decisionSource).toBe("policy");
+      expect(foundInList?.decisionSource).toBe("manual");
+      expect(foundInList?.status).toBe("pending");
     });
   });
 
@@ -231,7 +229,7 @@ describe("Auto-approval call sites integration", () => {
       expect(foundInList?.decisionSource).toBe("manual");
     });
 
-    it("matching policy -> auto-approved, decisionSource policy, invoice issued", async () => {
+    it("matching policy cannot auto-approve invoice_issue (mandatory human approval)", async () => {
       await setPolicy([
         {
           id: "rule-inv-auto",
@@ -253,18 +251,19 @@ describe("Auto-approval call sites integration", () => {
 
       const res = await recruitmentCaller.invoices.requestIssueApproval({ id: invoiceId });
       expect(res.approvalId).toBeDefined();
-      expect(res.autoDecided).toBe(true);
+      expect(res.autoDecided).toBe(false);
 
       const [approval] = await db.select().from(approvals).where(eq(approvals.id, res.approvalId));
-      expect(approval.status).toBe("approved");
-      expect(approval.decisionSource).toBe("policy");
+      expect(approval.status).toBe("pending");
+      expect(approval.decisionSource).toBe("manual");
 
       const [invoice] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
-      expect(invoice.status).toBe("issued");
+      expect(invoice.status).toBe("approval_pending");
 
       const listed = await recruitmentCaller.approvals.list({});
       const foundInList = listed.find((a) => a.id === res.approvalId);
-      expect(foundInList?.decisionSource).toBe("policy");
+      expect(foundInList?.decisionSource).toBe("manual");
+      expect(foundInList?.status).toBe("pending");
     });
   });
 
@@ -299,7 +298,7 @@ describe("Auto-approval call sites integration", () => {
       expect(foundInList?.decisionSource).toBe("manual");
     });
 
-    it("matching policy -> auto-approved, decisionSource policy, placement becomes joining_confirmed", async () => {
+    it("matching policy cannot auto-approve placement_confirmation (mandatory human approval)", async () => {
       await setPolicy([
         {
           id: "rule-confirm-auto",
@@ -321,20 +320,21 @@ describe("Auto-approval call sites integration", () => {
         state: "joining_confirmed",
         joiningEvidence: ["Orientation photo"],
       });
-      expect(res.approvalRequired).toBe(false);
-      expect(res.autoDecided).toBe(true);
+      expect(res.approvalRequired).toBe(true);
+      expect(res.autoDecided).toBe(false);
       expect(res.approvalId).toBeDefined();
 
       const [approval] = await db.select().from(approvals).where(eq(approvals.id, res.approvalId!));
-      expect(approval.status).toBe("approved");
-      expect(approval.decisionSource).toBe("policy");
+      expect(approval.status).toBe("pending");
+      expect(approval.decisionSource).toBe("manual");
 
       const [placement] = await db.select().from(placements).where(eq(placements.id, placementId));
-      expect(placement.status).toBe("joining_confirmed");
+      expect(placement.status).toBe("joining_pending");
 
       const listed = await recruitmentCaller.approvals.list({});
       const foundInList = listed.find((a) => a.id === res.approvalId);
-      expect(foundInList?.decisionSource).toBe("policy");
+      expect(foundInList?.decisionSource).toBe("manual");
+      expect(foundInList?.status).toBe("pending");
     });
   });
 
@@ -362,7 +362,7 @@ describe("Auto-approval call sites integration", () => {
       const [screeningManual] = await db.select().from(screenings).where(eq(screenings.id, resManual.screeningId));
       expect(screeningManual.status).toBe("decision_pending");
 
-      // 2. With policy
+      // 2. With policy -> must still require human approval
       await setPolicy([
         {
           id: "rule-candidate-decision",
@@ -379,18 +379,19 @@ describe("Auto-approval call sites integration", () => {
         rationale: "Excellent candidate auto approved via policy",
       });
       const [approvalAuto] = await db.select().from(approvals).where(eq(approvals.id, resAuto.approvalId));
-      expect(approvalAuto.status).toBe("approved");
-      expect(approvalAuto.decisionSource).toBe("policy");
+      expect(approvalAuto.status).toBe("pending");
+      expect(approvalAuto.decisionSource).toBe("manual");
 
       const [screeningAuto] = await db.select().from(screenings).where(eq(screenings.id, resAuto.screeningId));
-      expect(screeningAuto.status).toBe("owner_decided");
+      expect(screeningAuto.status).toBe("decision_pending");
 
       const listed = await recruitmentCaller.approvals.list({});
       const foundInList = listed.find((a) => a.id === resAuto.approvalId);
-      expect(foundInList?.decisionSource).toBe("policy");
+      expect(foundInList?.decisionSource).toBe("manual");
+      expect(foundInList?.status).toBe("pending");
     });
 
-    it("requestReplacement: no policy -> pending, matching policy -> auto-decided & replacement_requested", async () => {
+    it("requestReplacement: matching policy cannot auto-approve replacement_case (mandatory human approval)", async () => {
       const db = await requireDb();
       const placementId = createId("plc_rep_");
       await db.insert(placements).values({ id: placementId, ownerId, status: "guarantee_active" });
@@ -411,15 +412,14 @@ describe("Auto-approval call sites integration", () => {
       });
 
       const [approvalAuto] = await db.select().from(approvals).where(eq(approvals.id, resAuto.approvalId));
-      expect(approvalAuto.status).toBe("approved");
-      expect(approvalAuto.decisionSource).toBe("policy");
+      expect(approvalAuto.status).toBe("pending");
+      expect(approvalAuto.decisionSource).toBe("manual");
 
       const [placementAuto] = await db.select().from(placements).where(eq(placements.id, placementId));
-      expect(placementAuto.status).toBe("replacement_requested");
-      expect(placementAuto.replacementRequestedAt).toBeInstanceOf(Date);
+      expect(placementAuto.status).toBe("guarantee_active");
     });
 
-    it("requestInvoiceAction (dispute): no policy -> pending, matching policy -> auto-decided & invoice disputed", async () => {
+    it("requestInvoiceAction (dispute): matching policy cannot auto-approve invoice_dispute (mandatory human approval)", async () => {
       const db = await requireDb();
       const invoiceId = createId("inv_disp_");
       await db.insert(invoices).values({ id: invoiceId, ownerId, invoiceNumber: "INV-DISP-001", amount: 100000, status: "issued" });
@@ -440,12 +440,11 @@ describe("Auto-approval call sites integration", () => {
       });
 
       const [approvalAuto] = await db.select().from(approvals).where(eq(approvals.id, resAuto.approvalId));
-      expect(approvalAuto.status).toBe("approved");
-      expect(approvalAuto.decisionSource).toBe("policy");
+      expect(approvalAuto.status).toBe("pending");
+      expect(approvalAuto.decisionSource).toBe("manual");
 
       const [invoiceAuto] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
-      expect(invoiceAuto.status).toBe("disputed");
-      expect(invoiceAuto.disputeReason).toContain("Client claims PO number");
+      expect(invoiceAuto.status).toBe("issued");
     });
   });
 });

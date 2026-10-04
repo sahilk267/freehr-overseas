@@ -184,6 +184,49 @@ describe("Release Blocker Remediation Suite (RB-07, RB-08, RB-09, RB-10, RB-11, 
       expect(woApproval.decisionSource).toBe("manual");
     });
 
+    it("enforces mandatory human approval across all canonical consequential actions", async () => {
+      const db = await requireDb();
+      await ensureWorkspace(ownerId);
+
+      const mandatoryHumanApprovalActions = [
+        "client_onboarding",
+        "candidate_share",
+        "candidate_final_decision",
+        "final_candidate_decision",
+        "placement_confirmation",
+        "replacement_case",
+        "invoice_issue",
+        "invoice_dispute",
+        "invoice_credit",
+        "invoice_write_off",
+        "automation_stop",
+        "invoice_payment_status",
+      ];
+
+      for (const act of mandatoryHumanApprovalActions) {
+        const def = getConsequentialActionDefinition(act);
+        expect(def?.allowAutoApproval).toBe(false);
+      }
+
+      // Attempt auto-approval via policy for client_onboarding, candidate_share, invoice_issue
+      await db.update(workspaceSettings).set({
+        policyConfig: {
+          autoApprovalRules: [
+            { id: "rule-auto-onboard", actionType: "client_onboarding", conditions: [] },
+            { id: "rule-auto-share", actionType: "candidate_share", conditions: [] },
+            { id: "rule-auto-inv", actionType: "invoice_issue", conditions: [] },
+          ],
+        },
+      }).where(eq(workspaceSettings.ownerId, ownerId));
+
+      const onboardRes = await requestOrAutoDecide(ctx, "client_onboarding", "company", "cmp_dummy_reg", "Onboard", {});
+      expect(onboardRes.autoDecided).toBe(false);
+
+      const [onboardApr] = await db.select().from(approvals).where(eq(approvals.id, onboardRes.approvalId));
+      expect(onboardApr.status).toBe("pending");
+      expect(onboardApr.decisionSource).toBe("manual");
+    });
+
     it("consequential.decide recognizes all 12 consequential actions without throwing 404", async () => {
       const db = await requireDb();
       const testInvoiceId = createId("inv_conseq_");
@@ -217,6 +260,69 @@ describe("Release Blocker Remediation Suite (RB-07, RB-08, RB-09, RB-10, RB-11, 
 
       const [updatedInv] = await db.select().from(invoices).where(eq(invoices.id, testInvoiceId));
       expect(updatedInv.status).toBe("written_off");
+    });
+
+    it("fails explicitly when an unsupported or unknown consequential action is decided", async () => {
+      const db = await requireDb();
+      const fakeApprovalId = createId("apr_unsupp_");
+      await db.insert(approvals).values({
+        id: fakeApprovalId,
+        ownerId,
+        requestedBy: "system",
+        actionType: "non_existent_consequential_action",
+        resourceType: "invoice",
+        resourceId: "inv_fake",
+        status: "pending",
+        reason: "Test unsupported action",
+      });
+
+      // router rejects unknown actions
+      await expect(
+        consequentialCaller.decide({
+          approvalId: fakeApprovalId,
+          decision: "approved",
+        })
+      ).rejects.toThrow("Consequential approval was not found.");
+
+      // engine also throws explicitly rather than silently succeeding
+      await expect(
+        applySideEffect(
+          db,
+          {
+            id: fakeApprovalId,
+            ownerId,
+            actionType: "non_existent_consequential_action",
+            resourceType: "invoice",
+            resourceId: "inv_fake",
+            status: "pending",
+          },
+          new Date(),
+          ownerId
+        )
+      ).rejects.toThrow("Unsupported consequential action side effect");
+    });
+
+    it("enforces tenant isolation: caller cannot decide approvals belonging to another owner", async () => {
+      const db = await requireDb();
+      const otherOwnerId = 88888;
+      const otherApprovalId = createId("apr_cross_");
+      await db.insert(approvals).values({
+        id: otherApprovalId,
+        ownerId: otherOwnerId,
+        requestedBy: "system",
+        actionType: "invoice_write_off",
+        resourceType: "invoice",
+        resourceId: "inv_cross",
+        status: "pending",
+        reason: "Cross owner approval test",
+      });
+
+      await expect(
+        consequentialCaller.decide({
+          approvalId: otherApprovalId,
+          decision: "approved",
+        })
+      ).rejects.toThrow("Consequential approval was not found.");
     });
   });
 

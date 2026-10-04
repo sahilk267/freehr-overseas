@@ -175,7 +175,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "company",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
@@ -185,7 +185,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "shortlist",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
@@ -195,7 +195,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "screening",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
@@ -206,7 +206,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "screening",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
@@ -216,7 +216,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "placement",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
@@ -226,7 +226,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "placement",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
@@ -236,7 +236,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "invoice",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
@@ -246,7 +246,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "invoice",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
@@ -256,7 +256,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "invoice",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
@@ -266,7 +266,7 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     resourceType: "invoice",
     canRequest: true,
     requiresApproval: true,
-    allowAutoApproval: true,
+    allowAutoApproval: false, // Mandatory human authorization required
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
