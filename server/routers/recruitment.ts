@@ -515,6 +515,13 @@ export const matchingRouter = router({
     const db = await requireDb();
     const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
     await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
+    const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
+    await requireOwned(companyRows[0], ctx.user.id, "Client");
+    const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
+    const job = await requireOwned(jobRows[0], ctx.user.id, "Job");
+    if (job.companyId !== input.companyId) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "The specified job does not belong to the specified client." });
+    }
     const consentRows = await db.select().from(consents).where(and(eq(consents.ownerId, ctx.user.id), eq(consents.candidateId, input.candidateId), eq(consents.jobId, input.jobId), eq(consents.companyId, input.companyId), eq(consents.consentType, "client_sharing"), eq(consents.status, "granted"))).limit(1);
     if (!consentRows[0]) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Explicit candidate client-sharing consent is required before a shortlist can be shared." });
     const shortlistId = createId("shl_");
@@ -548,6 +555,15 @@ export const interviewsRouter = router({
   }),
   create: protectedProcedure.input(z.object({ companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).default("Asia/Kolkata"), durationMinutes: z.number().int().min(15).max(240).default(45), meetingUrl: z.string().url().optional() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
+    const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
+    await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
+    const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
+    const company = await requireOwned(companyRows[0], ctx.user.id, "Client");
+    const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
+    const job = await requireOwned(jobRows[0], ctx.user.id, "Job");
+    if (job.companyId !== company.id) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "The specified job does not belong to the specified client." });
+    }
     const id = createId("int_");
     await db.insert(interviews).values({ id, ownerId: ctx.user.id, companyId: input.companyId, candidateId: input.candidateId, jobId: input.jobId, status: "scheduled", scheduledAt: input.scheduledAt, timezone: input.timezone, durationMinutes: input.durationMinutes, meetingUrl: input.meetingUrl ?? null, calendarProvider: "ics", calendarEventId: createInterviewEventUid(id), calendarStatus: "tentative", calendarSequence: 0, reminderAt: new Date(input.scheduledAt.getTime() - 24 * 60 * 60 * 1000) });
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.scheduled", resourceType: "interview", resourceId: id, nextState: "scheduled" });
@@ -654,6 +670,15 @@ export const placementsRouter = router({
   }),
   create: protectedProcedure.input(z.object({ companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), annualCompensation: z.number().int().positive().optional() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
+    const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
+    await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
+    const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
+    const company = await requireOwned(companyRows[0], ctx.user.id, "Client");
+    const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
+    const job = await requireOwned(jobRows[0], ctx.user.id, "Job");
+    if (job.companyId !== company.id) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "The specified job does not belong to the specified client." });
+    }
     const id = createId("plc_");
     await db.insert(placements).values({ id, ownerId: ctx.user.id, companyId: input.companyId, candidateId: input.candidateId, jobId: input.jobId, annualCompensation: input.annualCompensation ?? null, status: "offer_pending" });
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "placement.created", resourceType: "placement", resourceId: id, nextState: "offer_pending" });
@@ -691,6 +716,11 @@ export const invoicesRouter = router({
     const db = await requireDb();
     const rows = await db.select().from(placements).where(eq(placements.id, input.placementId)).limit(1);
     const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
+    const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
+    const company = await requireOwned(companyRows[0], ctx.user.id, "Client");
+    if (placement.companyId !== company.id) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Placement client does not match the specified invoice client." });
+    }
     if (!["invoice_eligible", "guarantee_active"].includes(placement.status)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A placement must be invoice-eligible before a draft invoice can be created." });
     const existingInvoices = await db.select().from(invoices).where(and(eq(invoices.placementId, input.placementId), eq(invoices.ownerId, ctx.user.id)));
     const activeInvoice = existingInvoices.find(inv => !["credited", "written_off", "cancelled", "closed"].includes(inv.status));

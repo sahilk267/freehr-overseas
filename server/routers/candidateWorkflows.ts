@@ -6,6 +6,7 @@ import {
   candidates,
   consents,
   interviews,
+  jobs,
   matches,
   placements,
   rightsRequests,
@@ -49,6 +50,14 @@ export const candidateWorkflowsRouter = router({
         validateSafeTextValue(val);
       }
       const db = await requireDb();
+      const candidateRows = await db.select().from(candidates).where(and(eq(candidates.id, input.candidateId), eq(candidates.ownerId, ctx.user.id))).limit(1);
+      if (!candidateRows[0]) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Candidate was not found." });
+      }
+      const jobRows = await db.select().from(jobs).where(and(eq(jobs.id, input.jobId), eq(jobs.ownerId, ctx.user.id))).limit(1);
+      if (!jobRows[0]) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Job was not found." });
+      }
       const id = createId("scr_");
       await db.insert(screenings).values({ id, ownerId: ctx.user.id, candidateId: input.candidateId, jobId: input.jobId, status: "in_progress", answers: input.answers, evidence: input.evidence, confidence: input.confidence });
       await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "screening.created", resourceType: "screening", resourceId: id, nextState: "in_progress" });
