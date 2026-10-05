@@ -120,12 +120,15 @@ export async function applySideEffect(
   // 3) placement_confirmation
   if (approval.actionType === "placement_confirmation") {
     const payload = approval.payload as { joiningEvidence?: string[] } | null;
+    const guaranteeEndAt = new Date(decidedAt.getTime() + 90 * 24 * 60 * 60 * 1000);
     await db
       .update(placements)
       .set({
         status: "joining_confirmed",
         joiningConfirmedAt: decidedAt,
         joiningEvidence: payload?.joiningEvidence ?? null,
+        guaranteeStartAt: decidedAt,
+        guaranteeEndAt,
       })
       .where(
         and(

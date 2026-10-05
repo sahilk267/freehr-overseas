@@ -1,6 +1,6 @@
 import { createHash } from "crypto";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, inArray, like, or } from "drizzle-orm";
+import { and, desc, eq, inArray, like, not, notInArray, or } from "drizzle-orm";
 import { z } from "zod";
 import { parse as parseCookieHeader } from "cookie";
 import { COOKIE_NAME } from "@shared/const";
@@ -33,6 +33,7 @@ import { getPrivateDocumentUrl, putPrivateDocument } from "../services/privateSt
 import { createInterviewEventUid, createInterviewIcs, generateCalendarFeedIcs } from "../services/calendar";
 import { scanCandidateDocument } from "../services/documentScanner";
 import { generateInvoiceDocument, createInvoicePaymentLink, recordInvoicePayment } from "../services/invoicing";
+import { computeGuaranteeStatus } from "../services/guaranteeTracking";
 import { assertTransition, ensureSafeAiText, isConsequentialAction } from "../workflow";
 import { applyApprovalDecision, requestOrAutoDecide } from "../services/approvalEngine";
 import { consequentialRouter } from "./consequential";
@@ -252,8 +253,179 @@ export const candidatesRouter = router({
   search: protectedProcedure.input(z.object({ query: z.string().trim().min(1).max(120), limit: z.number().int().min(1).max(100).default(50) })).query(async ({ ctx, input }) => {
     const db = await requireDb();
     const term = `%${input.query.replace(/[\\%_]/g, "\\$&")}%`;
-    return db.select().from(candidates).where(and(eq(candidates.ownerId, ctx.user.id), or(like(candidates.fullName, term), like(candidates.headline, term), like(candidates.location, term)))).orderBy(desc(candidates.updatedAt)).limit(input.limit);
+    return db.select().from(candidates).where(and(eq(candidates.ownerId, ctx.user.id), notInArray(candidates.profileState, ["deleted", "do_not_contact", "withdrawn"]), or(like(candidates.fullName, term), like(candidates.headline, term), like(candidates.location, term)))).orderBy(desc(candidates.updatedAt)).limit(input.limit);
   }),
+  searchSkills: protectedProcedure
+    .input(
+      z.object({
+        skills: z.array(z.string().trim().min(1).max(100)).min(1).max(20),
+        location: z.string().trim().max(160).optional(),
+        availability: z.string().trim().max(120).optional(),
+        matchMode: z.enum(["any", "all"]).default("any"),
+        limit: z.number().int().min(1).max(100).default(50),
+        offset: z.number().int().min(0).default(0),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      const db = await requireDb();
+
+      // 1. Query eligible owned candidates (exclude deleted, do_not_contact, withdrawn)
+      const eligibleCandidates = await db
+        .select({
+          id: candidates.id,
+          ownerId: candidates.ownerId,
+          fullName: candidates.fullName,
+          headline: candidates.headline,
+          location: candidates.location,
+          availability: candidates.availability,
+          profileState: candidates.profileState,
+          updatedAt: candidates.updatedAt,
+          createdAt: candidates.createdAt,
+        })
+        .from(candidates)
+        .where(
+          and(
+            eq(candidates.ownerId, ctx.user.id),
+            notInArray(candidates.profileState, ["deleted", "do_not_contact", "withdrawn"]),
+          ),
+        );
+
+      if (!eligibleCandidates.length) {
+        return { items: [], total: 0, limit: input.limit, offset: input.offset };
+      }
+
+      const candidateIds = eligibleCandidates.map(c => c.id);
+
+      // 2. Fetch candidate documents with parsed CV skills
+      const docs = await db
+        .select({
+          candidateId: candidateDocuments.candidateId,
+          parsedData: candidateDocuments.parsedData,
+          scanState: candidateDocuments.scanState,
+          parseState: candidateDocuments.parseState,
+        })
+        .from(candidateDocuments)
+        .where(
+          and(
+            eq(candidateDocuments.ownerId, ctx.user.id),
+            inArray(candidateDocuments.candidateId, candidateIds),
+          ),
+        );
+
+      const docsByCandidate = new Map<string, any[]>();
+      for (const doc of docs) {
+        const list = docsByCandidate.get(doc.candidateId) || [];
+        list.push(doc);
+        docsByCandidate.set(doc.candidateId, list);
+      }
+
+      // 3. Match candidate skills against search criteria
+      const searchTerms = input.skills.map(s => s.trim().toLowerCase());
+      const results: Array<{
+        candidate: (typeof eligibleCandidates)[0];
+        matchedSkills: string[];
+        headlineMatch: boolean;
+        parsedSkillsCount: number;
+      }> = [];
+
+      for (const cand of eligibleCandidates) {
+        if (
+          input.location &&
+          (!cand.location || !cand.location.toLowerCase().includes(input.location.toLowerCase()))
+        ) {
+          continue;
+        }
+        if (
+          input.availability &&
+          (!cand.availability ||
+            !cand.availability.toLowerCase().includes(input.availability.toLowerCase()))
+        ) {
+          continue;
+        }
+
+        const candidateDocs = docsByCandidate.get(cand.id) || [];
+        const extractedSkills = new Set<string>();
+
+        for (const doc of candidateDocs) {
+          if (doc.parsedData && typeof doc.parsedData === "object") {
+            const docSkills = (doc.parsedData as any).skills;
+            if (Array.isArray(docSkills)) {
+              for (const skill of docSkills) {
+                if (typeof skill === "string" && skill.trim()) {
+                  extractedSkills.add(skill.trim().toLowerCase());
+                }
+              }
+            }
+          }
+        }
+
+        const headlineLower = (cand.headline || "").toLowerCase();
+        const matchedSkills: string[] = [];
+        let headlineMatched = false;
+
+        for (const term of searchTerms) {
+          let termFound = false;
+          for (const skill of extractedSkills) {
+            if (skill === term || skill.includes(term) || term.includes(skill)) {
+              matchedSkills.push(term);
+              termFound = true;
+              break;
+            }
+          }
+          if (!termFound && headlineLower.includes(term)) {
+            matchedSkills.push(term);
+            headlineMatched = true;
+            termFound = true;
+          }
+        }
+
+        const isMatch =
+          input.matchMode === "all"
+            ? matchedSkills.length === searchTerms.length
+            : matchedSkills.length > 0;
+
+        if (isMatch) {
+          results.push({
+            candidate: cand,
+            matchedSkills,
+            headlineMatch: headlineMatched,
+            parsedSkillsCount: extractedSkills.size,
+          });
+        }
+      }
+
+      // 4. Deterministic sorting: matched skills count DESC, updatedAt DESC, ID ASC
+      results.sort((a, b) => {
+        if (b.matchedSkills.length !== a.matchedSkills.length) {
+          return b.matchedSkills.length - a.matchedSkills.length;
+        }
+        const bTime = b.candidate.updatedAt ? new Date(b.candidate.updatedAt).getTime() : 0;
+        const aTime = a.candidate.updatedAt ? new Date(a.candidate.updatedAt).getTime() : 0;
+        if (bTime !== aTime) {
+          return bTime - aTime;
+        }
+        return a.candidate.id.localeCompare(b.candidate.id);
+      });
+
+      const total = results.length;
+      const paginated = results.slice(input.offset, input.offset + input.limit);
+
+      return {
+        items: paginated.map(r => ({
+          id: r.candidate.id,
+          fullName: r.candidate.fullName,
+          headline: r.candidate.headline,
+          location: r.candidate.location,
+          availability: r.candidate.availability,
+          profileState: r.candidate.profileState,
+          matchedSkills: r.matchedSkills,
+          skillsCount: r.parsedSkillsCount,
+        })),
+        total,
+        limit: input.limit,
+        offset: input.offset,
+      };
+    }),
   create: protectedProcedure.input(z.object({
     fullName: z.string().trim().min(2).max(160), email: z.string().email().optional(), phone: z.string().trim().max(64).optional(), headline: z.string().trim().max(255).optional(), location: z.string().trim().max(160).optional(), availability: z.string().trim().max(120).optional(), sourceType: z.string().trim().min(2).max(64).default("manual"), sourceUrl: z.string().url().optional(),
   })).mutation(async ({ ctx, input }) => {
@@ -511,31 +683,187 @@ export const matchingRouter = router({
       });
       return { queueId };
     }),
-  requestShareApproval: protectedProcedure.input(z.object({ candidateId: z.string().min(4), jobId: z.string().min(4), companyId: z.string().min(4), matchId: z.string().min(4).optional() })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
-    await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
-    const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
-    await requireOwned(companyRows[0], ctx.user.id, "Client");
-    const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
-    const job = await requireOwned(jobRows[0], ctx.user.id, "Job");
-    if (job.companyId !== input.companyId) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "The specified job does not belong to the specified client." });
-    }
-    const consentRows = await db.select().from(consents).where(and(eq(consents.ownerId, ctx.user.id), eq(consents.candidateId, input.candidateId), eq(consents.jobId, input.jobId), eq(consents.companyId, input.companyId), eq(consents.consentType, "client_sharing"), eq(consents.status, "granted"))).limit(1);
-    if (!consentRows[0]) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Explicit candidate client-sharing consent is required before a shortlist can be shared." });
-    const shortlistId = createId("shl_");
-    await db.insert(shortlists).values({ id: shortlistId, ownerId: ctx.user.id, companyId: input.companyId, jobId: input.jobId, candidateId: input.candidateId, matchId: input.matchId ?? null, status: "prepared", consentId: consentRows[0].id });
-    const result = await requestOrAutoDecide(
-      ctx,
-      "candidate_share",
-      "shortlist",
-      shortlistId,
-      "Candidate profile sharing requires owner approval and verified consent.",
-      { candidateId: input.candidateId, jobId: input.jobId, companyId: input.companyId, matchId: input.matchId ?? null, shortlistId },
-    );
-    return { shortlistId, approvalId: result.approvalId, autoDecided: result.autoDecided };
-  }),
+  requestShareApproval: protectedProcedure
+    .input(
+      z.object({
+        candidateId: z.string().min(4),
+        jobId: z.string().min(4),
+        companyId: z.string().min(4),
+        matchId: z.string().min(4).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+
+      // 1. Authorize candidate
+      const candidateRows = await db
+        .select()
+        .from(candidates)
+        .where(eq(candidates.id, input.candidateId))
+        .limit(1);
+      const candidate = await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
+
+      // 2. Validate candidate eligibility
+      if (["deleted", "do_not_contact", "withdrawn"].includes(candidate.profileState)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Candidate is in ineligible state "${candidate.profileState}" and cannot be shared.`,
+        });
+      }
+
+      // 3. Validate suppression
+      const contactHashes = [candidate.emailHash, candidate.phoneHash].filter(Boolean) as string[];
+      if (contactHashes.length > 0) {
+        const suppressed = await db
+          .select()
+          .from(suppressionList)
+          .where(
+            and(
+              eq(suppressionList.ownerId, ctx.user.id),
+              eq(suppressionList.active, true),
+              inArray(suppressionList.valueHash, contactHashes),
+            ),
+          )
+          .limit(1);
+        if (suppressed.length > 0) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "Candidate contact is suppressed on the suppression list and cannot be shared.",
+          });
+        }
+      }
+
+      // 4. Authorize company and job
+      const companyRows = await db
+        .select()
+        .from(companies)
+        .where(eq(companies.id, input.companyId))
+        .limit(1);
+      await requireOwned(companyRows[0], ctx.user.id, "Client");
+
+      const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
+      const job = await requireOwned(jobRows[0], ctx.user.id, "Job");
+
+      if (job.companyId !== input.companyId) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The specified job does not belong to the specified client.",
+        });
+      }
+
+      if (["cancelled", "archived", "filled"].includes(job.pipelineState)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Job is in state "${job.pipelineState}" and is not open for candidate sharing.`,
+        });
+      }
+
+      // 5. Check candidate consent for client sharing
+      const consentRows = await db
+        .select()
+        .from(consents)
+        .where(
+          and(
+            eq(consents.ownerId, ctx.user.id),
+            eq(consents.candidateId, input.candidateId),
+            eq(consents.jobId, input.jobId),
+            eq(consents.companyId, input.companyId),
+            eq(consents.consentType, "client_sharing"),
+            eq(consents.status, "granted"),
+          ),
+        )
+        .limit(1);
+
+      if (!consentRows[0] || (consentRows[0].expiresAt && consentRows[0].expiresAt <= new Date())) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Explicit candidate client-sharing consent is required before a shortlist can be shared.",
+        });
+      }
+
+      // 6. Check existing shortlist for duplicate / idempotent handling
+      const existingShortlists = await db
+        .select()
+        .from(shortlists)
+        .where(
+          and(
+            eq(shortlists.candidateId, input.candidateId),
+            eq(shortlists.jobId, input.jobId),
+            eq(shortlists.ownerId, ctx.user.id),
+          ),
+        )
+        .limit(1);
+
+      if (existingShortlists.length > 0) {
+        const existing = existingShortlists[0];
+        if (existing.status === "shared" || existing.status === "viewed") {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Candidate has already been shared with the client for this job.",
+          });
+        }
+        if (existing.status === "approval_pending") {
+          const pendingApproval = (
+            await db
+              .select()
+              .from(approvals)
+              .where(
+                and(
+                  eq(approvals.resourceId, existing.id),
+                  eq(approvals.actionType, "candidate_share"),
+                  eq(approvals.status, "pending"),
+                ),
+              )
+              .limit(1)
+          )[0];
+          if (pendingApproval) {
+            return {
+              shortlistId: existing.id,
+              approvalId: pendingApproval.id,
+              autoDecided: false,
+            };
+          }
+        }
+      }
+
+      const shortlistId = existingShortlists[0]?.id ?? createId("shl_");
+      if (!existingShortlists.length) {
+        await db.insert(shortlists).values({
+          id: shortlistId,
+          ownerId: ctx.user.id,
+          companyId: input.companyId,
+          jobId: input.jobId,
+          candidateId: input.candidateId,
+          matchId: input.matchId ?? null,
+          status: "prepared",
+          consentId: consentRows[0].id,
+        });
+      }
+
+      const result = await requestOrAutoDecide(
+        ctx,
+        "candidate_share",
+        "shortlist",
+        shortlistId,
+        "Candidate profile sharing requires owner approval and verified consent.",
+        {
+          candidateId: input.candidateId,
+          jobId: input.jobId,
+          companyId: input.companyId,
+          matchId: input.matchId ?? null,
+          shortlistId,
+        },
+      );
+
+      if (!result.autoDecided) {
+        await db
+          .update(shortlists)
+          .set({ status: "approval_pending" })
+          .where(eq(shortlists.id, shortlistId));
+      }
+
+      return { shortlistId, approvalId: result.approvalId, autoDecided: result.autoDecided };
+    }),
 });
 
 export const interviewsRouter = router({
@@ -666,45 +994,338 @@ export const feedbackRouter = router({
 export const placementsRouter = router({
   list: protectedProcedure.input(paginationInput).query(async ({ ctx, input }) => {
     const db = await requireDb();
-    return db.select().from(placements).where(eq(placements.ownerId, ctx.user.id)).orderBy(desc(placements.updatedAt)).limit(input.limit);
+    const rows = await db
+      .select()
+      .from(placements)
+      .where(eq(placements.ownerId, ctx.user.id))
+      .orderBy(desc(placements.updatedAt))
+      .limit(input.limit);
+    return rows.map(p => ({
+      ...p,
+      guarantee: computeGuaranteeStatus(p),
+    }));
   }),
-  create: protectedProcedure.input(z.object({ companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), annualCompensation: z.number().int().positive().optional() })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
-    await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
-    const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
-    const company = await requireOwned(companyRows[0], ctx.user.id, "Client");
-    const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
-    const job = await requireOwned(jobRows[0], ctx.user.id, "Job");
-    if (job.companyId !== company.id) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "The specified job does not belong to the specified client." });
-    }
-    const id = createId("plc_");
-    await db.insert(placements).values({ id, ownerId: ctx.user.id, companyId: input.companyId, candidateId: input.candidateId, jobId: input.jobId, annualCompensation: input.annualCompensation ?? null, status: "offer_pending" });
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "placement.created", resourceType: "placement", resourceId: id, nextState: "offer_pending" });
-    return { id };
-  }),
-  transition: protectedProcedure.input(z.object({ id: z.string().min(4), state: z.string().min(2).max(48), joiningEvidence: z.array(z.string().trim().min(2).max(500)).max(5).optional() })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const rows = await db.select().from(placements).where(eq(placements.id, input.id)).limit(1);
-    const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
-    assertTransition("placement", placement.status, input.state);
-    if (["joining_confirmed", "invoice_eligible"].includes(input.state) && (!input.joiningEvidence || input.joiningEvidence.length === 0)) throw new TRPCError({ code: "BAD_REQUEST", message: "Joining evidence is required before confirming placement or invoice eligibility." });
-    if (isConsequentialAction("placement_confirmation") && input.state === "joining_confirmed") {
-      const result = await requestOrAutoDecide(
-        ctx,
-        "placement_confirmation",
-        "placement",
-        placement.id,
-        "Placement confirmation is consequential and requires owner approval.",
-        { requestedState: input.state, joiningEvidence: input.joiningEvidence ?? [] },
+  getGuaranteeStatus: protectedProcedure
+    .input(z.object({ id: z.string().min(4) }))
+    .query(async ({ ctx, input }) => {
+      const db = await requireDb();
+      const rows = await db
+        .select()
+        .from(placements)
+        .where(eq(placements.id, input.id))
+        .limit(1);
+      const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
+      return computeGuaranteeStatus(placement);
+    }),
+  create: protectedProcedure
+    .input(
+      z.object({
+        companyId: z.string().min(4),
+        candidateId: z.string().min(4),
+        jobId: z.string().min(4),
+        annualCompensation: z.number().int().positive().optional(),
+        currency: z.string().trim().min(1).max(8).default("INR"),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+
+      // 1. Authorize candidate and verify eligibility
+      const candidateRows = await db
+        .select()
+        .from(candidates)
+        .where(eq(candidates.id, input.candidateId))
+        .limit(1);
+      const candidate = await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
+
+      if (["deleted", "do_not_contact", "withdrawn"].includes(candidate.profileState)) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: `Candidate is in ineligible state "${candidate.profileState}" and cannot be placed.`,
+        });
+      }
+
+      // 2. Authorize company and job
+      const companyRows = await db
+        .select()
+        .from(companies)
+        .where(eq(companies.id, input.companyId))
+        .limit(1);
+      const company = await requireOwned(companyRows[0], ctx.user.id, "Client");
+
+      const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
+      const job = await requireOwned(jobRows[0], ctx.user.id, "Job");
+
+      if (job.companyId !== company.id) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "The specified job does not belong to the specified client.",
+        });
+      }
+
+      // 3. Verify final candidate decision exists (e.g. screening with advance recommendation or owner decision)
+      const decisionRows = await db
+        .select()
+        .from(screenings)
+        .where(
+          and(
+            eq(screenings.candidateId, input.candidateId),
+            eq(screenings.jobId, input.jobId),
+            eq(screenings.ownerId, ctx.user.id),
+          ),
+        );
+
+      const hasPositiveDecision = decisionRows.some(
+        s => s.recommendation === "advance" || s.status === "owner_decided",
       );
-      return { approvalId: result.approvalId, approvalRequired: !result.autoDecided, autoDecided: result.autoDecided };
-    }
-    await db.update(placements).set({ status: input.state, joiningEvidence: input.joiningEvidence ?? placement.joiningEvidence, joiningConfirmedAt: input.state === "joining_confirmed" ? new Date() : placement.joiningConfirmedAt, guaranteeStartAt: input.state === "guarantee_active" ? new Date() : placement.guaranteeStartAt }).where(eq(placements.id, placement.id));
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "placement.state_changed", resourceType: "placement", resourceId: placement.id, previousState: placement.status, nextState: input.state });
-    return { success: true, approvalRequired: false };
-  }),
+
+      if (!hasPositiveDecision) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message:
+            "A positive final candidate decision (advancement or owner approval) is required before creating a placement record.",
+        });
+      }
+
+      // 4. Duplicate placement protection
+      const existingPlacements = await db
+        .select()
+        .from(placements)
+        .where(
+          and(
+            eq(placements.candidateId, input.candidateId),
+            eq(placements.jobId, input.jobId),
+            eq(placements.ownerId, ctx.user.id),
+          ),
+        );
+
+      const activePlacement = existingPlacements.find(p => p.status !== "closed");
+      if (activePlacement) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "An active placement record already exists for this candidate and job.",
+        });
+      }
+
+      const id = createId("plc_");
+      await db.insert(placements).values({
+        id,
+        ownerId: ctx.user.id,
+        companyId: input.companyId,
+        candidateId: input.candidateId,
+        jobId: input.jobId,
+        annualCompensation: input.annualCompensation ?? null,
+        currency: input.currency,
+        status: "offer_pending",
+      });
+
+      await recordAudit({
+        ownerId: ctx.user.id,
+        actorType: "user",
+        actorId: String(ctx.user.id),
+        action: "placement.created",
+        resourceType: "placement",
+        resourceId: id,
+        nextState: "offer_pending",
+        metadata: { annualCompensation: input.annualCompensation, currency: input.currency },
+      });
+
+      return { id };
+    }),
+  extendOffer: protectedProcedure
+    .input(
+      z.object({
+        placementId: z.string().min(4),
+        annualCompensation: z.number().int().positive(),
+        currency: z.string().trim().min(1).max(8).default("INR"),
+        notes: z.string().trim().max(1000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+      const rows = await db
+        .select()
+        .from(placements)
+        .where(eq(placements.id, input.placementId))
+        .limit(1);
+      const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
+
+      assertTransition("placement", placement.status, "offer_issued");
+
+      const offerIssuedAt = new Date();
+      await db
+        .update(placements)
+        .set({
+          status: "offer_issued",
+          annualCompensation: input.annualCompensation,
+          currency: input.currency,
+          offerIssuedAt,
+        })
+        .where(eq(placements.id, placement.id));
+
+      await recordAudit({
+        ownerId: ctx.user.id,
+        actorType: "user",
+        actorId: String(ctx.user.id),
+        action: "placement.offer_issued",
+        resourceType: "placement",
+        resourceId: placement.id,
+        previousState: placement.status,
+        nextState: "offer_issued",
+        metadata: {
+          annualCompensation: input.annualCompensation,
+          currency: input.currency,
+          notes: input.notes,
+        },
+      });
+
+      return {
+        id: placement.id,
+        status: "offer_issued" as const,
+        offerIssuedAt,
+      };
+    }),
+  recordOfferDecision: protectedProcedure
+    .input(
+      z.object({
+        placementId: z.string().min(4),
+        decision: z.enum(["accepted", "rejected", "expired"]),
+        note: z.string().trim().max(1000).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+      const rows = await db
+        .select()
+        .from(placements)
+        .where(eq(placements.id, input.placementId))
+        .limit(1);
+      const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
+
+      if (input.decision === "accepted") {
+        assertTransition("placement", placement.status, "offer_accepted");
+        const offerAcceptedAt = new Date();
+        await db
+          .update(placements)
+          .set({
+            status: "offer_accepted",
+            offerAcceptedAt,
+          })
+          .where(eq(placements.id, placement.id));
+
+        await recordAudit({
+          ownerId: ctx.user.id,
+          actorType: "user",
+          actorId: String(ctx.user.id),
+          action: "placement.offer_accepted",
+          resourceType: "placement",
+          resourceId: placement.id,
+          previousState: placement.status,
+          nextState: "offer_accepted",
+          metadata: { note: input.note },
+        });
+
+        return { success: true, status: "offer_accepted" as const };
+      } else {
+        assertTransition("placement", placement.status, "closed");
+        await db
+          .update(placements)
+          .set({ status: "closed" })
+          .where(eq(placements.id, placement.id));
+
+        await recordAudit({
+          ownerId: ctx.user.id,
+          actorType: "user",
+          actorId: String(ctx.user.id),
+          action: "placement.offer_rejected",
+          resourceType: "placement",
+          resourceId: placement.id,
+          previousState: placement.status,
+          nextState: "closed",
+          metadata: { decision: input.decision, note: input.note },
+        });
+
+        return { success: true, status: "closed" as const };
+      }
+    }),
+  transition: protectedProcedure
+    .input(
+      z.object({
+        id: z.string().min(4),
+        state: z.string().min(2).max(48),
+        joiningEvidence: z.array(z.string().trim().min(2).max(500)).max(5).optional(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await requireDb();
+      const rows = await db
+        .select()
+        .from(placements)
+        .where(eq(placements.id, input.id))
+        .limit(1);
+      const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
+      assertTransition("placement", placement.status, input.state);
+
+      if (
+        ["joining_confirmed", "invoice_eligible"].includes(input.state) &&
+        (!input.joiningEvidence || input.joiningEvidence.length === 0)
+      ) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Joining evidence is required before confirming placement or invoice eligibility.",
+        });
+      }
+
+      if (isConsequentialAction("placement_confirmation") && input.state === "joining_confirmed") {
+        const result = await requestOrAutoDecide(
+          ctx,
+          "placement_confirmation",
+          "placement",
+          placement.id,
+          "Placement confirmation is consequential and requires owner approval.",
+          { requestedState: input.state, joiningEvidence: input.joiningEvidence ?? [] },
+        );
+        return {
+          approvalId: result.approvalId,
+          approvalRequired: !result.autoDecided,
+          autoDecided: result.autoDecided,
+        };
+      }
+
+      const now = new Date();
+      const updateData: Record<string, any> = {
+        status: input.state,
+        joiningEvidence: input.joiningEvidence ?? placement.joiningEvidence,
+      };
+
+      if (input.state === "joining_confirmed") {
+        updateData.joiningConfirmedAt = now;
+        updateData.guaranteeStartAt = now;
+        updateData.guaranteeEndAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+      } else if (input.state === "guarantee_active" && !placement.guaranteeStartAt) {
+        updateData.guaranteeStartAt = now;
+        updateData.guaranteeEndAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+      }
+
+      await db
+        .update(placements)
+        .set(updateData)
+        .where(eq(placements.id, placement.id));
+
+      await recordAudit({
+        ownerId: ctx.user.id,
+        actorType: "user",
+        actorId: String(ctx.user.id),
+        action: "placement.state_changed",
+        resourceType: "placement",
+        resourceId: placement.id,
+        previousState: placement.status,
+        nextState: input.state,
+        metadata: { joiningEvidence: input.joiningEvidence },
+      });
+
+      return { success: true, approvalRequired: false };
+    }),
 });
 
 export const invoicesRouter = router({

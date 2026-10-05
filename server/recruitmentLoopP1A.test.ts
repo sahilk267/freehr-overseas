@@ -433,6 +433,19 @@ describe("P1-A Core Recruitment Operating Loop", () => {
         email: "placed.cand@test.local",
       });
 
+      // Positive candidate decision required before placement
+      const decisionReq = await callerA.recruitment.consequential.requestCandidateDecision({
+        candidateId: candidate.id,
+        jobId: job.id,
+        disposition: "advance",
+        evidence: ["Passed all architectural rounds"],
+        rationale: "Selected for hire.",
+      });
+      await callerA.recruitment.approvals.decide({
+        id: decisionReq.approvalId,
+        decision: "approved",
+      });
+
       const placement = await callerA.recruitment.placements.create({
         companyId: client.id,
         candidateId: candidate.id,
@@ -499,6 +512,18 @@ describe("P1-A Core Recruitment Operating Loop", () => {
       const candidate = await callerA.recruitment.candidates.create({
         fullName: "Finance Candidate",
         email: "fin.cand@test.local",
+      });
+
+      const decReq = await callerA.recruitment.consequential.requestCandidateDecision({
+        candidateId: candidate.id,
+        jobId: job.id,
+        disposition: "advance",
+        evidence: ["Passed finance interviews"],
+        rationale: "Selected for finance hire.",
+      });
+      await callerA.recruitment.approvals.decide({
+        id: decReq.approvalId,
+        decision: "approved",
       });
 
       const placement = await callerA.recruitment.placements.create({
