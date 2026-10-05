@@ -451,6 +451,10 @@ export async function handleAiTaskResult(
       .set({
         status: "sent",
         providerMessageId: sendResult.providerMessageId,
+        providerUid: sendResult.providerUid,
+        providerFolder: sendResult.providerFolder,
+        messageId: sendResult.messageId,
+        inReplyTo: sendResult.inReplyTo,
         sentAt: dispatchedAt,
         deliveredAt: dispatchedAt,
         updatedAt: dispatchedAt,

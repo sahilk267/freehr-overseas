@@ -116,7 +116,7 @@ export async function processHostingerMailWebhook(input: { authorization?: strin
   let matchedParent: typeof messages.$inferSelect | undefined;
   let isAmbiguous = false;
 
-  // Priority 1: Exact provider message ID match (if this event itself matches an existing message by providerMessageId)
+  // Priority 1: Exact provider message ID match (if this event itself matches an existing message by providerMessageId or RFC messageId)
   if (event.providerMessageId) {
     const existingMsg = (
       await db
@@ -125,7 +125,10 @@ export async function processHostingerMailWebhook(input: { authorization?: strin
         .where(
           and(
             eq(messages.ownerId, owner.id),
-            eq(messages.providerMessageId, event.providerMessageId),
+            or(
+              eq(messages.providerMessageId, event.providerMessageId),
+              eq(messages.messageId, event.providerMessageId),
+            ),
           ),
         )
         .limit(2)
@@ -155,7 +158,11 @@ export async function processHostingerMailWebhook(input: { authorization?: strin
         .where(
           and(
             eq(messages.ownerId, owner.id),
-            or(eq(messages.providerMessageId, ref), eq(messages.id, ref)),
+            or(
+              eq(messages.providerMessageId, ref),
+              eq(messages.messageId, ref),
+              eq(messages.id, ref),
+            ),
           ),
         )
         .limit(5);
@@ -196,7 +203,11 @@ export async function processHostingerMailWebhook(input: { authorization?: strin
         .where(
           and(
             eq(messages.ownerId, owner.id),
-            or(eq(messages.providerMessageId, ref), eq(messages.id, ref)),
+            or(
+              eq(messages.providerMessageId, ref),
+              eq(messages.messageId, ref),
+              eq(messages.id, ref),
+            ),
           ),
         )
         .limit(5);
@@ -377,6 +388,9 @@ export async function processHostingerMailWebhook(input: { authorization?: strin
       subject: event.subject,
       body: event.text,
       providerMessageId: event.providerMessageId,
+      messageId: event.providerMessageId,
+      inReplyTo: event.inReplyTo ?? null,
+      references: event.references.length > 0 ? event.references : null,
       idempotencyKey: `hostinger:event:${event.providerMessageId}`,
       aiGenerated: false,
       deliveredAt: new Date(),

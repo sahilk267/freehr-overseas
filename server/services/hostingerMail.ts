@@ -1,4 +1,13 @@
-import { AccountApi, Configuration, SendApi, type V1SendMessageRef, type V1SendRequest } from "hostinger-mail-api-sdk";
+import {
+  AccountApi,
+  Configuration,
+  MessagesApi,
+  SendApi,
+  type V1FolderMessagesMessage,
+  type V1FolderMessagesSearchRequest,
+  type V1SendMessageRef,
+  type V1SendRequest,
+} from "hostinger-mail-api-sdk";
 
 export const EMAIL_PURPOSES = ["owner", "clients", "talent", "interviews", "finance", "privacy"] as const;
 export type EmailPurpose = (typeof EMAIL_PURPOSES)[number];
@@ -83,40 +92,177 @@ export async function verifyHostingerMailApi() {
   }
 }
 
+export interface ResolveSentMessageInput {
+  mailboxResourceId: string;
+  to: string;
+  subject: string;
+  sentAt?: Date;
+  folder?: string;
+}
+
+export interface ResolveSentMessageResult {
+  providerUid: number | null;
+  providerFolder: string | null;
+  messageId: string | null;
+  inReplyTo: string | null;
+  isAmbiguous: boolean;
+}
+
+export async function resolveSentMessageInHostinger(
+  input: ResolveSentMessageInput
+): Promise<ResolveSentMessageResult> {
+  const foldersToTry = input.folder ? [input.folder] : ["INBOX.Sent", "Sent"];
+  const messagesApi = new MessagesApi(getClient());
+
+  for (const folder of foldersToTry) {
+    try {
+      const searchPayload: V1FolderMessagesSearchRequest = {
+        since: "",
+        before: "",
+        flags: [],
+        uid: "",
+        subject: input.subject,
+        from: "",
+        to: input.to,
+        cc: "",
+        body: "",
+        header: "",
+        larger: 0,
+        smaller: 0,
+        text: "",
+      };
+
+      const searchRes = await messagesApi.searchMessages(
+        input.mailboxResourceId,
+        folder,
+        1,
+        20,
+        "-date",
+        searchPayload
+      );
+
+      const items = searchRes.data?.data;
+      if (!Array.isArray(items) || items.length === 0) {
+        continue;
+      }
+
+      // Strictly filter to exact recipient and subject match
+      const targetTo = input.to.trim().toLowerCase();
+      const targetSubject = input.subject.trim().toLowerCase();
+
+      const matched = items.filter((msg: V1FolderMessagesMessage) => {
+        const msgSubject = (msg.subject ?? "").trim().toLowerCase();
+        if (msgSubject !== targetSubject) return false;
+
+        const hasRecipient =
+          Array.isArray(msg.to) &&
+          msg.to.some(recipient => recipient.address?.trim().toLowerCase() === targetTo);
+        if (!hasRecipient) return false;
+
+        if (input.sentAt && msg.date) {
+          const msgDate = new Date(msg.date).getTime();
+          // Filter within 10-minute window
+          const diffMs = Math.abs(msgDate - input.sentAt.getTime());
+          if (diffMs > 10 * 60 * 1000) return false;
+        }
+
+        return true;
+      });
+
+      if (matched.length === 1) {
+        const item = matched[0];
+        return {
+          providerUid: typeof item.uid === "number" ? item.uid : null,
+          providerFolder: item.path || folder,
+          messageId: item.messageId ?? null,
+          inReplyTo: item.inReplyTo ?? null,
+          isAmbiguous: false,
+        };
+      }
+
+      if (matched.length > 1) {
+        // Ambiguous match across multiple messages: fail safe without arbitrary guessing
+        return {
+          providerUid: null,
+          providerFolder: null,
+          messageId: null,
+          inReplyTo: null,
+          isAmbiguous: true,
+        };
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return {
+    providerUid: null,
+    providerFolder: null,
+    messageId: null,
+    inReplyTo: null,
+    isAmbiguous: false,
+  };
+}
+
 export interface SendHostingerMailInput {
   purpose: EmailPurpose;
   to: string;
   displayName: string;
   subject: string;
   text: string;
+  html?: string;
   messageId?: string;
-  inReplyTo?: string | V1SendMessageRef;
+  inReplyTo?: string | V1SendMessageRef | { uid?: number | null; folder?: string | null };
   references?: string[];
 }
 
-export async function sendViaHostingerMailApi(input: SendHostingerMailInput) {
-  const senderAddress = getSenderAddress(input.purpose);
-  if (!isApprovedSenderAddress(senderAddress)) throw new Error("Selected sender is not in the approved domain allowlist.");
-  const mailboxResourceId = process.env[mailboxResourceEnvKey[input.purpose]]?.trim();
-  if (!mailboxResourceId) throw new Error(`Hostinger mailbox resource ID is not configured for ${input.purpose}.`);
+export interface SendHostingerMailResult {
+  providerMessageId: string | null;
+  providerUid: number | null;
+  providerFolder: string | null;
+  messageId: string | null;
+  inReplyTo: string | null;
+  senderAddress: string;
+  mailboxResourceId: string;
+}
 
-  // Parse inReplyTo if supported by SDK (V1SendMessageRef: { uid: number, folder: string })
+export async function sendViaHostingerMailApi(
+  input: SendHostingerMailInput
+): Promise<SendHostingerMailResult> {
+  const senderAddress = getSenderAddress(input.purpose);
+  if (!isApprovedSenderAddress(senderAddress)) {
+    throw new Error("Selected sender is not in the approved domain allowlist.");
+  }
+  const mailboxResourceId = process.env[mailboxResourceEnvKey[input.purpose]]?.trim();
+  if (!mailboxResourceId) {
+    throw new Error(`Hostinger mailbox resource ID is not configured for ${input.purpose}.`);
+  }
+
+  // Parse inReplyTo strictly using Hostinger V1SendMessageRef ({ uid: number, folder: string })
   let sendInReplyTo: V1SendMessageRef | undefined = undefined;
   if (input.inReplyTo) {
-    if (typeof input.inReplyTo === "object" && typeof input.inReplyTo.uid === "number") {
+    if (
+      typeof input.inReplyTo === "object" &&
+      typeof input.inReplyTo.uid === "number" &&
+      input.inReplyTo.uid > 0
+    ) {
       sendInReplyTo = {
         uid: input.inReplyTo.uid,
         folder: input.inReplyTo.folder || "INBOX",
       };
     } else if (typeof input.inReplyTo === "string" && /^\d+$/.test(input.inReplyTo.trim())) {
-      sendInReplyTo = {
-        uid: parseInt(input.inReplyTo.trim(), 10),
-        folder: "INBOX",
-      };
+      const parsedUid = parseInt(input.inReplyTo.trim(), 10);
+      if (parsedUid > 0) {
+        sendInReplyTo = {
+          uid: parsedUid,
+          folder: "INBOX",
+        };
+      }
     }
+    // If not a valid numeric UID: do NOT invent one. Safe non-threaded send.
   }
 
-  // Construct request payload using only real SDK fields without "as never"
+  // Construct request payload using only real SDK fields
   const payload: Partial<V1SendRequest> = {
     to: [input.to],
     displayName: input.displayName,
@@ -124,7 +270,7 @@ export async function sendViaHostingerMailApi(input: SendHostingerMailInput) {
     bcc: [],
     subject: input.subject,
     text: input.text,
-    html: "",
+    html: input.html || "",
     attachments: [],
   };
 
@@ -132,14 +278,18 @@ export async function sendViaHostingerMailApi(input: SendHostingerMailInput) {
     payload.inReplyTo = sendInReplyTo;
   }
 
+  const sentTime = new Date();
   let response: any = null;
   try {
-    response = await new SendApi(getClient()).sendEmail(mailboxResourceId, payload as V1SendRequest);
+    response = await new SendApi(getClient()).sendEmail(
+      mailboxResourceId,
+      payload as V1SendRequest
+    );
   } catch (error) {
     throw error;
   }
 
-  // Extract provider message ID ONLY if explicitly returned by API response/headers
+  // Check if explicit provider message ID is present in response data/headers (e.g. test mocks)
   const rawApiId =
     response?.data?.messageId ??
     response?.data?.id ??
@@ -147,18 +297,45 @@ export async function sendViaHostingerMailApi(input: SendHostingerMailInput) {
     response?.headers?.["x-message-id"] ??
     null;
 
-  const providerMessageId =
+  let providerMessageId: string | null =
     typeof rawApiId === "string" && rawApiId.trim() ? rawApiId.trim() : null;
 
-  // Local RFC Message-ID is distinct from providerMessageId
-  const cleanId = input.messageId ? normalizeMessageRef(input.messageId) : null;
-  const messageId = cleanId
-    ? `<${cleanId}@${approvedDomain}>`
-    : `<msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}@${approvedDomain}>`;
+  let providerUid: number | null = null;
+  let providerFolder: string | null = null;
+  let rfcMessageId: string | null = providerMessageId;
+  let rfcInReplyTo: string | null = null;
+
+  // If send endpoint did not return an explicit message ID (standard Hostinger 204 response),
+  // resolve the sent message from the Sent folder
+  if (!providerMessageId) {
+    try {
+      const resolved = await resolveSentMessageInHostinger({
+        mailboxResourceId,
+        to: input.to,
+        subject: input.subject,
+        sentAt: sentTime,
+      });
+
+      if (!resolved.isAmbiguous && resolved.providerUid != null) {
+        providerUid = resolved.providerUid;
+        providerFolder = resolved.providerFolder;
+        if (resolved.messageId) {
+          rfcMessageId = resolved.messageId;
+          providerMessageId = resolved.messageId;
+        }
+        rfcInReplyTo = resolved.inReplyTo;
+      }
+    } catch {
+      // Resolution error: fail safely without fabricating an ID
+    }
+  }
 
   return {
     providerMessageId,
-    messageId,
+    providerUid,
+    providerFolder,
+    messageId: rfcMessageId,
+    inReplyTo: rfcInReplyTo,
     senderAddress,
     mailboxResourceId,
   };

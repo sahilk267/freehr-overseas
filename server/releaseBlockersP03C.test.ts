@@ -28,6 +28,7 @@ import {
   getSenderAddress,
 } from "./services/hostingerMail";
 import { processHostingerMailWebhook } from "./services/hostingerWebhook";
+import { processDueInterviewReminders } from "./services/interviewReminders";
 import { handleAiTaskResult, processOneQueuedJob } from "./services/queue";
 
 describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () => {
@@ -407,75 +408,197 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
   });
 
   // =========================================================================
-  // RB-10: REAL EMAIL THREADING
+  // RB-10: REAL HOSTINGER EMAIL THREADING
   // =========================================================================
-  describe("RB-10: Real Email Threading", () => {
-    it("1. providerMessageId is stored ONLY when provider returns one; never fabricated", async () => {
-      // Simulate hostinger API call where provider does not return a messageId
+  describe("RB-10: Real Hostinger Email Threading", () => {
+    it("1. successful Hostinger send with empty/204 response succeeds without fabricated IDs", async () => {
       const previousEnv = { ...process.env };
       process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
-      process.env.HOSTINGER_MAIL_BOX_OWNER_ID = "mock-owner-id";
       process.env.HOSTINGER_MAILBOX_OWNER_ID = "mock-owner-id";
       process.env.HOSTINGER_MAIL_FROM_DOMAIN = "overseasjob.in";
 
-      // Mock SendApi inside the test
       const { SendApi } = await import("hostinger-mail-api-sdk");
       const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockResolvedValueOnce({
-        data: {}, // no messageId returned
-        status: 200,
-        statusText: "OK",
+        data: null, // Hostinger send returns void (204 No Content)
+        status: 204,
+        statusText: "No Content",
         headers: {},
         config: {} as any,
-      });
+      } as any);
 
       const res = await sendViaHostingerMailApi({
         purpose: "owner",
         to: "client@test.com",
         displayName: "FreelanceHR",
-        subject: "Test Subject",
-        text: "Test Body",
-        messageId: "msg_local_123",
+        subject: "Contract Terms",
+        text: "Please find the terms attached.",
+      });
+
+      expect(res.mailboxResourceId).toBe("mock-owner-id");
+      expect(res.senderAddress).toBe("owner.fl@overseasjob.in");
+      expect(res.providerMessageId).toBeNull(); // Never fabricated
+      expect(res.providerUid).toBeNull();
+
+      sendSpy.mockRestore();
+      process.env = previousEnv;
+    });
+
+    it("2. no fabricated providerMessageId when send response is empty and sent resolution finds nothing", async () => {
+      const previousEnv = { ...process.env };
+      process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
+      process.env.HOSTINGER_MAILBOX_OWNER_ID = "mock-owner-id";
+      process.env.HOSTINGER_MAIL_FROM_DOMAIN = "overseasjob.in";
+
+      const { SendApi, MessagesApi } = await import("hostinger-mail-api-sdk");
+      const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockResolvedValueOnce({
+        data: null,
+        status: 204,
+      } as any);
+      const searchSpy = vi.spyOn(MessagesApi.prototype, "searchMessages").mockResolvedValueOnce({
+        data: { data: [], pagination: { total: 0, page: 1, perPage: 10 } },
+        status: 200,
+      } as any);
+
+      const res = await sendViaHostingerMailApi({
+        purpose: "owner",
+        to: "unfound@test.com",
+        displayName: "FreelanceHR",
+        subject: "Unfound Sent Search",
+        text: "Body text",
       });
 
       expect(res.providerMessageId).toBeNull();
-      expect(res.messageId).toBe("<msg_local_123@overseasjob.in>");
+      expect(res.providerUid).toBeNull();
+      expect(res.messageId).toBeNull();
 
       sendSpy.mockRestore();
+      searchSpy.mockRestore();
       process.env = previousEnv;
     });
 
-    it("2. providerMessageId is stored accurately when provider does return one", async () => {
+    it("3. Sent-folder message resolution retrieves UID, folder, and RFC Message-ID", async () => {
       const previousEnv = { ...process.env };
       process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
       process.env.HOSTINGER_MAILBOX_OWNER_ID = "mock-owner-id";
       process.env.HOSTINGER_MAIL_FROM_DOMAIN = "overseasjob.in";
 
-      const { SendApi } = await import("hostinger-mail-api-sdk");
+      const { SendApi, MessagesApi } = await import("hostinger-mail-api-sdk");
       const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockResolvedValueOnce({
-        data: { id: "hostinger-prov-uuid-999" },
+        data: null,
+        status: 204,
+      } as any);
+
+      const mockSentMsg = {
+        uid: 7891,
+        path: "INBOX.Sent",
+        date: new Date().toISOString(),
+        subject: "Resolution Subject",
+        to: [{ address: "resolve.target@test.com" }],
+        messageId: "<rfc-sent-7891@overseasjob.in>",
+        inReplyTo: null,
+        flags: [],
+        unseen: false,
+        size: 1024,
+        attachments: [],
+      };
+
+      const searchSpy = vi.spyOn(MessagesApi.prototype, "searchMessages").mockResolvedValueOnce({
+        data: { data: [mockSentMsg], pagination: { total: 1, page: 1, perPage: 10 } },
         status: 200,
-        statusText: "OK",
-        headers: {},
-        config: {} as any,
-      });
+      } as any);
 
       const res = await sendViaHostingerMailApi({
         purpose: "owner",
-        to: "client@test.com",
+        to: "resolve.target@test.com",
         displayName: "FreelanceHR",
-        subject: "Test Subject",
-        text: "Test Body",
-        messageId: "msg_local_456",
+        subject: "Resolution Subject",
+        text: "Resolved message body",
       });
 
-      expect(res.providerMessageId).toBe("hostinger-prov-uuid-999");
-      expect(res.messageId).toBe("<msg_local_456@overseasjob.in>");
+      expect(res.providerUid).toBe(7891);
+      expect(res.providerFolder).toBe("INBOX.Sent");
+      expect(res.messageId).toBe("<rfc-sent-7891@overseasjob.in>");
+      expect(res.providerMessageId).toBe("<rfc-sent-7891@overseasjob.in>");
 
       sendSpy.mockRestore();
+      searchSpy.mockRestore();
       process.env = previousEnv;
     });
 
-    it("3. inReplyTo is passed to Hostinger SendApi when supported format is provided", async () => {
+    it("4. provider UID, provider folder, and RFC Message-ID are persisted into messages row upon delivery", async () => {
+      const db = await requireDb();
+      const previousEnv = { ...process.env };
+      process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
+      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-int-123";
+      process.env.HOSTINGER_MAIL_FROM_DOMAIN = "overseasjob.in";
+
+      const convId = createId("cnv_persist_");
+      const msgId = createId("msg_persist_");
+      await db.insert(conversations).values({ id: convId, ownerId, channel: "email", status: "active" });
+      await db.insert(messages).values({
+        id: msgId,
+        conversationId: convId,
+        ownerId,
+        direction: "outbound",
+        status: "draft",
+        subject: "Persist Test",
+        body: "Persist Test Body",
+        idempotencyKey: `persist:${msgId}`,
+      });
+
+      const { SendApi, MessagesApi } = await import("hostinger-mail-api-sdk");
+      const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockResolvedValueOnce({
+        data: null,
+        status: 204,
+      } as any);
+
+      const mockSentMsg = {
+        uid: 8842,
+        path: "INBOX.Sent",
+        date: new Date().toISOString(),
+        subject: "Persist Test",
+        to: [{ address: "candidate.persist@test.com" }],
+        messageId: "<rfc-8842@overseasjob.in>",
+        inReplyTo: null,
+      };
+
+      const searchSpy = vi.spyOn(MessagesApi.prototype, "searchMessages").mockResolvedValueOnce({
+        data: { data: [mockSentMsg], pagination: { total: 1, page: 1, perPage: 10 } },
+        status: 200,
+      } as any);
+
+      const sendResult = await sendViaHostingerMailApi({
+        purpose: "interviews",
+        to: "candidate.persist@test.com",
+        displayName: "FreelanceHR Interviews",
+        subject: "Persist Test",
+        text: "Persist Test Body",
+      });
+
+      const now = new Date();
+      await db.update(messages).set({
+        status: "sent",
+        providerMessageId: sendResult.providerMessageId,
+        providerUid: sendResult.providerUid,
+        providerFolder: sendResult.providerFolder,
+        messageId: sendResult.messageId,
+        inReplyTo: sendResult.inReplyTo,
+        sentAt: now,
+      }).where(eq(messages.id, msgId));
+
+      const [stored] = await db.select().from(messages).where(eq(messages.id, msgId));
+      expect(stored.status).toBe("sent");
+      expect(stored.providerUid).toBe(8842);
+      expect(stored.providerFolder).toBe("INBOX.Sent");
+      expect(stored.messageId).toBe("<rfc-8842@overseasjob.in>");
+      expect(stored.providerMessageId).toBe("<rfc-8842@overseasjob.in>");
+
+      sendSpy.mockRestore();
+      searchSpy.mockRestore();
+      process.env = previousEnv;
+    });
+
+    it("5. reply uses provider UID + folder with Hostinger V1SendMessageRef", async () => {
       const previousEnv = { ...process.env };
       process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
       process.env.HOSTINGER_MAILBOX_OWNER_ID = "mock-owner-id";
@@ -485,46 +608,44 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       let capturedPayload: any = null;
       const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockImplementationOnce(async (_box, payload) => {
         capturedPayload = payload;
-        return { data: { id: "prov-id-reply" } } as any;
+        return { data: null, status: 204 } as any;
       });
 
       await sendViaHostingerMailApi({
         purpose: "owner",
         to: "client@test.com",
         displayName: "FreelanceHR",
-        subject: "Re: Hiring",
-        text: "Reply body",
-        inReplyTo: { uid: 4321, folder: "INBOX" },
+        subject: "Re: Hiring Requirement",
+        text: "We have candidates ready.",
+        inReplyTo: { uid: 8842, folder: "INBOX.Sent" },
       });
 
       expect(capturedPayload).toBeDefined();
-      expect(capturedPayload.inReplyTo).toEqual({ uid: 4321, folder: "INBOX" });
+      expect(capturedPayload.inReplyTo).toEqual({ uid: 8842, folder: "INBOX.Sent" });
 
       sendSpy.mockRestore();
       process.env = previousEnv;
     });
 
-    it("4. inbound matching priority: In-Reply-To match connects to correct conversation", async () => {
+    it("6. inbound In-Reply-To matches correct outbound message via RFC messageId", async () => {
       const db = await requireDb();
       process.env.HOSTINGER_MAIL_WEBHOOK_SECRET = "wh-secret-test";
       process.env.PRIMARY_OWNER_EMAIL = "rb.owner@test.local";
 
-      const convId = createId("cnv_wb_1_");
-      const outMsgId = createId("msg_out_wb_1_");
-      await db.insert(conversations).values({
-        id: convId,
-        ownerId,
-        channel: "email",
-        status: "waiting",
-      });
+      const convId = createId("cnv_wb_rfc_");
+      const outMsgId = createId("msg_out_wb_rfc_");
+      const rfcId = "<outbound-orig-999@overseasjob.in>";
+
+      await db.insert(conversations).values({ id: convId, ownerId, channel: "email", status: "waiting" });
       await db.insert(messages).values({
         id: outMsgId,
         conversationId: convId,
         ownerId,
         direction: "outbound",
         status: "sent",
-        body: "Outbound question",
-        providerMessageId: "prov_msg_parent_1",
+        body: "Initial outbound email",
+        messageId: rfcId,
+        providerMessageId: rfcId,
         idempotencyKey: `out:${outMsgId}`,
       });
 
@@ -533,11 +654,11 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
         body: {
           event: "message.received",
           data: {
-            messageId: "prov_in_1",
+            messageId: "<inbound-reply-101@external.com>",
             from: "candidate@external.com",
-            subject: "Re: Outbound question",
-            text: "Here is my answer.",
-            inReplyTo: "prov_msg_parent_1",
+            subject: "Re: Initial outbound email",
+            text: "Yes, I am available tomorrow.",
+            inReplyTo: rfcId,
           },
         },
       });
@@ -545,28 +666,31 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       expect(res.statusCode).toBe(202);
       expect((res.body as any).status).toBe("classification_queued");
       expect((res.body as any).conversationId).toBe(convId);
+
+      // Verify stored message has correct threading fields
+      const msgs = await db.select().from(messages).where(eq(messages.conversationId, convId));
+      const inboundMsg = msgs.find(m => m.direction === "inbound");
+      expect(inboundMsg).toBeDefined();
+      expect(inboundMsg?.inReplyTo).toBe(rfcId);
     });
 
-    it("5. inbound matching priority: References match connects to correct conversation", async () => {
+    it("7. inbound References match correct conversation via RFC messageId", async () => {
       const db = await requireDb();
       process.env.HOSTINGER_MAIL_WEBHOOK_SECRET = "wh-secret-test";
 
-      const convId = createId("cnv_wb_ref_");
-      const outMsgId = createId("msg_out_wb_ref_");
-      await db.insert(conversations).values({
-        id: convId,
-        ownerId,
-        channel: "email",
-        status: "waiting",
-      });
+      const convId = createId("cnv_wb_ref_rfc_");
+      const outMsgId = createId("msg_out_wb_ref_rfc_");
+      const rfcId = "<root-thread-msg-777@overseasjob.in>";
+
+      await db.insert(conversations).values({ id: convId, ownerId, channel: "email", status: "waiting" });
       await db.insert(messages).values({
         id: outMsgId,
         conversationId: convId,
         ownerId,
         direction: "outbound",
         status: "sent",
-        body: "Outbound ref question",
-        providerMessageId: "prov_msg_ref_parent",
+        body: "Thread initiation",
+        messageId: rfcId,
         idempotencyKey: `out:${outMsgId}`,
       });
 
@@ -575,11 +699,11 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
         body: {
           event: "message.received",
           data: {
-            messageId: "prov_in_ref_1",
-            from: "candidate@external.com",
-            subject: "Re: Question",
-            text: "References answer.",
-            references: ["<prov_msg_ref_parent>"],
+            messageId: "<inbound-ref-reply@external.com>",
+            from: "client@external.com",
+            subject: "Re: Thread initiation",
+            text: "Sounds great.",
+            references: [rfcId],
           },
         },
       });
@@ -588,49 +712,27 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       expect((res.body as any).conversationId).toBe(convId);
     });
 
-    it("6. unmatched inbound email remains unmatched and routes to exception center", async () => {
-      process.env.HOSTINGER_MAIL_WEBHOOK_SECRET = "wh-secret-test";
-
-      const res = await processHostingerMailWebhook({
-        authorization: "Bearer wh-secret-test",
-        body: {
-          event: "message.received",
-          data: {
-            messageId: "prov_in_unmatched_99",
-            from: "completely_unknown_person@nowhere.com",
-            subject: "Spam or unknown",
-            text: "Hello there.",
-            inReplyTo: "non_existent_ref_9999",
-          },
-        },
-      });
-
-      expect(res.statusCode).toBe(202);
-      expect((res.body as any).status).toBe("routed_to_exception");
-      expect((res.body as any).reason).toBe("unmatched");
-    });
-
-    it("7. ambiguous match across multiple conversations is rejected and routed to exception", async () => {
+    it("8. ambiguous reference across multiple conversations does not auto-attach", async () => {
       const db = await requireDb();
       process.env.HOSTINGER_MAIL_WEBHOOK_SECRET = "wh-secret-test";
 
-      const sharedRef = "shared_ambiguous_ref_123";
-      const convA = createId("cnv_amb_a_");
-      const convB = createId("cnv_amb_b_");
+      const sharedRef = "<shared-conflict-ref@overseasjob.in>";
+      const convA = createId("cnv_amb_1_");
+      const convB = createId("cnv_amb_2_");
 
       await db.insert(conversations).values({ id: convA, ownerId, channel: "email", status: "open" });
       await db.insert(conversations).values({ id: convB, ownerId, channel: "email", status: "open" });
 
-      const msgA = createId("msg_amb_a_");
-      const msgB = createId("msg_amb_b_");
+      const msgA = createId("msg_amb_1_");
+      const msgB = createId("msg_amb_2_");
       await db.insert(messages).values({
         id: msgA,
         conversationId: convA,
         ownerId,
         direction: "outbound",
         status: "sent",
-        body: "Conversation A message",
-        providerMessageId: sharedRef,
+        body: "Thread 1 message",
+        messageId: sharedRef,
         idempotencyKey: `amb:${msgA}`,
       });
       await db.insert(messages).values({
@@ -639,8 +741,8 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
         ownerId,
         direction: "outbound",
         status: "sent",
-        body: "Conversation B message",
-        providerMessageId: sharedRef,
+        body: "Thread 2 message",
+        messageId: sharedRef,
         idempotencyKey: `amb:${msgB}`,
       });
 
@@ -649,10 +751,10 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
         body: {
           event: "message.received",
           data: {
-            messageId: "prov_amb_incoming",
+            messageId: "<inbound-amb-incoming>",
             from: "applicant@test.com",
-            subject: "Re: Two matches",
-            text: "Ambiguous response",
+            subject: "Re: Ambiguous",
+            text: "Which thread?",
             inReplyTo: sharedRef,
           },
         },
@@ -663,17 +765,39 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       expect((res.body as any).reason).toBe("ambiguous_match");
     });
 
-    it("8. tenant isolation: inbound email cannot match messages belonging to another owner", async () => {
+    it("9. unmatched inbound email remains unmatched and routes to exception center", async () => {
+      process.env.HOSTINGER_MAIL_WEBHOOK_SECRET = "wh-secret-test";
+
+      const res = await processHostingerMailWebhook({
+        authorization: "Bearer wh-secret-test",
+        body: {
+          event: "message.received",
+          data: {
+            messageId: "<unknown-unmatched-msg-id>",
+            from: "random.unknown@nowhere.com",
+            subject: "Unsolicited Pitch",
+            text: "Hello, buy our service.",
+            inReplyTo: "<no-such-parent-exists>",
+          },
+        },
+      });
+
+      expect(res.statusCode).toBe(202);
+      expect((res.body as any).status).toBe("routed_to_exception");
+      expect((res.body as any).reason).toBe("unmatched");
+    });
+
+    it("10. tenant isolation: inbound email cannot match messages belonging to another owner", async () => {
       const db = await requireDb();
       process.env.HOSTINGER_MAIL_WEBHOOK_SECRET = "wh-secret-test";
 
-      const otherConv = createId("cnv_other_own_");
-      const otherMsg = createId("msg_other_own_");
-      const foreignRef = "foreign_owner_ref_999";
+      const otherConv = createId("cnv_other_tenant_");
+      const otherMsg = createId("msg_other_tenant_");
+      const foreignRfcId = "<other-tenant-secret-rfc@overseasjob.in>";
 
       await db.insert(conversations).values({
         id: otherConv,
-        ownerId: otherOwnerId, // DIFFERENT OWNER
+        ownerId: otherOwnerId, // Foreign owner
         channel: "email",
         status: "open",
       });
@@ -683,27 +807,27 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
         ownerId: otherOwnerId,
         direction: "outbound",
         status: "sent",
-        body: "Cross tenant outbound",
-        providerMessageId: foreignRef,
-        idempotencyKey: `cross:${otherMsg}`,
+        body: "Foreign owner message",
+        messageId: foreignRfcId,
+        idempotencyKey: `foreign:${otherMsg}`,
       });
 
-      // Inbound event processed under current owner (resolved primary owner)
+      // Webhook inbound event received under primary owner (ownerId)
       const res = await processHostingerMailWebhook({
         authorization: "Bearer wh-secret-test",
         body: {
           event: "message.received",
           data: {
-            messageId: "prov_in_cross_tenant",
-            from: "someone@somewhere.com",
+            messageId: "<foreign-reply-probe@test.com>",
+            from: "probe@test.com",
             subject: "Re: Foreign",
-            text: "Attempt cross tenant match",
-            inReplyTo: foreignRef,
+            text: "Attacking across tenants",
+            inReplyTo: foreignRfcId,
           },
         },
       });
 
-      // Must NOT match other owner's message!
+      // Must NOT match other owner's conversation
       expect(res.statusCode).toBe(202);
       expect((res.body as any).status).toBe("routed_to_exception");
       expect((res.body as any).reason).toBe("unmatched");
@@ -711,25 +835,105 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
   });
 
   // =========================================================================
-  // RB-05: ACTUAL INTERVIEW REMINDER DISPATCH
+  // RB-05: INTERVIEW REMINDER RELIABILITY & DISPATCH
   // =========================================================================
-  describe("RB-05: Actual Interview Reminder Dispatch", () => {
-    it("1. successful reminder actually calls existing Hostinger mail service, marks message sent and interview reminder_sent", async () => {
+  describe("RB-05: Interview Reminder Reliability & Dispatch", () => {
+    it("1. due interview is queued without setting reminderSentAt", async () => {
       const db = await requireDb();
-      const candId = createId("cnd_rem_ok_");
-      const compId = createId("cmp_rem_ok_");
-      const jobId = createId("job_rem_ok_");
-      const intId = createId("int_rem_ok_");
+      const candId = createId("cnd_due_1_");
+      const compId = createId("cmp_due_1_");
+      const jobId = createId("job_due_1_");
+      const intId = createId("int_due_1_");
 
-      await db.insert(candidates).values({
-        id: candId,
+      await db.insert(candidates).values({ id: candId, ownerId, fullName: "Due Candidate", email: "due@test.com" });
+      await db.insert(companies).values({ id: compId, ownerId, name: "Due Company" });
+      await db.insert(jobs).values({ id: jobId, ownerId, companyId: compId, title: "Due Role" });
+
+      const pastReminderAt = new Date(Date.now() - 3600 * 1000); // 1 hour ago
+      const scheduledAt = new Date(Date.now() + 23 * 3600 * 1000);
+
+      await db.insert(interviews).values({
+        id: intId,
         ownerId,
-        fullName: "Sarah Connor",
-        email: "sarah.connor@test.com",
-        profileState: "available",
+        companyId: compId,
+        candidateId: candId,
+        jobId,
+        status: "confirmed",
+        calendarStatus: "confirmed",
+        reminderAt: pastReminderAt,
+        reminderSentAt: null, // NOT sent yet
+        scheduledAt,
       });
-      await db.insert(companies).values({ id: compId, ownerId, name: "Cyberdyne Systems" });
-      await db.insert(jobs).values({ id: jobId, ownerId, companyId: compId, title: "Security Specialist" });
+
+      const { scanned, queued } = await processDueInterviewReminders(ownerId, 10);
+      expect(scanned).toBeGreaterThanOrEqual(1);
+      expect(queued).toBeGreaterThanOrEqual(1);
+
+      // Verify the queue job was inserted in automationQueue
+      const queueRows = await db.select().from(automationQueue).where(eq(automationQueue.ownerId, ownerId));
+      const reminderJob = queueRows.find(j => (j.payload as any)?.interviewId === intId);
+      expect(reminderJob).toBeDefined();
+      expect(reminderJob?.status).toBe("queued");
+      expect(reminderJob?.jobType).toBe("send_reminder");
+
+      // CRITICAL RB-05 REQUIREMENT: reminderSentAt MUST REMAIN NULL when queued!
+      const [intRow] = await db.select().from(interviews).where(eq(interviews.id, intId));
+      expect(intRow.reminderSentAt).toBeNull();
+      expect(intRow.status).toBe("confirmed");
+    });
+
+    it("2. queue insertion failure leaves reminderSentAt NULL and interview eligible for retry", async () => {
+      const db = await requireDb();
+      const candId = createId("cnd_due_fail_");
+      const compId = createId("cmp_due_fail_");
+      const jobId = createId("job_due_fail_");
+      const intId = createId("int_due_fail_");
+
+      await db.insert(candidates).values({ id: candId, ownerId, fullName: "Fail Candidate", email: "fail@test.com" });
+      await db.insert(companies).values({ id: compId, ownerId, name: "Fail Company" });
+      await db.insert(jobs).values({ id: jobId, ownerId, companyId: compId, title: "Fail Role" });
+
+      const pastReminderAt = new Date(Date.now() - 1800 * 1000);
+      const scheduledAt = new Date(Date.now() + 24 * 3600 * 1000);
+
+      await db.insert(interviews).values({
+        id: intId,
+        ownerId,
+        companyId: compId,
+        candidateId: candId,
+        jobId,
+        status: "confirmed",
+        calendarStatus: "confirmed",
+        reminderAt: pastReminderAt,
+        reminderSentAt: null,
+        scheduledAt,
+      });
+
+      // Force queue insertion failure by mocking db.insert on automationQueue
+      const insertSpy = vi.spyOn(db, "insert").mockImplementationOnce(() => {
+        throw new Error("Simulated database disk failure");
+      });
+
+      await expect(processDueInterviewReminders(ownerId, 10)).rejects.toThrow("Simulated database disk failure");
+
+      // Verify interview still has reminderSentAt = NULL so it remains eligible for next tick
+      const [intRow] = await db.select().from(interviews).where(eq(interviews.id, intId));
+      expect(intRow.reminderSentAt).toBeNull();
+      expect(intRow.status).toBe("confirmed");
+
+      insertSpy.mockRestore();
+    });
+
+    it("3. AI generation / worker failure leaves reminderSentAt NULL", async () => {
+      const db = await requireDb();
+      const candId = createId("cnd_ai_fail_");
+      const compId = createId("cmp_ai_fail_");
+      const jobId = createId("job_ai_fail_");
+      const intId = createId("int_ai_fail_");
+
+      await db.insert(candidates).values({ id: candId, ownerId, fullName: "AI Fail", email: "aifail@test.com" });
+      await db.insert(companies).values({ id: compId, ownerId, name: "AI Fail Co" });
+      await db.insert(jobs).values({ id: jobId, ownerId, companyId: compId, title: "AI Fail Role" });
       await db.insert(interviews).values({
         id: intId,
         ownerId,
@@ -739,97 +943,62 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
         status: "confirmed",
         calendarStatus: "confirmed",
         scheduledAt: new Date(Date.now() + 24 * 3600 * 1000),
+        reminderSentAt: null,
       });
-
-      const { SendApi } = await import("hostinger-mail-api-sdk");
-      let calledPayload: any = null;
-      const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockImplementationOnce(async (_box, p) => {
-        calledPayload = p;
-        return { data: { messageId: "hostinger_rem_sent_1" } } as any;
-      });
-
-      const previousEnv = { ...process.env };
-      process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
-      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-interviews-id";
-      process.env.HOSTINGER_MAIL_FROM_DOMAIN = "overseasjob.in";
 
       const job: any = {
-        id: createId("que_rem_run_"),
+        id: createId("que_ai_fail_"),
         ownerId,
         jobType: "send_reminder",
         payload: { interviewId: intId },
       };
 
-      await handleAiTaskResult(
-        job,
-        {
-          subject: "Upcoming Interview Reminder",
-          body: "Hello Sarah, your interview is scheduled for tomorrow.",
-          channel: "email",
-        },
-        "ai-model-test",
-        ownerId,
-        db
-      );
+      // Missing body in AI result
+      await expect(
+        handleAiTaskResult(
+          job,
+          { subject: "Reminder", body: "", channel: "email" },
+          "ai-model",
+          ownerId,
+          db
+        )
+      ).rejects.toThrow("AI model did not generate reminder content.");
 
-      // Verify Hostinger was called
-      expect(sendSpy).toHaveBeenCalled();
-      expect(calledPayload.to).toEqual(["sarah.connor@test.com"]);
-      expect(calledPayload.subject).toBe("Upcoming Interview Reminder");
-
-      // Verify interview status is reminder_sent
-      const [updatedInt] = await db.select().from(interviews).where(eq(interviews.id, intId));
-      expect(updatedInt.status).toBe("reminder_sent");
-      expect(updatedInt.reminderSentAt).toBeInstanceOf(Date);
-
-      // Verify message row is created with status = sent
-      const msgs = await db.select().from(messages).where(and(eq(messages.ownerId, ownerId), eq(messages.status, "sent")));
-      const sentMsg = msgs.find(m => m.body.includes("Hello Sarah"));
-      expect(sentMsg).toBeDefined();
-      expect(sentMsg?.providerMessageId).toBe("hostinger_rem_sent_1");
-
-      // Verify audit is interview.reminder_sent
-      const audits = await db.select().from(auditEvents).where(and(eq(auditEvents.ownerId, ownerId), eq(auditEvents.action, "interview.reminder_sent")));
-      expect(audits.some(a => a.resourceId === intId)).toBe(true);
-
-      sendSpy.mockRestore();
-      process.env = previousEnv;
+      // Verify reminderSentAt remains NULL
+      const [intRow] = await db.select().from(interviews).where(eq(interviews.id, intId));
+      expect(intRow.reminderSentAt).toBeNull();
+      expect(intRow.status).toBe("confirmed");
     });
 
-    it("2. provider failure does NOT mark interview reminder_sent or message sent", async () => {
+    it("4. Hostinger delivery failure leaves reminderSentAt NULL and interview confirmed", async () => {
       const db = await requireDb();
-      const candId = createId("cnd_rem_fail_");
-      const intId = createId("int_rem_fail_");
+      const candId = createId("cnd_hfail_");
+      const intId = createId("int_hfail_");
 
-      await db.insert(candidates).values({
-        id: candId,
-        ownerId,
-        fullName: "Failing Dispatch Candidate",
-        email: "fail.dispatch@test.com",
-        profileState: "available",
-      });
+      await db.insert(candidates).values({ id: candId, ownerId, fullName: "Hostinger Fail", email: "hfail@test.com" });
       await db.insert(interviews).values({
         id: intId,
         ownerId,
-        companyId: "cmp_fail",
+        companyId: "cmp_hf",
         candidateId: candId,
-        jobId: "job_fail",
+        jobId: "job_hf",
         status: "confirmed",
         calendarStatus: "confirmed",
         scheduledAt: new Date(Date.now() + 24 * 3600 * 1000),
+        reminderSentAt: null,
       });
 
       const { SendApi } = await import("hostinger-mail-api-sdk");
       const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockRejectedValueOnce(
-        new Error("Hostinger API 503 Service Unavailable")
+        new Error("Hostinger API 500 Internal Error")
       );
 
       const previousEnv = { ...process.env };
       process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
-      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-interviews-id";
+      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-int-id";
 
       const job: any = {
-        id: createId("que_rem_fail_"),
+        id: createId("que_hfail_"),
         ownerId,
         jobType: "send_reminder",
         payload: { interviewId: intId },
@@ -838,43 +1007,185 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       await expect(
         handleAiTaskResult(
           job,
-          { subject: "Reminder", body: "Please attend.", channel: "email" },
+          { subject: "Reminder", body: "Tomorrow at 10 AM", channel: "email" },
           "ai-model",
           ownerId,
           db
         )
-      ).rejects.toThrow("Hostinger API 503 Service Unavailable");
+      ).rejects.toThrow("Hostinger API 500 Internal Error");
 
-      // Interview must NOT be marked reminder_sent
+      // Verify reminderSentAt remains NULL
       const [intRow] = await db.select().from(interviews).where(eq(interviews.id, intId));
+      expect(intRow.reminderSentAt).toBeNull();
       expect(intRow.status).toBe("confirmed");
-
-      // No sent message
-      const msgs = await db.select().from(messages).where(and(eq(messages.ownerId, ownerId), eq(messages.status, "sent")));
-      expect(msgs.find(m => m.body === "Please attend.")).toBeUndefined();
 
       sendSpy.mockRestore();
       process.env = previousEnv;
     });
 
-    it("3. idempotent retry after successful send does NOT send duplicate email", async () => {
+    it("5. successful send sets reminderSentAt and status reminder_sent", async () => {
       const db = await requireDb();
-      const candId = createId("cnd_rem_idem_");
-      const intId = createId("int_rem_idem_");
+      const candId = createId("cnd_ok_full_");
+      const compId = createId("cmp_ok_full_");
+      const jobId = createId("job_ok_full_");
+      const intId = createId("int_ok_full_");
 
-      await db.insert(candidates).values({
-        id: candId,
-        ownerId,
-        fullName: "Idempotent Candidate",
-        email: "idem.cand@test.com",
-        profileState: "available",
-      });
+      await db.insert(candidates).values({ id: candId, ownerId, fullName: "Success Cand", email: "success.cand@test.com" });
+      await db.insert(companies).values({ id: compId, ownerId, name: "Success Co" });
+      await db.insert(jobs).values({ id: jobId, ownerId, companyId: compId, title: "Success Role" });
       await db.insert(interviews).values({
         id: intId,
         ownerId,
-        companyId: "cmp_idem",
+        companyId: compId,
         candidateId: candId,
-        jobId: "job_idem",
+        jobId,
+        status: "confirmed",
+        calendarStatus: "confirmed",
+        scheduledAt: new Date(Date.now() + 24 * 3600 * 1000),
+        reminderSentAt: null,
+      });
+
+      const { SendApi, MessagesApi } = await import("hostinger-mail-api-sdk");
+      const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockResolvedValueOnce({
+        data: null,
+        status: 204,
+      } as any);
+
+      const mockSent = {
+        uid: 9911,
+        path: "INBOX.Sent",
+        date: new Date().toISOString(),
+        subject: "Full Success Reminder",
+        to: [{ address: "success.cand@test.com" }],
+        messageId: "<sent-full-9911@overseasjob.in>",
+      };
+
+      const searchSpy = vi.spyOn(MessagesApi.prototype, "searchMessages").mockResolvedValueOnce({
+        data: { data: [mockSent], pagination: { total: 1, page: 1, perPage: 10 } },
+        status: 200,
+      } as any);
+
+      const previousEnv = { ...process.env };
+      process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
+      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-int-id";
+
+      const job: any = {
+        id: createId("que_ok_full_"),
+        ownerId,
+        jobType: "send_reminder",
+        payload: { interviewId: intId },
+      };
+
+      await handleAiTaskResult(
+        job,
+        { subject: "Full Success Reminder", body: "Please confirm your attendance.", channel: "email" },
+        "ai-model",
+        ownerId,
+        db
+      );
+
+      // Verify interview status and reminderSentAt
+      const [updatedInt] = await db.select().from(interviews).where(eq(interviews.id, intId));
+      expect(updatedInt.status).toBe("reminder_sent");
+      expect(updatedInt.reminderSentAt).toBeInstanceOf(Date);
+
+      // Verify message row is stored with real provider UID and RFC messageId
+      const msgs = await db.select().from(messages).where(and(eq(messages.ownerId, ownerId), eq(messages.status, "sent")));
+      const sentMsg = msgs.find(m => m.subject === "Full Success Reminder");
+      expect(sentMsg).toBeDefined();
+      expect(sentMsg?.providerUid).toBe(9911);
+      expect(sentMsg?.providerFolder).toBe("INBOX.Sent");
+      expect(sentMsg?.messageId).toBe("<sent-full-9911@overseasjob.in>");
+
+      sendSpy.mockRestore();
+      searchSpy.mockRestore();
+      process.env = previousEnv;
+    });
+
+    it("6. retry after failure can send and sets reminderSentAt", async () => {
+      const db = await requireDb();
+      const candId = createId("cnd_retry_");
+      const intId = createId("int_retry_");
+
+      await db.insert(candidates).values({ id: candId, ownerId, fullName: "Retry Candidate", email: "retry.cand@test.com" });
+      await db.insert(interviews).values({
+        id: intId,
+        ownerId,
+        companyId: "cmp_retry",
+        candidateId: candId,
+        jobId: "job_retry",
+        status: "confirmed",
+        calendarStatus: "confirmed",
+        scheduledAt: new Date(Date.now() + 24 * 3600 * 1000),
+        reminderSentAt: null,
+      });
+
+      const { SendApi } = await import("hostinger-mail-api-sdk");
+
+      // First attempt fails
+      const sendSpyFail = vi.spyOn(SendApi.prototype, "sendEmail").mockRejectedValueOnce(
+        new Error("Temporary network glitch")
+      );
+
+      const previousEnv = { ...process.env };
+      process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
+      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-int-id";
+
+      const job: any = {
+        id: createId("que_retry_"),
+        ownerId,
+        jobType: "send_reminder",
+        payload: { interviewId: intId },
+      };
+
+      await expect(
+        handleAiTaskResult(
+          job,
+          { subject: "Retry Reminder", body: "Please attend.", channel: "email" },
+          "ai-model",
+          ownerId,
+          db
+        )
+      ).rejects.toThrow("Temporary network glitch");
+
+      const [afterFail] = await db.select().from(interviews).where(eq(interviews.id, intId));
+      expect(afterFail.reminderSentAt).toBeNull();
+      sendSpyFail.mockRestore();
+
+      // Second attempt (retry) succeeds!
+      const sendSpySuccess = vi.spyOn(SendApi.prototype, "sendEmail").mockResolvedValueOnce({
+        data: null,
+        status: 204,
+      } as any);
+
+      await handleAiTaskResult(
+        job,
+        { subject: "Retry Reminder", body: "Please attend.", channel: "email" },
+        "ai-model",
+        ownerId,
+        db
+      );
+
+      const [afterSuccess] = await db.select().from(interviews).where(eq(interviews.id, intId));
+      expect(afterSuccess.status).toBe("reminder_sent");
+      expect(afterSuccess.reminderSentAt).toBeInstanceOf(Date);
+
+      sendSpySuccess.mockRestore();
+      process.env = previousEnv;
+    });
+
+    it("7. retry after success does not duplicate send", async () => {
+      const db = await requireDb();
+      const candId = createId("cnd_rem_nodup_");
+      const intId = createId("int_rem_nodup_");
+
+      await db.insert(candidates).values({ id: candId, ownerId, fullName: "NoDup Candidate", email: "nodup@test.com" });
+      await db.insert(interviews).values({
+        id: intId,
+        ownerId,
+        companyId: "cmp_nodup",
+        candidateId: candId,
+        jobId: "job_nodup",
         status: "confirmed",
         calendarStatus: "confirmed",
         scheduledAt: new Date(Date.now() + 24 * 3600 * 1000),
@@ -884,58 +1195,53 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       let callCount = 0;
       const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockImplementation(async () => {
         callCount++;
-        return { data: { messageId: "hostinger_idem_1" } } as any;
+        return { data: null, status: 204 } as any;
       });
 
       const previousEnv = { ...process.env };
       process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
-      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-interviews-id";
+      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-int-id";
 
       const job: any = {
-        id: createId("que_rem_idem_"),
+        id: createId("que_nodup_"),
         ownerId,
         jobType: "send_reminder",
         payload: { interviewId: intId },
       };
 
-      // First run succeeds
+      // First execution
       await handleAiTaskResult(
         job,
-        { subject: "Reminder", body: "First call body", channel: "email" },
+        { subject: "NoDup Reminder", body: "Meeting tomorrow", channel: "email" },
         "ai-model",
         ownerId,
         db
       );
       expect(callCount).toBe(1);
 
-      // Second run with same job / idempotency key returns idempotent no-op without sending again
+      // Second execution
       const res = await handleAiTaskResult(
         job,
-        { subject: "Reminder", body: "First call body", channel: "email" },
+        { subject: "NoDup Reminder", body: "Meeting tomorrow", channel: "email" },
         "ai-model",
         ownerId,
         db
       );
 
       expect((res as any).alreadySent).toBe(true);
-      expect(callCount).toBe(1); // STILL 1, no duplicate email sent!
+      expect(callCount).toBe(1); // Call count remains 1, no duplicate external send
 
       sendSpy.mockRestore();
       process.env = previousEnv;
     });
 
-    it("4. suppressed recipient is NOT contacted and does not mark interview reminder_sent", async () => {
+    it("8. suppression prevents sending and leaves reminderSentAt NULL", async () => {
       const db = await requireDb();
-      const candId = createId("cnd_rem_supp_");
-      const intId = createId("int_rem_supp_");
-      const suppEmail = "suppressed.candidate@test.com";
+      const candId = createId("cnd_supp_check_");
+      const intId = createId("int_supp_check_");
+      const suppEmail = "suppressed.now@test.com";
 
-      await db.insert(candidates).values({
-        id: candId,
-        ownerId,
-        fullName: "Suppressed Candidate",
-        email: suppEmail,
-      });
+      await db.insert(candidates).values({ id: candId, ownerId, fullName: "Suppressed Now", email: suppEmail });
       await db.insert(interviews).values({
         id: intId,
         ownerId,
@@ -944,11 +1250,11 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
         jobId: "job_supp",
         status: "confirmed",
         calendarStatus: "confirmed",
+        reminderSentAt: null,
       });
 
-      // Add to suppression list
       await db.insert(suppressionList).values({
-        id: createId("sup_t_"),
+        id: createId("sup_ch_"),
         ownerId,
         channel: "email",
         valueHash: hashContactValue(suppEmail),
@@ -958,7 +1264,7 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       });
 
       const job: any = {
-        id: createId("que_rem_supp_"),
+        id: createId("que_supp_"),
         ownerId,
         jobType: "send_reminder",
         payload: { interviewId: intId },
@@ -967,7 +1273,7 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       await expect(
         handleAiTaskResult(
           job,
-          { subject: "Reminder", body: "Do not send", channel: "email" },
+          { subject: "Reminder", body: "Hello", channel: "email" },
           "ai-model",
           ownerId,
           db
@@ -975,20 +1281,16 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       ).rejects.toThrow("is on the suppression list. Reminder dispatch blocked.");
 
       const [intRow] = await db.select().from(interviews).where(eq(interviews.id, intId));
-      expect(intRow.status).toBe("confirmed"); // Not reminder_sent
+      expect(intRow.reminderSentAt).toBeNull();
+      expect(intRow.status).toBe("confirmed");
     });
 
-    it("5. unsupported channel (sms/whatsapp) fails safely without faking dispatch", async () => {
+    it("9. unsupported channel is not marked sent and leaves reminderSentAt NULL", async () => {
       const db = await requireDb();
-      const candId = createId("cnd_rem_chan_");
-      const intId = createId("int_rem_chan_");
+      const candId = createId("cnd_chan_check_");
+      const intId = createId("int_chan_check_");
 
-      await db.insert(candidates).values({
-        id: candId,
-        ownerId,
-        fullName: "Channel Candidate",
-        email: "chan.cand@test.com",
-      });
+      await db.insert(candidates).values({ id: candId, ownerId, fullName: "Chan Candidate", email: "chan@test.com" });
       await db.insert(interviews).values({
         id: intId,
         ownerId,
@@ -997,10 +1299,11 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
         jobId: "job_chan",
         status: "confirmed",
         calendarStatus: "confirmed",
+        reminderSentAt: null,
       });
 
       const job: any = {
-        id: createId("que_rem_chan_"),
+        id: createId("que_chan_"),
         ownerId,
         jobType: "send_reminder",
         payload: { interviewId: intId },
@@ -1009,14 +1312,15 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       await expect(
         handleAiTaskResult(
           job,
-          { subject: "Reminder", body: "WhatsApp text", channel: "whatsapp" as any },
+          { subject: "Reminder", body: "SMS Body", channel: "sms" as any },
           "ai-model",
           ownerId,
           db
         )
-      ).rejects.toThrow('Channel "whatsapp" is unsupported.');
+      ).rejects.toThrow('Channel "sms" is unsupported.');
 
       const [intRow] = await db.select().from(interviews).where(eq(interviews.id, intId));
+      expect(intRow.reminderSentAt).toBeNull();
       expect(intRow.status).toBe("confirmed");
     });
   });

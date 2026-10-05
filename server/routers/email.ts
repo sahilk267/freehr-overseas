@@ -96,7 +96,15 @@ export const emailRouter = router({
         });
         const now = new Date();
         await db.update(approvals).set({ actionedAt: now }).where(eq(approvals.id, approval.id));
-        await db.update(messages).set({ status: "sent", providerMessageId: result.providerMessageId, sentAt: now }).where(eq(messages.id, message.id));
+        await db.update(messages).set({
+          status: "sent",
+          providerMessageId: result.providerMessageId,
+          providerUid: result.providerUid,
+          providerFolder: result.providerFolder,
+          messageId: result.messageId,
+          inReplyTo: result.inReplyTo,
+          sentAt: now,
+        }).where(eq(messages.id, message.id));
         await recordAudit({ ownerId: ctx.user.id, actorType: "provider", actorId: "hostinger_mail_api", action: "email.sent", resourceType: "message", resourceId: message.id, previousState: message.status, nextState: "sent", metadata: { approvalId: approval.id, actionedAt: now.toISOString(), recipient: approvedRecipient, providerMessageId: result.providerMessageId } });
         return { success: true, providerMessageId: result.providerMessageId };
       } catch (error) {

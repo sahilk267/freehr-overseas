@@ -5,6 +5,7 @@ vi.mock("hostinger-mail-api-sdk", () => ({
   Configuration: class Configuration { constructor(public options: unknown) {} },
   AccountApi: class AccountApi { async getCurrentAccount() { return {}; } },
   SendApi: class SendApi { sendEmail(...args: unknown[]) { return sendEmail(...args); } },
+  MessagesApi: class MessagesApi { async searchMessages() { return { data: { data: [] } }; } },
 }));
 
 const { sendViaHostingerMailApi, getSenderAddress } = await import("./hostingerMail");

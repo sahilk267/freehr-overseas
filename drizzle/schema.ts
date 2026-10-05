@@ -281,6 +281,11 @@ export const messages = mysqlTable(
     body: text("body").notNull(),
     subject: varchar("subject", { length: 255 }),
     providerMessageId: varchar("providerMessageId", { length: 255 }),
+    providerUid: int("providerUid"),
+    providerFolder: varchar("providerFolder", { length: 120 }),
+    messageId: varchar("messageId", { length: 255 }),
+    inReplyTo: varchar("inReplyTo", { length: 255 }),
+    references: json("references"),
     idempotencyKey: varchar("idempotencyKey", { length: 160 }).notNull(),
     aiGenerated: boolean("aiGenerated").notNull().default(false),
     sentAt: timestamp("sentAt"),
@@ -288,7 +293,13 @@ export const messages = mysqlTable(
     createdAt,
     updatedAt,
   },
-  table => [uniqueIndex("message_idempotency_unique").on(table.idempotencyKey), index("message_conversation_idx").on(table.conversationId)],
+  table => [
+    uniqueIndex("message_idempotency_unique").on(table.idempotencyKey),
+    index("message_conversation_idx").on(table.conversationId),
+    index("message_provider_uid_idx").on(table.providerUid, table.providerFolder),
+    index("message_rfc_message_id_idx").on(table.messageId),
+    index("message_provider_msg_id_idx").on(table.providerMessageId),
+  ],
 );
 
 export const screenings = mysqlTable(
