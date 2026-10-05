@@ -6,6 +6,10 @@ import { runControlledAiTask } from "./aiRouting";
 import { scanCandidateDocument } from "./documentScanner";
 import { applySideEffect } from "./approvalEngine";
 import { assertTransition } from "../workflow";
+import { sendViaHostingerMailApi } from "./hostingerMail";
+
+export class NonRetryableJobError extends Error {}
+export class RetryableJobError extends Error {}
 
 const AI_JOB_TYPES = new Set<AiTaskType>(["classify_reply", "draft_outreach", "parse_cv", "score_match", "send_reminder", "reconcile_invoice"]);
 const calculateBackoff = (attempts: number) => Math.min(60 * 60 * 1000, 30_000 * 2 ** Math.max(0, attempts - 1));
@@ -239,6 +243,9 @@ export async function handleAiTaskResult(
     }
   } else if (job.jobType === "send_reminder") {
     const interviewId = payload.interviewId ? String(payload.interviewId) : null;
+    if (!interviewId) {
+      throw new NonRetryableJobError("Missing interviewId in send_reminder payload.");
+    }
     const reminder = result as {
       subject?: string;
       body?: string;
@@ -246,63 +253,239 @@ export async function handleAiTaskResult(
       sendAfter?: string | null;
     };
 
-    if (interviewId && reminder) {
-      const interview = (
-        await db
-          .select()
-          .from(interviews)
-          .where(and(eq(interviews.id, interviewId), eq(interviews.ownerId, ownerId)))
-          .limit(1)
-      )[0];
-
-      if (interview) {
-        // Enforce idempotent state transition: update status to reminder_sent if currently confirmed
-        if (interview.status === "confirmed") {
-          await db
-            .update(interviews)
-            .set({
-              status: "reminder_sent",
-              reminderSentAt: interview.reminderSentAt ?? new Date(),
-              updatedAt: new Date(),
-            })
-            .where(eq(interviews.id, interviewId));
-        }
-
-        // Create draft reminder message if body is provided
-        if (reminder.body) {
-          const reminderMsgId = createId("msg_rem_");
-          await db.insert(messages).values({
-            id: reminderMsgId,
-            ownerId,
-            companyId: interview.companyId,
-            candidateId: interview.candidateId,
-            channel: reminder.channel ?? "email",
-            direction: "outbound",
-            status: "draft_ready",
-            subject: reminder.subject ?? "Interview Reminder",
-            body: reminder.body,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-        }
-
-        await recordAudit({
-          ownerId,
-          actorType: "ai",
-          actorId: selectedModel,
-          action: "interview.reminder_sent",
-          resourceType: "interview",
-          resourceId: interviewId,
-          previousState: interview.status,
-          nextState: interview.status === "confirmed" ? "reminder_sent" : interview.status,
-          metadata: {
-            channel: reminder.channel,
-            subject: reminder.subject,
-            sendAfter: reminder.sendAfter,
-          },
-        });
-      }
+    if (!reminder || !reminder.body) {
+      throw new NonRetryableJobError("AI model did not generate reminder content.");
     }
+
+    const channel = reminder.channel ?? "email";
+    if (channel !== "email") {
+      throw new NonRetryableJobError(
+        `Channel "${channel}" is unsupported. Only email reminders can be dispatched.`,
+      );
+    }
+
+    // 1. Validate owner/tenant & load interview
+    const interview = (
+      await db
+        .select()
+        .from(interviews)
+        .where(and(eq(interviews.id, interviewId), eq(interviews.ownerId, ownerId)))
+        .limit(1)
+    )[0];
+
+    if (!interview) {
+      throw new NonRetryableJobError(`Interview "${interviewId}" not found for owner.`);
+    }
+
+    // 2. Check idempotency: has this reminder already been successfully dispatched?
+    const reminderIdempotencyKey = `interview_reminder:${interview.id}:${interview.scheduledAt?.getTime() ?? "none"}`;
+    const existingSentMsg = (
+      await db
+        .select()
+        .from(messages)
+        .where(
+          and(
+            eq(messages.ownerId, ownerId),
+            eq(messages.idempotencyKey, reminderIdempotencyKey),
+            eq(messages.status, "sent"),
+          ),
+        )
+        .limit(1)
+    )[0];
+
+    if (existingSentMsg) {
+      if (interview.status !== "reminder_sent") {
+        await db
+          .update(interviews)
+          .set({
+            status: "reminder_sent",
+            reminderSentAt: interview.reminderSentAt ?? new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(interviews.id, interview.id));
+      }
+      return { success: true, alreadySent: true, messageId: existingSentMsg.id };
+    }
+
+    if (interview.status === "reminder_sent") {
+      return { success: true, alreadySent: true };
+    }
+
+    // 3. Validate interview state: must be confirmed
+    if (interview.status !== "confirmed") {
+      throw new NonRetryableJobError(
+        `Interview is not in confirmed state (current: ${interview.status}). Cannot dispatch reminder.`,
+      );
+    }
+
+    // 4. Check candidate contact information
+    const candidate = (
+      await db
+        .select()
+        .from(candidates)
+        .where(and(eq(candidates.id, interview.candidateId), eq(candidates.ownerId, ownerId)))
+        .limit(1)
+    )[0];
+
+    if (!candidate || !candidate.email || !candidate.email.trim()) {
+      throw new NonRetryableJobError(
+        `Candidate "${interview.candidateId}" does not have a valid email address for reminder dispatch.`,
+      );
+    }
+    const recipientEmail = candidate.email.trim().toLowerCase();
+
+    // 5. Check suppression / opt-out / consent rules
+    if (
+      candidate.doNotContactAt ||
+      candidate.withdrawnAt ||
+      candidate.deletedAt ||
+      candidate.profileState === "do_not_contact" ||
+      candidate.profileState === "deleted"
+    ) {
+      throw new NonRetryableJobError(
+        `Candidate "${candidate.id}" has opted out, withdrawn, or is marked for deletion.`,
+      );
+    }
+
+    const emailHash = hashContactValue(recipientEmail);
+    const suppressed = (
+      await db
+        .select()
+        .from(suppressionList)
+        .where(
+          and(
+            eq(suppressionList.ownerId, ownerId),
+            eq(suppressionList.channel, "email"),
+            eq(suppressionList.valueHash, emailHash),
+          ),
+        )
+        .limit(1)
+    )[0];
+
+    if (suppressed?.active) {
+      throw new NonRetryableJobError(
+        `Recipient "${recipientEmail}" is on the suppression list. Reminder dispatch blocked.`,
+      );
+    }
+
+    // 6. Find or create conversation for message record
+    let conv = (
+      await db
+        .select()
+        .from(conversations)
+        .where(
+          and(
+            eq(conversations.ownerId, ownerId),
+            eq(conversations.candidateId, candidate.id),
+            eq(conversations.jobId, interview.jobId),
+          ),
+        )
+        .limit(1)
+    )[0];
+
+    if (!conv) {
+      const convId = createId("cnv_");
+      await db.insert(conversations).values({
+        id: convId,
+        ownerId,
+        companyId: interview.companyId,
+        candidateId: candidate.id,
+        jobId: interview.jobId,
+        channel: "email",
+        status: "active",
+      });
+      conv = (
+        await db.select().from(conversations).where(eq(conversations.id, convId)).limit(1)
+      )[0];
+    }
+
+    // 7. Find or create outbound message record in draft state
+    let msg = (
+      await db
+        .select()
+        .from(messages)
+        .where(
+          and(
+            eq(messages.ownerId, ownerId),
+            eq(messages.idempotencyKey, reminderIdempotencyKey),
+          ),
+        )
+        .limit(1)
+    )[0];
+
+    const subject = reminder.subject?.trim() || `Interview Reminder: ${candidate.fullName}`;
+    const body = reminder.body.trim();
+
+    if (!msg) {
+      const msgId = createId("msg_rem_");
+      await db.insert(messages).values({
+        id: msgId,
+        conversationId: conv.id,
+        ownerId,
+        direction: "outbound",
+        status: "draft",
+        subject,
+        body,
+        idempotencyKey: reminderIdempotencyKey,
+        aiGenerated: true,
+      });
+      msg = (
+        await db.select().from(messages).where(eq(messages.id, msgId)).limit(1)
+      )[0];
+    }
+
+    // 8. Actual dispatch through existing Hostinger mail service
+    const sendResult = await sendViaHostingerMailApi({
+      purpose: "interviews",
+      to: recipientEmail,
+      displayName: "FreelanceHR Interviews",
+      subject: msg.subject ?? subject,
+      text: msg.body,
+      messageId: msg.id,
+    });
+
+    // 9. Persist message state as sent and transition interview
+    const dispatchedAt = new Date();
+    await db
+      .update(messages)
+      .set({
+        status: "sent",
+        providerMessageId: sendResult.providerMessageId,
+        sentAt: dispatchedAt,
+        deliveredAt: dispatchedAt,
+        updatedAt: dispatchedAt,
+      })
+      .where(eq(messages.id, msg.id));
+
+    await db
+      .update(interviews)
+      .set({
+        status: "reminder_sent",
+        reminderSentAt: dispatchedAt,
+        updatedAt: dispatchedAt,
+      })
+      .where(eq(interviews.id, interview.id));
+
+    // 10. Record audit event: interview.reminder_sent
+    await recordAudit({
+      ownerId,
+      actorType: "ai",
+      actorId: selectedModel,
+      action: "interview.reminder_sent",
+      resourceType: "interview",
+      resourceId: interview.id,
+      previousState: interview.status,
+      nextState: "reminder_sent",
+      metadata: {
+        channel: "email",
+        recipient: recipientEmail,
+        messageId: msg.id,
+        providerMessageId: sendResult.providerMessageId,
+        scheduledAt: interview.scheduledAt?.toISOString() ?? null,
+      },
+    });
+
+    return { success: true, messageId: msg.id, providerMessageId: sendResult.providerMessageId };
   } else if (job.jobType === "reconcile_invoice") {
     const invoiceId = payload.invoiceId ? String(payload.invoiceId) : null;
     const reconciliation = result as {
@@ -546,14 +729,24 @@ export async function processOneQueuedJob(ownerId: number) {
       maxOutputTokens: route?.maxOutputTokens ?? 1200,
     });
     await db.insert(aiUsage).values({ id: usageId, ownerId, routeId: route?.id ?? null, queueJobId: job.id, taskType: job.jobType, requestedModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite", selectedModel: response.selectedModel, status: "succeeded", latencyMs: response.latencyMs });
-    await db.update(automationQueue).set({ status: "completed", result: response.result, completedAt: new Date(), lockToken: null, lockedAt: null, lastError: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
     await handleAiTaskResult(job, response.result, response.selectedModel, ownerId, db);
+    await db.update(automationQueue).set({ status: "completed", result: response.result, completedAt: new Date(), lockToken: null, lockedAt: null, lastError: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
     await recordAudit({ ownerId, actorType: "ai", actorId: response.selectedModel, action: "automation.completed", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: "completed", metadata: { taskType: job.jobType, latencyMs: response.latencyMs } });
     return { status: "completed" as const, jobId: job.id, selectedModel: response.selectedModel };
   } catch (error) {
+    const isNonRetryable = error instanceof NonRetryableJobError;
     const isConfig = error instanceof OpenRouterConfigurationError;
-    const isRetryable = error instanceof OpenRouterTransientError;
-    const nextStatus = isConfig ? "blocked" : isRetryable && job.attempts + 1 < job.maxAttempts ? "retryable_failed" : "permanently_failed";
+    const isRetryable =
+      !isNonRetryable &&
+      !isConfig &&
+      (error instanceof RetryableJobError ||
+        error instanceof OpenRouterTransientError ||
+        !(error instanceof OpenRouterValidationError));
+    const nextStatus = isConfig
+      ? "blocked"
+      : isRetryable && job.attempts + 1 < job.maxAttempts
+        ? "retryable_failed"
+        : "permanently_failed";
     const nextRun = isRetryable ? new Date(Date.now() + calculateBackoff(job.attempts + 1)) : now;
     const message = error instanceof Error ? error.message : "Unknown automation error.";
     await db.insert(aiUsage).values({ id: usageId, ownerId, routeId: route?.id ?? null, queueJobId: job.id, taskType: job.jobType, requestedModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite", status: nextStatus, errorCode: error instanceof OpenRouterValidationError ? "invalid_output" : isConfig ? "configuration" : "provider" });

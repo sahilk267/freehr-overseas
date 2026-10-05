@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import {
@@ -27,6 +27,7 @@ import { consequentialRouter } from "./routers/consequential";
 import { emailRouter } from "./routers/email";
 import {
   applyApprovalDecision,
+  applySideEffect,
   consequentialActionTypes,
   requestOrAutoDecide,
 } from "./services/approvalEngine";
@@ -702,8 +703,15 @@ describe("Release Blocker Remediation Suite (RB-07, RB-08, RB-09, RB-10, RB-11, 
       const jobId = createId("job_rem_");
       const interviewId = createId("int_rem_");
 
+      process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
+      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-interviews";
+      const { SendApi } = await import("hostinger-mail-api-sdk");
+      const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockResolvedValueOnce({
+        data: { messageId: "prov_rem_1" },
+      } as any);
+
       await db.insert(companies).values({ id: companyId, ownerId, name: "Reminder Client" });
-      await db.insert(candidates).values({ id: candidateId, ownerId, fullName: "Reminder Candidate" });
+      await db.insert(candidates).values({ id: candidateId, ownerId, fullName: "Reminder Candidate", email: "reminder.candidate@test.local" });
       await db.insert(jobs).values({ id: jobId, ownerId, companyId, title: "Reminder Job", status: "published" });
 
       await db.insert(interviews).values({
@@ -744,12 +752,16 @@ describe("Release Blocker Remediation Suite (RB-07, RB-08, RB-09, RB-10, RB-11, 
       const [updatedInterview] = await db.select().from(interviews).where(eq(interviews.id, interviewId));
       expect(updatedInterview.status).toBe("reminder_sent");
       expect(updatedInterview.reminderSentAt).toBeInstanceOf(Date);
+      expect(sendSpy).toHaveBeenCalled();
 
-      // Verify draft message was created
+      // Verify sent message was created and marked sent
       const allMessages = await db.select().from(messages).where(eq(messages.ownerId, ownerId));
-      const drafts = allMessages.filter((m: any) => m.candidateId === candidateId);
-      expect(drafts.length).toBeGreaterThan(0);
-      expect(drafts[0].subject).toBe("Your interview is tomorrow");
+      const sentMsg = allMessages.find((m: any) => m.subject === "Your interview is tomorrow");
+      expect(sentMsg).toBeDefined();
+      expect(sentMsg?.status).toBe("sent");
+      expect(sentMsg?.providerMessageId).toBe("prov_rem_1");
+
+      sendSpy.mockRestore();
     });
 
     it("2. reconcile_invoice transitions overdue invoice when confidence is high without altering monetary truth", async () => {
