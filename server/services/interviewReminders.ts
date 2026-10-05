@@ -64,7 +64,6 @@ export async function processDueInterviewReminders(ownerId?: number, limit = 10)
           interviewId: interview.id,
           scheduledAt: interview.scheduledAt?.toISOString() ?? null,
           timezone: interview.timezone,
-          mode: "draft_only",
         },
         priority: 30,
         scheduledAt: now,
@@ -79,7 +78,6 @@ export async function processDueInterviewReminders(ownerId?: number, limit = 10)
         resourceType: "interview",
         resourceId: interview.id,
         metadata: {
-          mode: "draft_only",
           reminderAt: interview.reminderAt?.toISOString() ?? null,
         },
       });
