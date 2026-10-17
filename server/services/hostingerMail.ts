@@ -321,6 +321,7 @@ export async function sendViaHostingerMailApi(
         providerFolder = resolved.providerFolder;
         if (resolved.messageId) {
           rfcMessageId = resolved.messageId;
+          providerMessageId = resolved.messageId;
         }
         rfcInReplyTo = resolved.inReplyTo;
       }

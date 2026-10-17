@@ -33,7 +33,11 @@ import { getPrivateDocumentUrl, putPrivateDocument } from "../services/privateSt
 import { createInterviewEventUid, createInterviewIcs, generateCalendarFeedIcs } from "../services/calendar";
 import { scanCandidateDocument } from "../services/documentScanner";
 import { generateInvoiceDocument, createInvoicePaymentLink, recordInvoicePayment } from "../services/invoicing";
-import { computeGuaranteeStatus } from "../services/guaranteeTracking";
+import {
+  calculateGuaranteeDates,
+  computeGuaranteeStatus,
+  DEFAULT_GUARANTEE_DAYS,
+} from "../services/guaranteeTracking";
 import { assertTransition, ensureSafeAiText, isConsequentialAction } from "../workflow";
 import { applyApprovalDecision, requestOrAutoDecide } from "../services/approvalEngine";
 import { consequentialRouter } from "./consequential";
@@ -1030,7 +1034,7 @@ export const placementsRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await requireDb();
 
-      // 1. Authorize candidate and verify eligibility
+      // 1. Authorize candidate and verify eligibility & consent
       const candidateRows = await db
         .select()
         .from(candidates)
@@ -1042,6 +1046,26 @@ export const placementsRouter = router({
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message: `Candidate is in ineligible state "${candidate.profileState}" and cannot be placed.`,
+        });
+      }
+
+      const consentRows = await db
+        .select()
+        .from(consents)
+        .where(
+          and(
+            eq(consents.ownerId, ctx.user.id),
+            eq(consents.candidateId, candidate.id),
+            eq(consents.status, "granted"),
+          ),
+        );
+      const hasActiveConsent = consentRows.some(
+        c => !c.expiresAt || c.expiresAt > new Date(),
+      );
+      if (!hasActiveConsent && candidate.profileState === "consent_pending") {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Candidate does not have active granted consent.",
         });
       }
 
@@ -1063,31 +1087,128 @@ export const placementsRouter = router({
         });
       }
 
-      // 3. Verify final candidate decision exists (e.g. screening with advance recommendation or owner decision)
-      const decisionRows = await db
-        .select()
-        .from(screenings)
-        .where(
-          and(
-            eq(screenings.candidateId, input.candidateId),
-            eq(screenings.jobId, input.jobId),
-            eq(screenings.ownerId, ctx.user.id),
+      // 3. Verify candidate is associated with that exact Job (match, shortlist, interview, or screening)
+      const [screeningRows, interviewRows, shortlistRows, matchRows] = await Promise.all([
+        db
+          .select()
+          .from(screenings)
+          .where(
+            and(
+              eq(screenings.candidateId, input.candidateId),
+              eq(screenings.jobId, input.jobId),
+              eq(screenings.ownerId, ctx.user.id),
+            ),
           ),
-        );
+        db
+          .select()
+          .from(interviews)
+          .where(
+            and(
+              eq(interviews.candidateId, input.candidateId),
+              eq(interviews.jobId, input.jobId),
+              eq(interviews.ownerId, ctx.user.id),
+            ),
+          ),
+        db
+          .select()
+          .from(shortlists)
+          .where(
+            and(
+              eq(shortlists.candidateId, input.candidateId),
+              eq(shortlists.jobId, input.jobId),
+              eq(shortlists.ownerId, ctx.user.id),
+            ),
+          ),
+        db
+          .select()
+          .from(matches)
+          .where(
+            and(
+              eq(matches.candidateId, input.candidateId),
+              eq(matches.jobId, input.jobId),
+              eq(matches.ownerId, ctx.user.id),
+            ),
+          ),
+      ]);
 
-      const hasPositiveDecision = decisionRows.some(
-        s => s.recommendation === "advance" || s.status === "owner_decided",
+      const hasJobAssociation =
+        screeningRows.length > 0 ||
+        interviewRows.length > 0 ||
+        shortlistRows.length > 0 ||
+        matchRows.length > 0;
+
+      if (!hasJobAssociation) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Candidate has no relationship or pipeline history with the specified job.",
+        });
+      }
+
+      // 4. Verify positive final candidate decision or passed status for the exact candidate/job relationship
+      let hasPositiveDecision = screeningRows.some(
+        s =>
+          s.recommendation === "advance" ||
+          s.status === "owner_decided" ||
+          s.status === "passed" ||
+          s.status === "selected",
       );
+
+      if (!hasPositiveDecision && interviewRows.length > 0) {
+        const interviewIds = interviewRows.map(i => i.id);
+        const feedbackRows = interviewIds.length > 0
+          ? await db
+              .select()
+              .from(feedback)
+              .where(
+                and(
+                  eq(feedback.ownerId, ctx.user.id),
+                  inArray(feedback.interviewId, interviewIds),
+                ),
+              )
+          : [];
+
+        hasPositiveDecision =
+          interviewRows.some(
+            i =>
+              i.status === "selected" ||
+              i.status === "passed" ||
+              i.status === "offer_extended" ||
+              i.status === "completed" ||
+              i.status === "feedback_received",
+          ) ||
+          feedbackRows.some(
+            f =>
+              f.finalDecision === "hire" ||
+              f.finalDecision === "advance" ||
+              f.finalDecision === "selected" ||
+              f.finalDecision === "offer",
+          );
+      }
+
+      if (!hasPositiveDecision && shortlistRows.length > 0) {
+        hasPositiveDecision = shortlistRows.some(
+          sh =>
+            sh.status === "client_approved" ||
+            sh.status === "selected" ||
+            sh.status === "offer",
+        );
+      }
+
+      if (!hasPositiveDecision && matchRows.length > 0) {
+        hasPositiveDecision = matchRows.some(
+          m => m.status === "selected" || m.status === "accepted",
+        );
+      }
 
       if (!hasPositiveDecision) {
         throw new TRPCError({
           code: "PRECONDITION_FAILED",
           message:
-            "A positive final candidate decision (advancement or owner approval) is required before creating a placement record.",
+            "A positive final candidate decision (advancement, owner approval, or interview selection) is required before creating a placement record.",
         });
       }
 
-      // 4. Duplicate placement protection
+      // 5. Duplicate placement protection
       const existingPlacements = await db
         .select()
         .from(placements)
@@ -1299,12 +1420,14 @@ export const placementsRouter = router({
       };
 
       if (input.state === "joining_confirmed") {
+        const { guaranteeStartAt, guaranteeEndAt } = calculateGuaranteeDates(now);
         updateData.joiningConfirmedAt = now;
-        updateData.guaranteeStartAt = now;
-        updateData.guaranteeEndAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+        updateData.guaranteeStartAt = guaranteeStartAt;
+        updateData.guaranteeEndAt = guaranteeEndAt;
       } else if (input.state === "guarantee_active" && !placement.guaranteeStartAt) {
-        updateData.guaranteeStartAt = now;
-        updateData.guaranteeEndAt = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+        const { guaranteeStartAt, guaranteeEndAt } = calculateGuaranteeDates(now);
+        updateData.guaranteeStartAt = guaranteeStartAt;
+        updateData.guaranteeEndAt = guaranteeEndAt;
       }
 
       await db

@@ -16,6 +16,7 @@ import {
 } from "../drizzle/schema";
 import { createId, ensureWorkspace, requireDb } from "./db";
 import { appRouter } from "./routers";
+import { DEFAULT_GUARANTEE_DAYS } from "./services/guaranteeTracking";
 
 function createCaller(userId: number, role: "owner" | "admin" | "member" = "owner") {
   return appRouter.createCaller({
@@ -418,6 +419,9 @@ describe("P1-A Core Recruitment Operating Loop", () => {
   // =========================================================================
   // PHASE G: PLACEMENT & JOINING CONFIRMATION
   // =========================================================================
+  // =========================================================================
+  // PHASE G: PLACEMENT & JOINING CONFIRMATION
+  // =========================================================================
   describe("Phase G: Placement & Joining Confirmation", () => {
     it("creates placement, governs joining confirmation, and requires joining evidence", async () => {
       const callerA = createCaller(ownerA);
@@ -431,6 +435,11 @@ describe("P1-A Core Recruitment Operating Loop", () => {
       const candidate = await callerA.recruitment.candidates.create({
         fullName: "Placed Candidate",
         email: "placed.cand@test.local",
+      });
+
+      await callerA.recruitment.candidates.grantConsent({
+        candidateId: candidate.id,
+        consentType: "platform_processing",
       });
 
       // Positive candidate decision required before placement
@@ -492,6 +501,103 @@ describe("P1-A Core Recruitment Operating Loop", () => {
       const [updatedPlacement] = await db.select().from(placements).where(eq(placements.id, placement.id));
       expect(updatedPlacement.status).toBe("joining_confirmed");
       expect(updatedPlacement.joiningConfirmedAt).toBeInstanceOf(Date);
+      expect(updatedPlacement.guaranteeStartAt).toBeInstanceOf(Date);
+      expect(updatedPlacement.guaranteeEndAt).toBeInstanceOf(Date);
+
+      const expectedDurationMs = DEFAULT_GUARANTEE_DAYS * 24 * 60 * 60 * 1000;
+      const actualDurationMs = updatedPlacement.guaranteeEndAt!.getTime() - updatedPlacement.guaranteeStartAt!.getTime();
+      expect(actualDurationMs).toBe(expectedDurationMs);
+
+      const guaranteeStatus = await callerA.recruitment.placements.getGuaranteeStatus({ id: placement.id });
+      expect(guaranteeStatus.durationDays).toBe(DEFAULT_GUARANTEE_DAYS);
+      expect(guaranteeStatus.isActive).toBe(true);
+    });
+
+    it("enforces placement integrity: unconsented, unrelated job, and missing positive decision rejection", async () => {
+      const callerA = createCaller(ownerA);
+
+      const client = await callerA.recruitment.prospects.create({ name: "Integrity Client" });
+      const jobA = await callerA.recruitment.jobs.create({
+        companyId: client.id,
+        title: "Frontend Architect",
+        mustHaveSkills: ["React"],
+      });
+      const jobB = await callerA.recruitment.jobs.create({
+        companyId: client.id,
+        title: "Backend Architect",
+        mustHaveSkills: ["Node"],
+      });
+
+      const unconsentedCandidate = await callerA.recruitment.candidates.create({
+        fullName: "Unconsented Candidate",
+        email: "unconsented@test.local",
+      });
+
+      // 1. Rejection when candidate is unconsented / consent_pending without consent
+      await expect(
+        callerA.recruitment.placements.create({
+          companyId: client.id,
+          candidateId: unconsentedCandidate.id,
+          jobId: jobA.id,
+        }),
+      ).rejects.toThrow(/consent/i);
+
+      // Grant consent
+      await callerA.recruitment.candidates.grantConsent({
+        candidateId: unconsentedCandidate.id,
+        consentType: "platform_processing",
+      });
+
+      // 2. Rejection when candidate has no relationship with the job
+      await expect(
+        callerA.recruitment.placements.create({
+          companyId: client.id,
+          candidateId: unconsentedCandidate.id,
+          jobId: jobA.id,
+        }),
+      ).rejects.toThrow(/no relationship or pipeline history/i);
+
+      // Create screening on jobA without positive decision
+      const db = await requireDb();
+      const screeningId = createId("scr_");
+      await db.insert(screenings).values({
+        id: screeningId,
+        ownerId: ownerA,
+        candidateId: unconsentedCandidate.id,
+        jobId: jobA.id,
+        status: "in_progress",
+        recommendation: "reject",
+      });
+
+      // 3. Rejection when screening has negative/no positive decision
+      await expect(
+        callerA.recruitment.placements.create({
+          companyId: client.id,
+          candidateId: unconsentedCandidate.id,
+          jobId: jobA.id,
+        }),
+      ).rejects.toThrow(/positive final candidate decision/i);
+
+      // 4. Rejection when attempting to place on jobB (unrelated job without relationship)
+      await expect(
+        callerA.recruitment.placements.create({
+          companyId: client.id,
+          candidateId: unconsentedCandidate.id,
+          jobId: jobB.id,
+        }),
+      ).rejects.toThrow(/no relationship or pipeline history/i);
+
+      // Update screening on jobA to advance
+      await db.update(screenings).set({ recommendation: "advance" }).where(eq(screenings.id, screeningId));
+
+      // 5. Success on jobA with positive decision
+      const validPlacement = await callerA.recruitment.placements.create({
+        companyId: client.id,
+        candidateId: unconsentedCandidate.id,
+        jobId: jobA.id,
+        annualCompensation: 180000,
+      });
+      expect(validPlacement.id).toBeDefined();
     });
   });
 
@@ -512,6 +618,11 @@ describe("P1-A Core Recruitment Operating Loop", () => {
       const candidate = await callerA.recruitment.candidates.create({
         fullName: "Finance Candidate",
         email: "fin.cand@test.local",
+      });
+
+      await callerA.recruitment.candidates.grantConsent({
+        candidateId: candidate.id,
+        consentType: "platform_processing",
       });
 
       const decReq = await callerA.recruitment.consequential.requestCandidateDecision({

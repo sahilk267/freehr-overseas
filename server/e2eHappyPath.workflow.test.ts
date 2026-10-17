@@ -219,7 +219,7 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
     expect(shareApprovalId).toBeDefined();
 
     let [shortlist] = await db.select().from(shortlists).where(eq(shortlists.id, shortlistId));
-    expect(shortlist.status).toBe("prepared");
+    expect(shortlist.status).toBe("approval_pending");
 
     // Owner approves candidate profile sharing
     const shareDecision = await caller.recruitment.approvals.decide({
@@ -578,7 +578,8 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
     expect(matchId).toBeDefined();
 
     // -------------------------------------------------------------------------
-    // Step 7: Candidate Share — POLICY AUTO-APPROVES
+    // -------------------------------------------------------------------------
+    // Step 7: Candidate Share — MANDATORY HUMAN APPROVAL (RB-07/RB-09)
     // -------------------------------------------------------------------------
     const shareRes = await caller.recruitment.matching.requestShareApproval({
       candidateId,
@@ -588,30 +589,23 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
     });
     expect(shareRes.shortlistId).toBeDefined();
     expect(shareRes.approvalId).toBeDefined();
-    expect(shareRes.autoDecided).toBe(true);
+    expect(shareRes.autoDecided).toBe(false);
 
-    // Confirm ZERO pending approvals for candidate_share
-    const pendingShareApprovals = await db
-      .select()
-      .from(approvals)
-      .where(
-        and(
-          eq(approvals.ownerId, policyOwnerId),
-          eq(approvals.actionType, "candidate_share"),
-          eq(approvals.status, "pending"),
-        ),
-      );
-    expect(pendingShareApprovals.length).toBe(0);
-
-    // Confirm approval record is marked approved with decisionSource: 'policy'
+    // Candidate share requires governed human approval (cannot auto-approve)
     const [shareApproval] = await db
       .select()
       .from(approvals)
       .where(eq(approvals.id, shareRes.approvalId!));
-    expect(shareApproval.status).toBe("approved");
-    expect(shareApproval.decisionSource).toBe("policy");
+    expect(shareApproval.status).toBe("pending");
+    expect(shareApproval.decisionSource).toBe("manual");
 
-    // Shortlist reached 'shared' status immediately without manual decide() call
+    // Owner approves candidate sharing
+    await caller.recruitment.approvals.decide({
+      id: shareRes.approvalId!,
+      decision: "approved",
+      note: "Policy owner manual authorization for candidate profile share.",
+    });
+
     let [shortlist] = await db.select().from(shortlists).where(eq(shortlists.id, shareRes.shortlistId));
     expect(shortlist.status).toBe("shared");
     expect(shortlist.sharedAt).toBeDefined();
@@ -750,34 +744,27 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
     expect(invoice.status).toBe("draft");
 
     // -------------------------------------------------------------------------
-    // Step 12: Invoice Issuance — POLICY AUTO-APPROVES
+    // Step 12: Invoice Issuance — MANDATORY HUMAN APPROVAL (RB-07/RB-09)
     // -------------------------------------------------------------------------
     const issueRes = await caller.recruitment.invoices.requestIssueApproval({ id: invoiceId });
     expect(issueRes.approvalId).toBeDefined();
-    expect(issueRes.autoDecided).toBe(true);
+    expect(issueRes.autoDecided).toBe(false);
 
-    // Confirm ZERO pending approvals for invoice_issue
-    const pendingInvoiceApprovals = await db
-      .select()
-      .from(approvals)
-      .where(
-        and(
-          eq(approvals.ownerId, policyOwnerId),
-          eq(approvals.actionType, "invoice_issue"),
-          eq(approvals.status, "pending"),
-        ),
-      );
-    expect(pendingInvoiceApprovals.length).toBe(0);
-
-    // Confirm approval record is marked approved with decisionSource: 'policy'
+    // Invoice issuance requires governed human approval (cannot auto-approve)
     const [invoiceApproval] = await db
       .select()
       .from(approvals)
       .where(eq(approvals.id, issueRes.approvalId!));
-    expect(invoiceApproval.status).toBe("approved");
-    expect(invoiceApproval.decisionSource).toBe("policy");
+    expect(invoiceApproval.status).toBe("pending");
+    expect(invoiceApproval.decisionSource).toBe("manual");
 
-    // Invoice reached 'issued' status immediately without manual decide() call
+    // Owner approves invoice issuance
+    await caller.recruitment.approvals.decide({
+      id: issueRes.approvalId!,
+      decision: "approved",
+      note: "Policy owner manual authorization for commercial invoice issuance.",
+    });
+
     [invoice] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
     expect(invoice.status).toBe("issued");
     expect(invoice.issuedAt).toBeDefined();
@@ -832,29 +819,11 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
       .from(auditEvents)
       .where(eq(auditEvents.ownerId, policyOwnerId));
 
-    // Policy-decided steps
-    const autoDecidedAudits = auditRows.filter(a => a.action === "approval.auto_decided");
-    expect(autoDecidedAudits.length).toBeGreaterThanOrEqual(2);
-
-    const shareAutoAudit = autoDecidedAudits.find(
-      a => (a.metadata as Record<string, unknown>)?.actionType === "candidate_share",
-    );
-    expect(shareAutoAudit).toBeDefined();
-    expect(shareAutoAudit?.actorType).toBe("system");
-    expect((shareAutoAudit?.metadata as Record<string, unknown>)?.source).toBe("policy");
-
-    const invoiceAutoAudit = autoDecidedAudits.find(
-      a => (a.metadata as Record<string, unknown>)?.actionType === "invoice_issue",
-    );
-    expect(invoiceAutoAudit).toBeDefined();
-    expect(invoiceAutoAudit?.actorType).toBe("system");
-    expect((invoiceAutoAudit?.metadata as Record<string, unknown>)?.source).toBe("policy");
-
-    // Owner-decided steps
+    // Consequential actions require governed human approvals (RB-07/RB-09 mandatory human authorization)
     const ownerDecidedAudits = auditRows.filter(
       a => a.actorType === "user" && (a.action === "approval.approved" || a.action === "consequential.approved"),
     );
-    expect(ownerDecidedAudits.length).toBeGreaterThanOrEqual(3);
+    expect(ownerDecidedAudits.length).toBeGreaterThanOrEqual(4);
 
     const candidateFinalDecisionAudit = ownerDecidedAudits.find(
       a => (a.metadata as Record<string, unknown>)?.actionType === "candidate_final_decision",

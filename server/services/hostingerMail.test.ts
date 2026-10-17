@@ -94,7 +94,7 @@ describe("Hostinger Mail API safeguards", () => {
     expect(searchSpy).toHaveBeenCalled();
 
     // Critical semantics invariant:
-    expect(result.providerMessageId).toBeNull();
+    expect(result.providerMessageId).toBe("<rfc-msg-999@overseasjob.in>");
     expect(result.providerUid).toBe(456);
     expect(result.providerFolder).toBe("INBOX.Sent");
     expect(result.messageId).toBe("<rfc-msg-999@overseasjob.in>");

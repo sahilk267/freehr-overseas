@@ -325,6 +325,24 @@ describe("P1-A.1 — Core Recruitment Feature Implementation", () => {
         email: "vpe.cand@test.local",
       });
 
+      await callerA.recruitment.candidates.grantConsent({
+        candidateId: candidate.id,
+        consentType: "platform_processing",
+      });
+
+      // Associate candidate with job via match/screening without a positive final decision
+      const db = await requireDb();
+      await db.insert(matches).values({
+        id: createId("mat_"),
+        ownerId: ownerA,
+        candidateId: candidate.id,
+        jobId: job.id,
+        ruleScore: 80,
+        semanticScore: 80,
+        confidence: 80,
+        status: "pending",
+      });
+
       // 1. Without final candidate decision -> placement creation rejected
       await expect(
         callerA.recruitment.placements.create({
@@ -349,6 +367,11 @@ describe("P1-A.1 — Core Recruitment Feature Implementation", () => {
         decision: "approved",
       });
 
+      await callerA.recruitment.candidates.grantConsent({
+        candidateId: candidate.id,
+        consentType: "platform_processing",
+      });
+
       // 3. Now placement creation succeeds in offer_pending state
       const placement = await callerA.recruitment.placements.create({
         companyId: client.id,
@@ -359,7 +382,7 @@ describe("P1-A.1 — Core Recruitment Feature Implementation", () => {
       });
       expect(placement.id).toBeDefined();
 
-      const db = await requireDb();
+      // re-use db
       const [persistedPlacement] = await db.select().from(placements).where(eq(placements.id, placement.id));
       expect(persistedPlacement.status).toBe("offer_pending");
 
@@ -428,6 +451,11 @@ describe("P1-A.1 — Core Recruitment Feature Implementation", () => {
         rationale: "Ready for offer.",
       });
       await callerA.recruitment.approvals.decide({ id: decision.approvalId, decision: "approved" });
+
+      await callerA.recruitment.candidates.grantConsent({
+        candidateId: candidate.id,
+        consentType: "platform_processing",
+      });
 
       const placement = await callerA.recruitment.placements.create({
         companyId: client.id,
@@ -574,6 +602,11 @@ describe("P1-A.1 — Core Recruitment Feature Implementation", () => {
         rationale: "Approved",
       });
       await callerA.recruitment.approvals.decide({ id: dec.approvalId, decision: "approved" });
+
+      await callerA.recruitment.candidates.grantConsent({
+        candidateId: candidate.id,
+        consentType: "platform_processing",
+      });
 
       const placement = await callerA.recruitment.placements.create({
         companyId: client.id,

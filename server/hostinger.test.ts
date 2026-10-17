@@ -284,6 +284,9 @@ describe("Fastify production server (server/hostinger.ts)", () => {
       taskUid: queueCronTaskUid,
     } as any);
 
+    // Clean up any pre-existing queue jobs for owner 1 to ensure exact count
+    await db.delete(automationQueue).where(eq(automationQueue.ownerId, 1));
+
     // Seed 4 queued jobs for owner 1
     const jobIds = [createId("que_"), createId("que_"), createId("que_"), createId("que_")];
     for (const [idx, id] of jobIds.entries()) {

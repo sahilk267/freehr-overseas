@@ -5,6 +5,7 @@ import { companies, contacts, conversations, feeProposals, messages, automationQ
 import { createId, recordAudit, requireDb } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 import { ensureSafeAiText } from "../workflow";
+import { DEFAULT_GUARANTEE_DAYS } from "../services/guaranteeTracking";
 
 export const outreachRouter = router({
   draftSequence: protectedProcedure.input(z.object({ contactId: z.string().min(4), purpose: z.enum(["client_intro", "hiring_discovery", "candidate_outreach", "interview_reminder"]), context: z.string().trim().min(8).max(6000) })).mutation(async ({ ctx, input }) => {
@@ -46,7 +47,7 @@ export const agreementsRouter = router({
     const db = await requireDb();
     return db.select().from(feeProposals).where(eq(feeProposals.ownerId, ctx.user.id)).orderBy(desc(feeProposals.updatedAt)).limit(input.limit);
   }),
-  draft: protectedProcedure.input(z.object({ companyId: z.string().min(4), feeType: z.enum(["percentage", "fixed"]), feeValue: z.string().trim().min(1).max(32), currency: z.string().trim().min(3).max(8).default("INR"), guaranteeDays: z.number().int().min(0).max(365).default(90), paymentTermsDays: z.number().int().min(1).max(180).default(30), ownershipDays: z.number().int().min(1).max(730).default(180), termsText: z.string().trim().min(50).max(12000) })).mutation(async ({ ctx, input }) => {
+  draft: protectedProcedure.input(z.object({ companyId: z.string().min(4), feeType: z.enum(["percentage", "fixed"]), feeValue: z.string().trim().min(1).max(32), currency: z.string().trim().min(3).max(8).default("INR"), guaranteeDays: z.number().int().min(0).max(365).default(DEFAULT_GUARANTEE_DAYS), paymentTermsDays: z.number().int().min(1).max(180).default(30), ownershipDays: z.number().int().min(1).max(730).default(180), termsText: z.string().trim().min(50).max(12000) })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     const company = (await db.select().from(companies).where(and(eq(companies.id, input.companyId), eq(companies.ownerId, ctx.user.id))).limit(1))[0];
     if (!company) throw new TRPCError({ code: "NOT_FOUND", message: "Company was not found." });

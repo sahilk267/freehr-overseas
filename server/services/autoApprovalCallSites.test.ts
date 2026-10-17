@@ -141,7 +141,7 @@ describe("Auto-approval call sites integration", () => {
       expect(approval.decisionSource).toBe("manual");
 
       const [shortlist] = await db.select().from(shortlists).where(eq(shortlists.id, res.shortlistId));
-      expect(shortlist.status).toBe("prepared");
+      expect(shortlist.status).toBe("approval_pending");
 
       const listed = await recruitmentCaller.approvals.list({});
       const foundInList = listed.find((a) => a.id === res.approvalId);
@@ -190,7 +190,7 @@ describe("Auto-approval call sites integration", () => {
       expect(approval.decisionSource).toBe("manual");
 
       const [shortlist] = await db.select().from(shortlists).where(eq(shortlists.id, res.shortlistId));
-      expect(shortlist.status).toBe("prepared");
+      expect(shortlist.status).toBe("approval_pending");
 
       const listed = await recruitmentCaller.approvals.list({});
       const foundInList = listed.find((a) => a.id === res.approvalId);
