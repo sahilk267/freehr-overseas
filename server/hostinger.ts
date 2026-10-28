@@ -5,15 +5,16 @@ import { fastifyTRPCPlugin } from "@trpc/server/adapters/fastify";
 import Fastify, { type FastifyInstance } from "fastify";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { eq, or } from "drizzle-orm";
+import { desc, eq, or } from "drizzle-orm";
 import { appRouter } from "./routers";
-import { candidateDocuments, workspaceSettings, type User } from "../drizzle/schema";
+import { candidateDocuments, interviews, workspaceSettings, type User } from "../drizzle/schema";
 import { requireDb, verifyDatabaseConnectivity } from "./db";
 import { sdk } from "./_core/sdk";
 import { processHostingerMailWebhook } from "./services/hostingerWebhook";
 import { processDueInterviewReminders } from "./services/interviewReminders";
 import { processDueAutomationBatch } from "./services/queue";
 import { getPrivateStorageStatus, readPrivateDocument } from "./services/privateStorage";
+import { createInterviewEventUid, generateCalendarFeedIcs } from "./services/calendar";
 import {
   assertProductionRuntimeConfiguration,
   authenticateCronRequest,
@@ -210,6 +211,39 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
   });
 
   app.get("/api/health", async () => ({ status: "ok", service: "freelancehr", now: new Date().toISOString() }));
+
+  app.get<{ Params: { userId: string } }>("/api/calendar/feed/:userId", async (request, reply) => {
+    try {
+      const userId = parseInt(request.params.userId, 10);
+      if (isNaN(userId)) return reply.status(400).send("Invalid user ID");
+      const db = await requireDb();
+      const rows = await db
+        .select()
+        .from(interviews)
+        .where(eq(interviews.ownerId, userId))
+        .orderBy(desc(interviews.scheduledAt))
+        .limit(200);
+
+      const events = rows.map(item => ({
+        uid: createInterviewEventUid(item.id),
+        sequence: item.calendarSequence,
+        start: item.scheduledAt,
+        end: item.scheduledEndAt ?? new Date(item.scheduledAt.getTime() + 45 * 60 * 1000),
+        summary: `Interview (${item.stage || "Standard"})`,
+        description: item.preparationNotes || "FreelanceHR scheduled interview",
+        location: item.location || "Online Meeting",
+        status: (item.status === "cancelled" ? "CANCELLED" : "CONFIRMED") as "CONFIRMED" | "CANCELLED",
+      }));
+
+      const ics = generateCalendarFeedIcs(events);
+      reply.header("Content-Type", "text/calendar; charset=utf-8");
+      reply.header("Content-Disposition", 'inline; filename="freelancehr-interviews.ics"');
+      return reply.send(ics);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Calendar feed error";
+      return reply.status(500).send(message);
+    }
+  });
 
   await app.register(fastifyStatic, { root: staticRoot, wildcard: false });
 

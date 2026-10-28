@@ -239,6 +239,24 @@ async function runVerification() {
   assert(tooLargeRes.statusCode === 413, "Payload exceeding 10 MB is rejected with HTTP 413");
   assert(tooLargeRes.json()?.code === "FST_ERR_CTP_BODY_TOO_LARGE", "Fastify error code is FST_ERR_CTP_BODY_TOO_LARGE");
 
+  console.log("\nSection 4: Calendar Subscription Feed Route (GET /api/calendar/feed/:userId)");
+
+  // 4a. Invalid user ID -> 400
+  const invalidUserCalRes = await app.inject({
+    method: "GET",
+    url: "/api/calendar/feed/not-a-number",
+  });
+  assert(invalidUserCalRes.statusCode === 400, "Invalid user ID returns 400");
+
+  // 4b. Valid user ID -> 200 with text/calendar
+  const validCalRes = await app.inject({
+    method: "GET",
+    url: "/api/calendar/feed/1",
+  });
+  assert(validCalRes.statusCode === 200, "Valid user ID returns 200 for calendar feed");
+  assert(validCalRes.headers["content-type"]?.includes("text/calendar"), "Content-Type is text/calendar");
+  assert(validCalRes.body.includes("BEGIN:VCALENDAR"), "Body contains valid VCALENDAR envelope");
+
   // Cleanup
   process.env = originalEnv;
 

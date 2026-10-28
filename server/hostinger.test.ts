@@ -396,4 +396,25 @@ describe("Fastify production server (server/hostinger.ts)", () => {
     sdk.authenticateRequest = originalAuthenticateRequest;
     process.env.CRON_SECRET = originalSecret;
   });
+
+  it("verifies GET /api/calendar/feed/:userId returns valid RFC 5545 feed", async () => {
+    const app = await buildFastifyServer({ logger: false });
+
+    // 1. Invalid user ID -> 400
+    const invalidRes = await app.inject({
+      method: "GET",
+      url: "/api/calendar/feed/not-an-id",
+    });
+    expect(invalidRes.statusCode).toBe(400);
+
+    // 2. Valid user ID -> 200 with text/calendar
+    const validRes = await app.inject({
+      method: "GET",
+      url: "/api/calendar/feed/1",
+    });
+    expect(validRes.statusCode).toBe(200);
+    expect(validRes.headers["content-type"]).toContain("text/calendar");
+    expect(validRes.body).toContain("BEGIN:VCALENDAR");
+    expect(validRes.body).toContain("END:VCALENDAR");
+  });
 });

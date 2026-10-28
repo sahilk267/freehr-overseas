@@ -136,7 +136,13 @@ async function startServer() {
       if (!user?.isCron || !user.taskUid) return res.status(403).json({ error: "cron-only" });
       const db = await requireDb();
       const workspace = (await db.select().from(workspaceSettings).where(eq(workspaceSettings.scheduleCronTaskUid, user.taskUid)).limit(1))[0];
-      if (!workspace) return res.json({ ok: true, skipped: "orphan" });
+      if (!workspace) {
+        if (user.taskUid === "global" || user.taskUid === "all") {
+          const result = await processDueInterviewReminders(undefined, 10);
+          return res.json({ ok: true, ...result });
+        }
+        return res.json({ ok: true, skipped: "orphan" });
+      }
       const result = await processDueInterviewReminders(workspace.ownerId, 10);
       return res.json({ ok: true, ...result });
     } catch (error) {
@@ -214,11 +220,37 @@ async function startServer() {
 
   const port = 3000;
 
-  server.listen(port, "0.0.0.0", () => {
-    console.log(`Server running on port ${port}`);
-    console.log(`Server running on http://0.0.0.0:${port}/`);
-    console.log(`Server running on http://localhost:${port}`);
-  });
+  function listenWithRetry(attemptsLeft = 10, delayMs = 500) {
+    const onError = (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE" && attemptsLeft > 0) {
+        console.warn(`[Server] Port ${port} busy, retrying in ${delayMs}ms (${attemptsLeft} retries left)...`);
+        setTimeout(() => {
+          listenWithRetry(attemptsLeft - 1, delayMs);
+        }, delayMs);
+      } else {
+        console.error(`[Server] Fatal listen error on port ${port}:`, err);
+        process.exit(1);
+      }
+    };
+
+    server.once("error", onError);
+    server.listen(port, "0.0.0.0", () => {
+      server.removeListener("error", onError);
+      console.log(`Server running on port ${port}`);
+      console.log(`Server running on http://0.0.0.0:${port}/`);
+      console.log(`Server running on http://localhost:${port}`);
+    });
+  }
+
+  listenWithRetry();
+
+  const handleTermination = () => {
+    server.close(() => {
+      process.exit(0);
+    });
+  };
+  process.on("SIGTERM", handleTermination);
+  process.on("SIGINT", handleTermination);
 }
 
 startServer().catch(console.error);
