@@ -12,6 +12,14 @@ Verified locally: TypeScript and `npm run build` passed; 21 targeted Hostinger/r
 
 The GitHub push makes the fix available to the connected deployment; live Hostinger build/startup confirmation remains separate. Local evidence is retained at `/workspace/freehr-hostinger-entry-validation`.
 
+### Production environment preparation and connector access
+
+The deployment template now carries 47 production settings, reusing the application URLs, intended owner, Google issuer and mailbox addresses from `.env.example`. `npm run env:hostinger` creates private, Git-ignored `.env.hostinger` with independent random 32-byte session, cron and webhook secrets. Existing real values survive repeat runs; explicit nonblank source values can update their corresponding key. Example passwords/client credentials/private paths and development-only settings are filtered out. The helper validates production URLs, preserves dotenv quoting, rejects public/template or symlink output, writes atomically with file permission 0600 and reports key names without secret values.
+
+Six focused CLI tests passed, covering real file creation, source import, secret stability, provider-value preservation, quoting, permissions, placeholder filtering and rejected writes/values. The actual private file was generated and a second preparation was byte-for-byte unchanged. Its remaining initial setup keys are `DATABASE_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` and the server's `PRIVATE_LOCAL_STORAGE_PATH`. Optional Mail API/OpenRouter credentials and mailbox IDs also remain provider-dependent. No completed private file or generated secret is committed.
+
+Hostinger's [official remote MCP server](https://github.com/hostinger/api-mcp-server#quick-start-hosted-remote-server) is `https://mcp.hostinger.com`, using client OAuth authorization. Its account tools are not currently connected in this session. Account deployment, environment updates and database operations cannot be claimed performed; they require the authenticated connector and capability checks. Cloud-environment onboarding configuration does not provide Hostinger account authorization.
+
 ## Current increment: W3 invoice collections and payment promises
 
 The increment labels in this record identify delivered code slices. They do not certify completion of the broader delivery waves with similar labels in the master plan.

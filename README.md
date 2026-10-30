@@ -38,7 +38,7 @@ pnpm test
 pnpm dev
 ```
 
-The managed development version uses the supplied authentication and private storage facilities. For Hostinger, follow [the deployment steps](OWNER_HOSTINGER_DEPLOYMENT_STEPS.md). The production entry is root `server.js`, started by `npm start` or Hostinger's `node server.js`; it loads the compiled server after `npm run build`. An empty phpMyAdmin database can be initialized with the [generated migration import](deploy/hostinger-empty-database.sql). Configure real database and OIDC values privately using [the production template](deploy/hostinger.env.example).
+The managed development version uses the supplied authentication and private storage facilities. For Hostinger, follow [the deployment steps](OWNER_HOSTINGER_DEPLOYMENT_STEPS.md). The production entry is root `server.js`, started by `npm start` or Hostinger's `node server.js`; it loads the compiled server after `npm run build`. An empty phpMyAdmin database can be initialized with the [generated migration import](deploy/hostinger-empty-database.sql). `npm run env:hostinger` prepares Git-ignored `.env.hostinger` with the [production defaults](deploy/hostinger.env.example) and separate generated local secrets. Fill the remaining real database/OIDC values privately before importing it in hPanel; repeat preparation preserves existing secrets.
 
 For persistent follow-ups, apply `pnpm db:migrate` through 0014 to the intended database, then run `pnpm worker` alongside the API with the same MySQL `DATABASE_URL`. The standalone worker refuses an in-memory adapter and reports missing collection tables. See [implementation progress](docs/IMPLEMENTATION_PROGRESS.md) for verified behavior and remaining limits.
 

@@ -32,7 +32,19 @@ If an application terminal is available, `npm run db:migrate` with the correct p
 
 ## 3. Add production environment variables
 
-Start from [deploy/hostinger.env.example](deploy/hostinger.env.example), replacing blank values privately before importing it or adding variables individually in hPanel. Leave Hostinger's own `PORT` unchanged. Do not overwrite existing configured secrets with template blanks.
+The [production template](deploy/hostinger.env.example) includes the public settings from `.env.example`: application URLs, owner email, Google issuer/callback, six intended mailbox addresses and optional storage/AI settings. These addresses and identifiers are configuration intentions, not proof that the external accounts exist.
+
+Prepare a private import file from the project root:
+
+```sh
+npm run env:hostinger
+# Optionally merge values from an existing private dotenv file:
+npm run env:hostinger -- --from /private/path/to/.env.provider
+```
+
+The command writes Git-ignored `.env.hostinger` with owner-only file permissions, generates separate 32-byte session/cron/webhook secrets, and reports only key names that still need setup. Re-running preserves existing real values and secrets. A supplied nonblank value can explicitly update its matching key; blanks and example placeholders do not clear an existing value. It never copies Hostinger's managed `PORT` or development/preview credentials, and enforces production OIDC with the initial owner-only pilot setting. It does not change the development `.env`.
+
+Fill the remaining actual database/OIDC/private-storage values privately, then import **`.env.hostinger`** in hPanel or add its variables individually. The committed `.example` deliberately has no real secrets; it is not the completed import file. Do not upload the private file to GitHub or overwrite an already configured Hostinger environment with an incomplete file. Optional Mail API/OpenRouter credentials and mailbox resource IDs must come from their providers; generated webhook keys do not activate those integrations.
 
 | Purpose | Required configuration |
 |---|---|
@@ -45,7 +57,7 @@ Start from [deploy/hostinger.env.example](deploy/hostinger.env.example), replaci
 | Owner identity | The intended `PRIMARY_OWNER_EMAIL` or `PRIMARY_OWNER_OPEN_ID`; use `OWNER_ONLY_MODE=true` for the initial private pilot |
 | Documents | `PRIVATE_STORAGE_MODE=local`, and a persistent absolute `PRIVATE_LOCAL_STORAGE_PATH` outside the public web root |
 
-Generate each secret independently in a private terminal, for example with `node -e 'console.log(require("node:crypto").randomBytes(32).toString("hex"))'`. Do not send the resulting values in chat or commit them.
+The preparation command generates the three local secrets without printing their values. It validates URLs and rejects multiline values before writing. It does not rotate existing secrets automatically. `npm run test:hostinger-env` checks preservation, file permissions, placeholder filtering, quoting and failure handling. Do not send generated values in chat or commit the private file.
 
 Standalone production requires OIDC even for an owner-only pilot. Select a provider supporting authorization-code flow, PKCE and verified email, and register this exact callback:
 
@@ -68,3 +80,11 @@ Shared hosting needs authenticated, bounded scheduled execution supported by the
 Validate the actual schedule and required source adapters before claiming unattended operation. Provider credentials alone do not complete pending lifecycle features. Configure purpose-specific mailboxes, delivery/webhook validation, AI credentials and other providers only when activating those integrations. Owner review and bounded authority still govern external effects.
 
 For technical context, see [HOSTINGER_DEPLOYMENT.md](HOSTINGER_DEPLOYMENT.md) and [implementation progress](docs/IMPLEMENTATION_PROGRESS.md).
+
+## Hostinger connector
+
+Hostinger's [official MCP instructions](https://github.com/hostinger/api-mcp-server#quick-start-hosted-remote-server) provide a hosted remote server at **`https://mcp.hostinger.com`**. Add it as a remote Streamable HTTP MCP server in the client and complete its OAuth authorization. The hosted option does not require installing Hostinger's local Node package.
+
+The connector's authenticated tools must be available in the active session before an agent can operate the hosting account. After connection, inspect the tools/capabilities for this specific Node application before using deployment, logs, environment or database operations; do not assume every hPanel operation is exposed. A repository connection or cloud-environment onboarding tool is not Hostinger account authorization.
+
+Keep any Hostinger management/OAuth token in the MCP client's secure credential flow. Do not put it in the application's Mail API token field or committed configuration. The Mail API and hosting management connections serve separate purposes.

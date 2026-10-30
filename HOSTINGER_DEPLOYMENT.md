@@ -33,7 +33,7 @@ For the current hPanel settings and the observed entry-file failure, follow [the
 
 ## Production startup guard
 
-Root `server.js` defaults to production mode. The production server requires a real database connection and complete OIDC configuration; it does not fall back to a process-local mock database. Explicit S3 storage requires its own credentials. Set `AUTH_MODE=oidc` and `VITE_AUTH_MODE=oidc`; the production frontend build defaults to OIDC. Configure the following values in hPanel before starting `npm start`. A blank template for first-time setup is [deploy/hostinger.env.example](deploy/hostinger.env.example).
+Root `server.js` defaults to production mode. The production server requires a real database connection and complete OIDC configuration; it does not fall back to a process-local mock database. Explicit S3 storage requires its own credentials. Set `AUTH_MODE=oidc` and `VITE_AUTH_MODE=oidc`; the production frontend build defaults to OIDC. Configure the following values in hPanel before starting `npm start`. [deploy/hostinger.env.example](deploy/hostinger.env.example) carries the non-secret production defaults from the general example. Run `npm run env:hostinger` to generate a private Git-ignored import file with independent session/cron/webhook secrets. Complete actual provider/server fields before importing it; see [the owner instructions](OWNER_HOSTINGER_DEPLOYMENT_STEPS.md#3-add-production-environment-variables).
 
 | Configuration group | Required values | Runtime behavior when absent |
 | --- | --- | --- |

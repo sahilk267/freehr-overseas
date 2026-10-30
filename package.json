@@ -21,6 +21,8 @@
     "test:hostinger-entry": "node scripts/verify-hostinger-entry.mjs",
     "db:migrate": "node scripts/migrate-db.mjs",
     "db:export-hostinger": "node scripts/export-hostinger-schema.mjs",
+    "env:hostinger": "node scripts/prepare-hostinger-env.mjs",
+    "test:hostinger-env": "node --test scripts/prepare-hostinger-env.test.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "worker": "tsx server/worker.ts",
     "start:worker": "node dist/worker.js"
