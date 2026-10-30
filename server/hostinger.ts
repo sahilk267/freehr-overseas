@@ -232,7 +232,7 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
   return app;
 }
 
-async function start() {
+export async function startHostingerServer() {
   const isStrictProduction = process.env.NODE_ENV === "production" && !process.env.VITEST;
   if (isStrictProduction) {
     const dbCheck = await verifyDatabaseConnectivity();
@@ -250,7 +250,7 @@ async function start() {
 // Start server when executed directly
 const isDirectRun = Boolean(process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]));
 if (isDirectRun) {
-  start().catch(error => {
+  startHostingerServer().catch(error => {
     console.error(error);
     process.exit(1);
   });

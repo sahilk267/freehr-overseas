@@ -1,6 +1,16 @@
 # Automation implementation progress
 
-Updated 29 October 2026. This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+Updated 31 October 2026. This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+
+## Hostinger deployment follow-up: entry and empty-database handoff
+
+The supplied Hostinger build for `cb8bf4a` successfully installed dependencies and compiled the application, then failed because its configured entry was root `server.js`. The release now supplies that stable entry and declares it in package metadata. It calls the same compiled Fastify startup as the existing direct artifact; it defaults to production mode and keeps missing database/OIDC configuration blocking. The frontend production build defaults to the matching OIDC login route.
+
+A generated [phpMyAdmin import](../deploy/hostinger-empty-database.sql) derives migrations 0000–0014 and their exact hashes/timestamps from the canonical journal. Import it once only into a selected empty database. [The blank production environment template](../deploy/hostinger.env.example) and [owner steps](../OWNER_HOSTINGER_DEPLOYMENT_STEPS.md) distinguish build, schema import, real credentials, runtime startup and live login. Previous guidance to import only nine migration files or defer standalone production OIDC was corrected.
+
+Verified locally: TypeScript and `npm run build` passed; 21 targeted Hostinger/runtime regressions and 25 route checks passed. The built-entry smoke verifies root entry/PORT/UI/protected dashboard, missing-database rejection and compatibility of direct `dist/hostinger.js`. SQL import created 38 tables whose column definitions match a fresh canonical migration run; the normal migration command then kept exactly 15 ledger entries without replaying schema. Root production startup also passed against that disposable MySQL database with synthetic OIDC configuration; missing OIDC credentials remained blocked. This does not verify a real OIDC login or alter the user's Hostinger database/environment.
+
+The GitHub push makes the fix available to the connected deployment; live Hostinger build/startup confirmation remains separate. Local evidence is retained at `/workspace/freehr-hostinger-entry-validation`.
 
 ## Current increment: W3 invoice collections and payment promises
 

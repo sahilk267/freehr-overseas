@@ -18,26 +18,26 @@ The managed development template includes platform-specific authentication and s
 
 ## Deployment pipeline
 
-The repeatable pipeline is **build → upload/deploy → configure environment → set Node startup → configure domain → run migration → verify health → enable restricted automation**. The repository declares pnpm 11.x to match Hostinger Corepack; do not force pnpm 10.x during hPanel installation. The default `pnpm build` and `pnpm start` commands now target the Hostinger Fastify artifact (`dist/hostinger.js`), so hPanel does not need a custom script name. Each action should run with a separate deployment account and audit record.
+For the current hPanel settings and the observed entry-file failure, follow [the owner deployment steps](OWNER_HOSTINGER_DEPLOYMENT_STEPS.md). `npm install` and `npm run build` succeeded in the supplied Hostinger log; its subsequent `Entry file not found` came from expecting root `server.js`. The repository now supplies that launcher, declares it as `package.json.main`, and uses it for `npm start` / `pnpm start`. It starts the same Fastify artifact in `dist/hostinger.js`. Keep the Node output directory unset so both the root entry and `dist` are retained. The pinned pnpm 11 workflow remains available when explicitly selected on Node >=22.13.
 
 | Step | Action | Acceptance condition |
 | --- | --- | --- |
 | 1 | Create a Git repository or zip release from the audited project | No `.env` file, candidate document, local log, or test data is included |
 | 2 | In hPanel, create a Node.js application for the subdomain | App root and startup command are configured |
-| 3 | Let hPanel install dependencies with pnpm 11.x, then build with `pnpm build` | `dist/public` and `dist/hostinger.js` are created |
+| 3 | Use the selected package manager to install/build (`npm install`, `npm run build` for the observed setup) | Root `server.js`, `dist/public` and `dist/hostinger.js` are present |
 | 4 | Set server secrets in hPanel environment settings | Secrets are visible only to the Node runtime |
-| 5 | Attach TLS-enabled MySQL and run Drizzle migrations once | Tables and indices are created without destructive changes |
+| 5 | Configure the Node-accessible MySQL connection and apply migrations through 0014; use the provider's actual TLS/CA requirements | For an empty phpMyAdmin database, the generated import includes all 15 migration-ledger records; see [database setup](DATABASE_IMPORT_GUIDE.md) |
 | 6 | Point `freelancehr.overseasjob.in` to the Node application and enable SSL | HTTPS health endpoint is reachable |
 | 7 | Configure a short Hostinger cron to invoke the bounded queue endpoint | One controlled job maximum per trigger during pilot |
 | 8 | Keep automation in `safe` mode for pilot | Every external-facing action still requires explicit owner approval |
 
 ## Production startup guard
 
-The production server intentionally **refuses to start** unless its OIDC and private-storage configuration is complete. This prevents a deployment from accidentally authenticating against the development integration or writing CVs to a non-portable storage path. Set `AUTH_MODE=oidc` and `VITE_AUTH_MODE=oidc` at build time, then configure the following values in hPanel before starting `pnpm start:hostinger`.
+Root `server.js` defaults to production mode. The production server requires a real database connection and complete OIDC configuration; it does not fall back to a process-local mock database. Explicit S3 storage requires its own credentials. Set `AUTH_MODE=oidc` and `VITE_AUTH_MODE=oidc`; the production frontend build defaults to OIDC. Configure the following values in hPanel before starting `npm start`. A blank template for first-time setup is [deploy/hostinger.env.example](deploy/hostinger.env.example).
 
 | Configuration group | Required values | Runtime behavior when absent |
 | --- | --- | --- |
-| OIDC login | `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `APP_BASE_URL`, `SESSION_SECRET`, and either `PRIMARY_OWNER_OPEN_ID` or `PRIMARY_OWNER_EMAIL` | Startup is blocked without exposing the missing secret value. |
+| OIDC login | `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `APP_BASE_URL`, `SESSION_SECRET`, `CRON_SECRET`, and either `PRIMARY_OWNER_OPEN_ID` or `PRIMARY_OWNER_EMAIL` | Startup is blocked without exposing the missing secret value. |
 | OIDC callback | `OIDC_REDIRECT_URI=https://freelancehr.overseasjob.in/api/auth/oidc/callback` registered exactly with the provider | Sign-in is rejected if state, nonce, PKCE, issuer, audience, or signature validation fails. |
 | Private documents | `PRIVATE_STORAGE_MODE=local` and optional `PRIVATE_LOCAL_STORAGE_PATH` outside the public web root; use `PRIVATE_STORAGE_MODE=s3` plus S3 credentials only when backup/provider storage is activated | Local mode keeps documents behind the authenticated `/api/private-storage/*` route. Explicit S3 mode remains fail-closed until its credentials are configured. |
 
@@ -45,7 +45,7 @@ In local mode, the document table stores a non-public `local/...` reference outs
 
 ## Initial owner-only testing mode
 
-For the first private test, set `OWNER_ONLY_MODE=true`. This blocks protected routes for every authenticated account except the configured primary owner and does not create a public signup path. Keep team invitations and external access disabled. OIDC is a later scaling step; standalone production startup still requires the selected OIDC provider configuration before public deployment.
+For the first private test, set `OWNER_ONLY_MODE=true`. This blocks protected routes for every authenticated account except the configured primary owner and does not create a public signup path. Keep team invitations and external access disabled. Standalone production requires the selected OIDC provider even for this owner-only pilot.
 
 ## Environment inventory
 

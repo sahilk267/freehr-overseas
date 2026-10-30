@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "main": "server.js",
   "packageManager": "pnpm@11.0.0",
   "engines": {
     "node": ">=20.19.0"
@@ -10,14 +11,16 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "node scripts/build-hostinger.mjs",
-    "start": "node dist/hostinger.js",
+    "start": "node server.js",
     "build:hostinger": "node scripts/build-hostinger.mjs",
-    "start:hostinger": "node dist/hostinger.js",
+    "start:hostinger": "node server.js",
     "lint": "tsc --noEmit",
     "check": "tsc --noEmit",
     "test": "vitest run",
     "test:hostinger": "tsx scripts/verify-hostinger.ts",
+    "test:hostinger-entry": "node scripts/verify-hostinger-entry.mjs",
     "db:migrate": "node scripts/migrate-db.mjs",
+    "db:export-hostinger": "node scripts/export-hostinger-schema.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "worker": "tsx server/worker.ts",
     "start:worker": "node dist/worker.js"

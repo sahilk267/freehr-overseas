@@ -1,6 +1,8 @@
 import { build as buildFrontend } from "vite";
 import { build as buildBackend } from "esbuild";
 
+// The standalone production server authenticates through OIDC.
+process.env.VITE_AUTH_MODE ||= "oidc";
 await buildFrontend();
 
 await buildBackend({
