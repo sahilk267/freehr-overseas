@@ -131,7 +131,7 @@ const transitions: Record<string, StateMap> = {
     draft: ["validation", "approval_pending", "cancelled"],
     validation: ["approval_pending", "draft", "cancelled"],
     approval_pending: ["issued", "draft", "cancelled"],
-    issued: ["delivered", "payment_pending", "disputed"],
+    issued: ["delivered", "payment_pending", "partially_paid", "paid", "overdue", "disputed"],
     delivered: ["payment_pending", "partially_paid", "paid", "overdue", "disputed"],
     payment_pending: ["partially_paid", "paid", "overdue", "disputed"],
     partially_paid: ["paid", "overdue", "disputed"],

@@ -1,8 +1,11 @@
+import { stopOwnerFollowUps } from "../services/followupEvents";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   candidateDocuments,
+  automationQueue,
+  approvals,
   candidates,
   consents,
   interviews,
@@ -90,6 +93,7 @@ export const candidateWorkflowsRouter = router({
       return { success: true };
     }),
     updateState: protectedProcedure.input(z.object({ id: z.string().min(4), status: z.enum(["approval_pending", "shared", "viewed", "withdrawn", "expired"]) })).mutation(async ({ ctx, input }) => {
+      if (input.status === "shared") throw new TRPCError({ code: "FORBIDDEN", message: "Sharing requires a current governed approval and consent; direct shared-state changes are forbidden." });
       const db = await requireDb();
       const shortlist = (await db.select().from(shortlists).where(and(eq(shortlists.id, input.id), eq(shortlists.ownerId, ctx.user.id))).limit(1))[0];
       if (!shortlist) throw new TRPCError({ code: "NOT_FOUND", message: "Shortlist was not found." });
@@ -119,10 +123,25 @@ export const candidateWorkflowsRouter = router({
     fulfillDeletion: protectedProcedure.input(z.object({ requestId: z.string().min(4), resolutionNote: z.string().trim().min(3).max(2000) })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       const request = (await db.select().from(rightsRequests).where(and(eq(rightsRequests.id, input.requestId), eq(rightsRequests.ownerId, ctx.user.id))).limit(1))[0];
-      if (!request || request.requestType !== "deletion" || request.status !== "received") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "An open deletion request is required." });
+      if (!request || request.requestType !== "deletion" || !["received", "investigation"].includes(request.status)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "An open deletion request is required." });
 
       const candidate = (await db.select().from(candidates).where(and(eq(candidates.id, request.candidateId), eq(candidates.ownerId, ctx.user.id))).limit(1))[0];
       if (!candidate) throw new TRPCError({ code: "NOT_FOUND", message: "Candidate was not found." });
+
+      // Tombstone before physical deletion so late parsing/approval cannot restore the profile.
+      await db.update(candidates).set({ profileState: "deletion_pending", deletedAt: new Date() }).where(and(eq(candidates.id, candidate.id), eq(candidates.ownerId, ctx.user.id)));
+      await stopOwnerFollowUps(ctx.user.id, { candidateId: candidate.id }, "cancelled", "Candidate erasure", true);
+      const jobsToRedact = await db.select().from(automationQueue).where(eq(automationQueue.ownerId, ctx.user.id));
+      const docsToRedact = await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.candidateId, candidate.id), eq(candidateDocuments.ownerId, ctx.user.id)));
+      const docIds = new Set(docsToRedact.map((doc: typeof candidateDocuments.$inferSelect) => doc.id));
+      for (const task of jobsToRedact) {
+        const payload = (task.payload ?? {}) as Record<string, unknown>;
+        if (payload.candidateId === candidate.id || docIds.has(String(payload.documentId))) await db.update(automationQueue).set({ status: "cancelled", payload: { candidateId: candidate.id, redacted: true }, result: null, lastError: "Candidate erasure", lockToken: null, lockedAt: null }).where(eq(automationQueue.id, task.id));
+      }
+      const pendingDecisions = await db.select().from(approvals).where(and(eq(approvals.ownerId, ctx.user.id), eq(approvals.status, "pending")));
+      for (const decision of pendingDecisions) {
+        if ((decision.payload as { candidateId?: string } | null)?.candidateId === candidate.id) await db.update(approvals).set({ status: "cancelled", payload: { redacted: true } }).where(eq(approvals.id, decision.id));
+      }
 
       // 1. Capture contact hashes before PII redaction for suppression
       const emailHash = candidate.emailHash;

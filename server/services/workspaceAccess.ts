@@ -44,6 +44,7 @@ export const rolePaths: Record<Exclude<TeamRole, "owner">, readonly string[]> = 
     "recruitment.outreach.draftSequence",
   ],
   finance: [
+    "collections.ledger",
     "operations.dashboard",
     "recruitment.placements.list", "recruitment.invoices.list", "recruitment.invoices.draft",
     // Controlled finance approval requests: finance users can submit invoice issue and revenue

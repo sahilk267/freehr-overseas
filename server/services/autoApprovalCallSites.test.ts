@@ -371,8 +371,11 @@ describe("Auto-approval call sites integration", () => {
           conditions: [{ field: "disposition", op: "eq", value: "advance" }],
         },
       ]);
+      await expect(consequentialCaller.requestCandidateDecision({ candidateId, jobId, disposition: "advance", evidence: ["Duplicate request"], rationale: "A pending decision must not be duplicated" })).rejects.toThrow(/pending or final decision/);
+      const policyCandidateId = createId("cnd_policy_");
+      await db.insert(candidates).values({ id: policyCandidateId, ownerId, fullName: "Policy Candidate" });
       const resAuto = await consequentialCaller.requestCandidateDecision({
-        candidateId,
+        candidateId: policyCandidateId,
         jobId,
         disposition: "advance",
         evidence: ["Top score on system design v2"],

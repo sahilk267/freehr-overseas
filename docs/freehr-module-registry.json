@@ -1,0 +1,2212 @@
+{
+  "version": "1.0",
+  "date": "2026-10-29",
+  "baseline_commit": "2c4fd93c4b404a6614586ea86d4be7e6fc34c29b",
+  "status": "implementation_in_progress",
+  "dependency_semantics": "build_prerequisites",
+  "modules": [
+    {
+      "id": "M01",
+      "name": "Workspace, identity aur access",
+      "baseline": "Existing auth/team code; hard-coded privileged identity and email verification defects.",
+      "owns": "Workspaces, identities, sessions, memberships, role grants and service identities.",
+      "deps": [],
+      "features": [
+        {
+          "id": "M01-F01",
+          "description": "Production OIDC with verified-email requirements, explicit owner bootstrap, MFA/passkey or IdP step-up for sensitive actions; remove hard-coded owner bypasses.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M01-F02",
+          "description": "Workspace isolation independent of user IDs; least-privilege owner/recruiter/coordinator/finance/viewer plus scoped automation identities.",
+          "status": "planned"
+        },
+        {
+          "id": "M01-F03",
+          "description": "Client and candidate identities with record/purpose-scoped access; team invitation, revocation, session expiry, device/session history.",
+          "status": "planned"
+        },
+        {
+          "id": "M01-F04",
+          "description": "Scoped integration service accounts, signed revocable share/calendar tokens, impersonation controls and audited break-glass access.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M01-F05",
+          "description": "Permission-aware UI and APIs using the same capability registry; authorization repeated on downloads, exports, webhooks and worker actions.",
+          "status": "planned"
+        }
+      ],
+      "events": "identity.verified, membership.revoked, session.revoked",
+      "accept": "Another workspace cannot read/mutate/export a record; revoked users/tokens lose access; unverified email cannot grant owner privileges; calendar feed requires scoped authorization."
+    },
+    {
+      "id": "M02",
+      "name": "Integration aur provider hub",
+      "baseline": "Hostinger and managed-service helpers exist; most recruitment connectors missing.",
+      "owns": "Provider connections, credentials metadata, adapter contracts, webhook inbox and normalized provider events.",
+      "deps": [
+        "M01"
+      ],
+      "features": [
+        {
+          "id": "M02-F01",
+          "description": "Versioned adapters for email, approved WhatsApp/SMS/voice, Google/Microsoft calendars, meeting providers, e-sign, payment/bank feeds, assessments, verification and approved talent/client sources.",
+          "status": "planned"
+        },
+        {
+          "id": "M02-F02",
+          "description": "OAuth refresh, credential rotation, per-workspace scopes, destination restrictions, health probes, quota/cost limits and connection-specific kill switches.",
+          "status": "planned"
+        },
+        {
+          "id": "M02-F03",
+          "description": "Signed webhook verification, replay protection, raw-event reference, deduplication, out-of-order reconciliation and deterministic event routing.",
+          "status": "planned"
+        },
+        {
+          "id": "M02-F04",
+          "description": "Source licensing/permission and provenance declarations; API/CSV/ATS import/export with field mapping, backfill checkpoints and quarantine.",
+          "status": "planned"
+        },
+        {
+          "id": "M02-F05",
+          "description": "Real scheduler registration checks through M05; no mock success in production. Provider sandbox/contract tests, schema-drift detection and reconnect workflows.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M02-F06",
+          "description": "All domains call these adapters instead of copying provider SDKs; actual message lifecycle belongs to M07 and financial truth to M21.",
+          "status": "planned"
+        }
+      ],
+      "events": "connection.ready, connection.degraded, provider.event_received",
+      "accept": "Expired credentials recover or open a visible case; duplicate webhook produces one normalized event; an unconfigured provider cannot be marked live."
+    },
+    {
+      "id": "M03",
+      "name": "Canonical data, identity resolution aur evidence",
+      "baseline": "Shared schema exists; mock semantics, duplicate handling and constraints diverge.",
+      "owns": "Cross-domain identity links, provenance/evidence references, merge history and schema/migration conventions; domain modules own their business records.",
+      "deps": [
+        "M01"
+      ],
+      "features": [
+        {
+          "id": "M03-F01",
+          "description": "Stable workspace-scoped IDs and canonical links for organization, contact, person, requisition, candidacy and commercial engagement.",
+          "status": "planned"
+        },
+        {
+          "id": "M03-F02",
+          "description": "Person/candidate profile separated from candidate-job application so parallel jobs do not overwrite lifecycle or decisions.",
+          "status": "planned"
+        },
+        {
+          "id": "M03-F03",
+          "description": "Normalized email/phone/domain matching, explainable duplicate suggestions, confidence-based merges, reversible merge lineage and collision review.",
+          "status": "planned"
+        },
+        {
+          "id": "M03-F04",
+          "description": "Versioned source facts, timestamps, freshness, conflicting-claim handling, evidence access/retention labels and correction propagation.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W2 stores immutable follow-up definition snapshots and paginated history; general source-fact provenance/freshness/conflict handling remains pending."
+        },
+        {
+          "id": "M03-F05",
+          "description": "Document text is owned by M14, consent by M04 and payment records by M21; use references/read models rather than copying authoritative state.",
+          "status": "planned"
+        },
+        {
+          "id": "M03-F06",
+          "description": "Real MySQL constraints, currency/time/amount types, optimistic versions, transactional migrations, bounded pagination and index/query plans.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W3 adds owned/versioned collection records, indexed bounded scans, fresh/incremental migrations 0013/0014 and BIGINT cumulative receipt baselines; wider data/query-plan acceptance remains open."
+        }
+      ],
+      "events": "entity.merged, fact.corrected, evidence.superseded",
+      "accept": "One person can have separate active candidacies; source corrections invalidate stale derived scores; real DB uniqueness matches allowed histories and retries."
+    },
+    {
+      "id": "M04",
+      "name": "Policy, delegation, consent aur privacy",
+      "baseline": "Approval and consent code exists; inconsistent paths, stale approvals and erasure gaps.",
+      "owns": "Policy versions, delegation grants, consent/evidence, action authorizations, suppression and privacy-rights cases.",
+      "deps": [
+        "M01",
+        "M03"
+      ],
+      "features": [
+        {
+          "id": "M04-F01",
+          "description": "Typed action catalog with authority, required evidence, budget, tenant scope, expiry, policy version and exact permitted side effect.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M04-F02",
+          "description": "Observe/recommend, draft/review and delegated-execution modes with explicit action grants; unknown/ungranted actions fail closed.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M04-F03",
+          "description": "Candidate-captured purpose/job/client-scoped consent; notices, authenticity, expiry, withdrawal, channel preference and contact restrictions.",
+          "status": "planned"
+        },
+        {
+          "id": "M04-F04",
+          "description": "One suppression/eligibility API used by sourcing, AI, sharing, messaging, reminders, exports and workers; immediate withdrawal propagation.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M04-F05",
+          "description": "Approval binds resource version, content digest, recipient, purpose and expiry; revalidate at execution, cancel stale approvals, prevent concurrent consumption.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W2 public follow-up controls and grants require the reviewed revision; edits and recovery never reuse a consumed delivery approval."
+        },
+        {
+          "id": "M04-F06",
+          "description": "Privacy inventory/retention, export/correction/deletion, legal-hold exceptions, deletion tombstones, queue/result redaction and restartable erasure.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M04-F07",
+          "description": "Jurisdiction/source rules, overseas recruitment and verification requirements, recording consent, sensitive-data minimization and documented agency/client/candidate authority.",
+          "status": "planned"
+        },
+        {
+          "id": "M04-F08",
+          "description": "Action-policy simulator and explanation; quiet-hour exceptions require explicit scoped policy, not hidden bypasses.",
+          "status": "planned"
+        }
+      ],
+      "events": "consent.granted, consent.revoked, authorization.issued, authorization.revoked, erasure.completed",
+      "accept": "Withdrawal blocks queued sends/shares and pending decisions; all alternate routes enforce the same rules; deletion cannot be undone by parsing/replay; approval retries cannot double-execute."
+    },
+    {
+      "id": "M05",
+      "name": "Durable workflow, scheduler aur workers",
+      "baseline": "Queue/retry code exists; stale locks, usage-write failures and mock schedules remain.",
+      "owns": "Workflow instances, event outbox, consumer inbox, durable timers, task leases and execution attempts.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04"
+      ],
+      "features": [
+        {
+          "id": "M05-F01",
+          "description": "Versioned workflow definitions, typed commands/events, transactional outbox/inbox, correlation IDs and per-candidacy/client/job/invoice process instances.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M05-F02",
+          "description": "Real external scheduler or managed worker timer service; persistent timers survive deploys, browser closure and restarts; health verifies actual callbacks.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W3 due/grace/promise deadlines use the existing persistent queue and worker; production supervision and recovery drills remain open."
+        },
+        {
+          "id": "M05-F03",
+          "description": "Atomic task claiming, leases/heartbeats, stale-running recovery, bounded concurrency, retry backoff/jitter, dead-letter queues and replay tools.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M05-F04",
+          "description": "Separate deterministic and AI work lanes; atomic quotas so AI exhaustion does not block consent revocation, scans or scheduled operational work.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W3 collection source processing and financial facts are deterministic and continue with an exhausted AI budget."
+        },
+        {
+          "id": "M05-F05",
+          "description": "Idempotent domain commands, timeout/compensation paths, cancellation propagation, version checks and reconciliation after unknown provider outcomes.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M05-F06",
+          "description": "Fairness across workspaces, priority/deadline scheduling, rate limits, workflow migrations, pause/drain/resume and operation-level emergency stops.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M05-F07",
+          "description": "M06 declares business follow-up deadlines; M05 alone persists/fires physical timers. No per-feature cron loops or competing next-run columns.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W3 reuses automationQueue for invoice/grace/promise deadlines; lastEvaluatedAt is a past-observation fairness cursor, not a second timer."
+        }
+      ],
+      "events": "workflow.started, timer.due, task.completed, task.failed, workflow.stalled",
+      "accept": "Kill a worker after claim and recover the job; event replay does not repeat an effect; a failed provider call never silently completes; no real timer means schedule not ready."
+    },
+    {
+      "id": "M06",
+      "name": "Universal follow-up aur next-action management",
+      "baseline": "One nextActionAt field, one-message drafts and interview-specific reminders; no complete lifecycle engine.",
+      "owns": "Follow-up plans, sequence versions, enrollments, stage objectives, contact arbitration and terminal outcomes.",
+      "deps": [
+        "M03",
+        "M04",
+        "M05"
+      ],
+      "features": [
+        {
+          "id": "M06-F01",
+          "description": "One engine for prospect, proposal, consent, candidate response, screening, client feedback, interview, offer, joining, guarantee and collection follow-ups.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M06-F02",
+          "description": "Event/condition-based enrollment with timezone, business-day calendar, holidays, quiet hours, relevance window, deadline and maximum attempts.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W3 adds owner-opted-in overdue invoice and missed-promise source adapters in review mode; most lifecycle adapters, pre-due reminders and regional holidays remain open."
+        },
+        {
+          "id": "M06-F03",
+          "description": "Stop/pause/replan on reply, opt-out, bounce, withdrawal, accepted offer, paid invoice, role closure, reschedule, manual ownership or changed evidence.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W2 refreshed replan evidence and blocked unresolved-attempt bypass. W3 adds invoice-wide holds, pending financial-review freezes, open promises, reply review and receipt-driven invalidation."
+        },
+        {
+          "id": "M06-F04",
+          "description": "Recipient-wide frequency caps and collision arbitration across jobs, campaigns, workspaces/accounts as permitted; merge compatible requests without leaking unrelated context.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M06-F05",
+          "description": "Deterministic mandatory reminders plus optional grounded AI personalization; M07 sends, M04 authorizes, M05 runs timers.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M06-F06",
+          "description": "Adaptive cadence from explicit preference/outcome data; out-of-office return-date handling, preferred channel, language, contact windows and escalation ladder.",
+          "status": "planned"
+        },
+        {
+          "id": "M06-F07",
+          "description": "Exactly one active logical follow-up per purpose/recipient/resource/version/step; retries preserve its identity; uncertain delivery enters reconciliation.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W3 prevents competing active invoice sequences across FU26/FU27, recipient changes and W2 edits; unresolved historic dispatches remain blocking."
+        },
+        {
+          "id": "M06-F08",
+          "description": "Owner timeline: why due, goal, next action, expected stop condition, prior attempts, snooze/handoff, exhausted sequence and recovery options.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W2 adds explicit snooze, reviewed restarts, immutable definitions and recovery controls; broader handoff/adaptive cadence remains pending."
+        }
+      ],
+      "events": "followup.enrolled, followup.due, followup.paused, followup.stopped, followup.exhausted",
+      "accept": "Reply/withdrawal/payment arriving just before dispatch cancels the stale attempt; reschedule replaces old timers; two modules cannot create duplicate nudges for the same purpose."
+    },
+    {
+      "id": "M07",
+      "name": "Unified inbox, communication aur delivery",
+      "baseline": "Mail adapter/outbound records exist; approval chain and delivery concurrency are broken.",
+      "owns": "Conversations, canonical messages, approved content versions, dispatch intents and delivery attempts/status.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04",
+        "M05"
+      ],
+      "features": [
+        {
+          "id": "M07-F01",
+          "description": "Unified email/portal/approved messaging inbox with person-company-job linkage, threading, attachments, assignments and authenticated reply capture.",
+          "status": "planned"
+        },
+        {
+          "id": "M07-F02",
+          "description": "One dispatch gateway for outreach, follow-ups, interview reminders, profile shares, offers and invoices; no direct provider sends in domain workers.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M07-F03",
+          "description": "Immutable approved sender/recipient/body/attachments digest, atomic dispatch claim, outbox, retries, provider idempotency where supported and uncertain-outcome reconciliation.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W2 supports owner-evidence resolution of uncertain completed attempts; provider-correlated automatic reconciliation and crash fencing remain pending."
+        },
+        {
+          "id": "M07-F04",
+          "description": "Differentiate drafted, authorized, dispatching, provider_accepted, delivered, bounced, complained, replied and unknown; never infer delivered from send success.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M07-F05",
+          "description": "SPF/DKIM/DMARC readiness, sender/mailbox verification, throttling, per-recipient caps, opt-out handling and campaign deliverability feedback.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M07-F06",
+          "description": "Unknown inbound intake quarantine with retained authorized evidence, spoofing checks, attachment scan, conversation triage and route-specific minimization.",
+          "status": "planned"
+        },
+        {
+          "id": "M07-F07",
+          "description": "Templates/localization, consent-aware attachments and voice recording/transcription only where authorized; internal alerts do not bypass external-contact rules.",
+          "status": "planned"
+        }
+      ],
+      "events": "message.authorized, message.accepted, message.delivered, message.failed, message.replied, contact.opted_out",
+      "accept": "Complete request-approve-dispatch flow works; simultaneous delivery requests produce one logical send; duplicate receipts do not duplicate state; no leaked cross-tenant thread."
+    },
+    {
+      "id": "M08",
+      "name": "Recruiter AI, knowledge aur grounded reasoning",
+      "baseline": "Six structured AI tasks, short prompts and incomplete scoring inputs.",
+      "owns": "Model routes, prompt/schema versions, knowledge retrieval, recruiter memory policies, AI runs and evaluation artifacts.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04"
+      ],
+      "features": [
+        {
+          "id": "M08-F01",
+          "description": "Task-specific structured tools for discovery, intake, CV extraction, matching explanation, screening assistance, reply/objection handling and negotiation recommendations.",
+          "status": "planned"
+        },
+        {
+          "id": "M08-F02",
+          "description": "Skill/domain ontology, salary and labor-market sources with region/date/licensing, career chronology, transferable skills and industry-specific evidence retrieval.",
+          "status": "planned"
+        },
+        {
+          "id": "M08-F03",
+          "description": "Evidence-grounded reasoning with source citations, missing-info questions, conflicting-fact detection and fact-versus-hypothesis labeling.",
+          "status": "planned"
+        },
+        {
+          "id": "M08-F04",
+          "description": "Full typed context builder; deterministic business/financial calculations outside LLM; calibrated uncertainty and no unsupported promises or fabricated credentials.",
+          "status": "planned"
+        },
+        {
+          "id": "M08-F05",
+          "description": "Workspace-scoped relationship memory with consent, correction, freshness, retention and deletion; no uncontrolled cross-workspace candidate memory.",
+          "status": "planned"
+        },
+        {
+          "id": "M08-F06",
+          "description": "Model capability registry, schema-constrained output, prompt injection defenses, tool allowlists, token/cost budgets, fallbacks and provider data-use settings.",
+          "status": "planned"
+        },
+        {
+          "id": "M08-F07",
+          "description": "Offline recruiter-quality datasets, factuality/bias/error evaluation, adversarial CV/reply tests, version comparisons, shadow/canary rollout and rollback.",
+          "status": "planned"
+        },
+        {
+          "id": "M08-F08",
+          "description": "AI recommends an authorized command; M04 and the domain validate it. No AI direct SQL, independent consent grant, payment truth or final hiring authority.",
+          "status": "planned"
+        }
+      ],
+      "events": "ai.result_ready, ai.needs_evidence, ai.validation_failed, knowledge.updated",
+      "accept": "Every material claim links to allowed evidence; incompatible score/confidence is rejected; malicious CV cannot issue tools or expose secrets; model changes pass held-out evaluations."
+    },
+    {
+      "id": "M09",
+      "name": "Recruitment strategy aur market intelligence",
+      "baseline": "No operational strategy/demand planning engine found.",
+      "owns": "Recruiting goals, ideal-client profiles, market signals, strategy versions and capacity plans.",
+      "deps": [
+        "M02",
+        "M03",
+        "M08"
+      ],
+      "features": [
+        {
+          "id": "M09-F01",
+          "description": "Niche/region/industry/role strategy, target client profile, fee model, revenue targets, recruiter capacity and delivery economics.",
+          "status": "planned"
+        },
+        {
+          "id": "M09-F02",
+          "description": "Licensed hiring signals, employer demand changes, salary/competition intelligence, seasonality and opportunity qualification with freshness.",
+          "status": "planned"
+        },
+        {
+          "id": "M09-F03",
+          "description": "Prioritize roles/accounts using feasibility, candidate supply, expected margin, payment risk and workload rather than raw lead volume.",
+          "status": "planned"
+        },
+        {
+          "id": "M09-F04",
+          "description": "Generate bounded acquisition/sourcing objectives and measurable experiments; M05 starts the approved workflows.",
+          "status": "planned"
+        },
+        {
+          "id": "M09-F05",
+          "description": "Scenario planning for low response, scarce talent, budget gaps and changing client demand; explain when to pause or escalate.",
+          "status": "planned"
+        },
+        {
+          "id": "M09-F06",
+          "description": "Policy/cost-aware daily operating plan and exception-only owner brief with evidence and confidence.",
+          "status": "planned"
+        }
+      ],
+      "events": "strategy.activated, opportunity.prioritized, capacity.constrained",
+      "accept": "A strategy produces a bounded, costed plan with success metrics; unavailable or stale market facts are visible; no workflow starts beyond delegated scope."
+    },
+    {
+      "id": "M10",
+      "name": "Client acquisition aur account CRM",
+      "baseline": "Manual prospect/contact CRUD and incomplete UI progression.",
+      "owns": "Organizations, business contacts, opportunities, account qualification, relationship timeline and account-health plans.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M08",
+        "M09"
+      ],
+      "features": [
+        {
+          "id": "M10-F01",
+          "description": "Approved company discovery/enrichment, hiring-signal intake, contact role identification, contact verification, dedupe and conflict/source tracking.",
+          "status": "planned"
+        },
+        {
+          "id": "M10-F02",
+          "description": "Lead fit, hiring intent, agency openness, credibility and payment-risk qualification; research evidence and disqualification reasons.",
+          "status": "planned"
+        },
+        {
+          "id": "M10-F03",
+          "description": "Personalized acquisition campaigns and reply routing; M06 owns cadence, M07 delivery, M08 grounded drafting.",
+          "status": "planned"
+        },
+        {
+          "id": "M10-F04",
+          "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
+          "status": "planned"
+        },
+        {
+          "id": "M10-F05",
+          "description": "Existing client health, repeat requisitions, referrals, satisfaction/service recovery and renewal opportunities using one account record.",
+          "status": "planned"
+        },
+        {
+          "id": "M10-F06",
+          "description": "Source attribution, acquisition cost, conversion funnel and do-not-pursue rules; honest observed external outcomes.",
+          "status": "planned"
+        },
+        {
+          "id": "M10-F07",
+          "description": "Inbound acquisition through a branded service site, referral/partner programs, approved marketplace/RFP proposal channels and campaign landing forms; verified attribution and lead-to-discovery routing use the same CRM, consent and follow-up records.",
+          "status": "planned"
+        }
+      ],
+      "events": "prospect.qualified, discovery.requested, account.at_risk, requisition.opportunity_detected",
+      "accept": "An approved source can create a deduped opportunity and discovery workflow; reply/opt-out stops its chase; account status cannot fake verified onboarding."
+    },
+    {
+      "id": "M11",
+      "name": "Client discovery, negotiation aur agreements",
+      "baseline": "Fee drafts and owner-recorded acceptance; commercial terms disconnected downstream.",
+      "owns": "Commercial engagements, proposal/contract versions, authority limits, acceptance and amendments.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M08",
+        "M10"
+      ],
+      "features": [
+        {
+          "id": "M11-F01",
+          "description": "Structured discovery for hiring urgency, budget, hiring authority, fee expectations, payment reliability, exclusivity and delivery commitments.",
+          "status": "planned"
+        },
+        {
+          "id": "M11-F02",
+          "description": "Contingency, retained, milestone and contract-placement fee models; guarantees, replacement/refund clauses, candidate ownership and non-circumvention.",
+          "status": "planned"
+        },
+        {
+          "id": "M11-F03",
+          "description": "Negotiation within explicit fee/discount/credit/term boundaries; explainable counteroffers and escalation for ungranted concessions.",
+          "status": "planned"
+        },
+        {
+          "id": "M11-F04",
+          "description": "Versioned documents with exact terms hash, authenticated client sign-off/e-sign, authorized signatory and amendment history.",
+          "status": "planned"
+        },
+        {
+          "id": "M11-F05",
+          "description": "Contract-to-job binding and machine-readable billing/guarantee obligations; M21 owns calculations and money, M20 guarantee execution.",
+          "status": "planned"
+        },
+        {
+          "id": "M11-F06",
+          "description": "KYB/registry/bank verification through approved adapters where required; separate owner authorization from external verification evidence.",
+          "status": "planned"
+        }
+      ],
+      "events": "agreement.accepted, agreement.amended, commercial.exception",
+      "accept": "Downstream invoice/guarantee uses the accepted version; unsigned or superseded terms cannot be treated as accepted; unauthorized concessions are blocked."
+    },
+    {
+      "id": "M12",
+      "name": "Job intake aur requirement control",
+      "baseline": "Structured form/FSM exists; description and genuine client confirmation missing.",
+      "owns": "Requisition versions, intake facts, hiring scorecards, openings, client confirmations and requisition lifecycle.",
+      "deps": [
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M08",
+        "M11"
+      ],
+      "features": [
+        {
+          "id": "M12-F01",
+          "description": "JD/document/email intake, structured clarification conversation, responsibilities, outcomes and weighted assessment scorecard.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M12-F02",
+          "description": "Must-have versus trainable skills, equivalent experience, compensation/currency/pay-period, work model, location, notice period and target joining.",
+          "status": "planned"
+        },
+        {
+          "id": "M12-F03",
+          "description": "Lawful job-relevant work authorization, credential/license, language and relocation requirements; configurable domestic/overseas intake packs.",
+          "status": "planned"
+        },
+        {
+          "id": "M12-F04",
+          "description": "Requirement contradictions, unrealistic salary/skill combinations, incomplete hiring process and stale criteria flagged before sourcing.",
+          "status": "planned"
+        },
+        {
+          "id": "M12-F05",
+          "description": "Client-authorized sign-off on an exact requirement version; headcount, replacements, hiring panel, SLAs and change impact.",
+          "status": "planned"
+        },
+        {
+          "id": "M12-F06",
+          "description": "Amendment/hold/cancel/filled rules invalidate incompatible matches, follow-ups and submissions without erasing history.",
+          "status": "planned"
+        }
+      ],
+      "events": "requisition.confirmed, requisition.changed, requisition.paused, requisition.closed",
+      "accept": "Sourcing uses a confirmed bound engagement and version; a local button cannot fabricate client sign-off; changed requirements trigger safe re-evaluation."
+    },
+    {
+      "id": "M13",
+      "name": "Candidate sourcing aur talent CRM",
+      "baseline": "Manual creation and pool search; external ingestion missing.",
+      "owns": "Candidate profiles, sourcing searches, source submissions, talent pools, availability and relationship preferences.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M08",
+        "M12"
+      ],
+      "features": [
+        {
+          "id": "M13-F01",
+          "description": "Approved job-board/ATS APIs, candidate application portal, referrals, email imports and licensed talent pools with source permissions.",
+          "status": "planned"
+        },
+        {
+          "id": "M13-F02",
+          "description": "Boolean/semantic talent search, saved searches, passive/active talent pools, previous-candidate rediscovery and schedule-aware sourcing plans.",
+          "status": "planned"
+        },
+        {
+          "id": "M13-F03",
+          "description": "Identity dedupe/merge via M03, provenance, source freshness, contact validation, skill/experience/availability refresh and referral attribution.",
+          "status": "planned"
+        },
+        {
+          "id": "M13-F04",
+          "description": "Candidate onboarding and self-service corrections; collect purpose-appropriate consent via M04 rather than manufacture it.",
+          "status": "planned"
+        },
+        {
+          "id": "M13-F05",
+          "description": "Multi-job candidacies with preference-based contact arbitration; candidate ownership/conflict and agency/client submission history.",
+          "status": "planned"
+        },
+        {
+          "id": "M13-F06",
+          "description": "Talent community re-engagement, relationship continuity and candidate experience tracking; M06 handles every chase cadence.",
+          "status": "planned"
+        },
+        {
+          "id": "M13-F07",
+          "description": "Versioned job publishing to owned career pages and approved job boards, application screening intake, sponsored-post budgets, refresh/expiry and close-role depublication; all applicants enter the same dedupe/consent/candidacy pipeline.",
+          "status": "planned"
+        }
+      ],
+      "events": "candidate.received, candidate.updated, availability.changed, candidacy.created",
+      "accept": "One candidate imported twice merges safely with provenance; opted-out people cannot be silently reactivated; parallel applications stay independent."
+    },
+    {
+      "id": "M14",
+      "name": "Document security aur evidence extraction",
+      "baseline": "Private storage/parsers/scanner exist; filename overwrite, pre-scan extraction and OCR gaps.",
+      "owns": "Immutable document objects, document versions, scan/extraction runs, parsed source spans and access receipts.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M08"
+      ],
+      "features": [
+        {
+          "id": "M14-F01",
+          "description": "Unique immutable object keys, content hashes, versioning, upload limits, quarantine, MIME/signature checks and malware scanning.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M14-F02",
+          "description": "PDF/DOCX/text/image OCR with layout/language handling, decompression/parser bounds and clean-scan prerequisite.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M14-F03",
+          "description": "Structured CV timeline, employment gaps, overlapping roles, education, certifications and explicitly stated skills; no protected-trait inference.",
+          "status": "planned"
+        },
+        {
+          "id": "M14-F04",
+          "description": "Each extracted fact links to document version/page/span, parser/model version and confidence; contradictions require clarification.",
+          "status": "planned"
+        },
+        {
+          "id": "M14-F05",
+          "description": "Secure CV/portfolio/KYB/offer/credential access with expiry, tenant checks, encryption, retention and deletion-tombstone enforcement.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M14-F06",
+          "description": "Candidate corrections and document replacements invalidate stale profiles/matches; retryable extraction with visible failure reasons.",
+          "status": "planned"
+        }
+      ],
+      "events": "document.clean, document.flagged, extraction.completed, document.superseded",
+      "accept": "Same filename never overwrites evidence; scan must complete before extraction/AI; deleted evidence cannot reappear after replay; scanned-image CV works."
+    },
+    {
+      "id": "M15",
+      "name": "Evidence-based matching aur ranking",
+      "baseline": "Manual evidence or thin per-pair AI payload; no comprehensive ranking.",
+      "owns": "Match runs, eligibility assessments, score components, evidence explanations and ranked recommendation versions.",
+      "deps": [
+        "M03",
+        "M04",
+        "M08",
+        "M12",
+        "M13",
+        "M14"
+      ],
+      "features": [
+        {
+          "id": "M15-F01",
+          "description": "One full context builder for requirements, parsed evidence, current salary/expectations, notice, availability, work model and relevant authorization facts.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M15-F02",
+          "description": "Deterministic eligibility rules separated from semantic similarity; weighted explainable scorecards and skill equivalence.",
+          "status": "planned"
+        },
+        {
+          "id": "M15-F03",
+          "description": "Candidate-to-many-jobs and job-to-many-candidates retrieval/ranking, freshness decay, duplicates and submission conflicts.",
+          "status": "planned"
+        },
+        {
+          "id": "M15-F04",
+          "description": "Explicit unknown/missing/conflicting evidence, calibration, human-readable trade-offs and evidence-collection requests.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M15-F05",
+          "description": "No automatic final hiring rejection; a lawful eligibility flag is distinguishable from client disposition and can be corrected or reviewed.",
+          "status": "planned"
+        },
+        {
+          "id": "M15-F06",
+          "description": "Outcome-versioned re-ranking, held-out quality metrics and approved A/B tests; no learning directly from biased historical decisions without evaluation.",
+          "status": "planned"
+        }
+      ],
+      "events": "match.assessed, match.needs_evidence, ranking.updated",
+      "accept": "Missing skills/pay/experience cannot yield fabricated evidence; zero confidence cannot be evidence_validated; a JD/CV change supersedes old rankings."
+    },
+    {
+      "id": "M16",
+      "name": "Adaptive screening, assessments aur decision cases",
+      "baseline": "Owner-entered answers; final-decision and screening uniqueness defects.",
+      "owns": "Screening cases, rounds, answers, assessment results, recommendations and authorized progression dispositions.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M08",
+        "M12",
+        "M15"
+      ],
+      "features": [
+        {
+          "id": "M16-F01",
+          "description": "Candidate-facing structured chat/forms and optional authorized voice; job-specific adaptive questions and missing-evidence follow-up.",
+          "status": "planned"
+        },
+        {
+          "id": "M16-F02",
+          "description": "Experience verification, salary/notice/availability alignment, motivation and role-relevant work samples with accessible alternatives.",
+          "status": "planned"
+        },
+        {
+          "id": "M16-F03",
+          "description": "Assessment integrations, evidence rubrics, fraud/anomaly flags with review, answer provenance and candidate correction.",
+          "status": "planned"
+        },
+        {
+          "id": "M16-F04",
+          "description": "Multiple screening rounds under one candidacy; case history preserves unique constraints without duplicate-row collisions.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M16-F05",
+          "description": "Separate evidence score, recruiter recommendation, owner authorization and client's final hiring disposition.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M16-F06",
+          "description": "Non-progression feedback, candidate query/appeal route and permitted re-engagement; sensitive inference and autonomous final rejection are excluded.",
+          "status": "planned"
+        },
+        {
+          "id": "M16-F07",
+          "description": "One consented reference/background/credential/license verification case lifecycle through approved providers, including candidate correction, discrepancies, expiry, client authorization and evidence receipts; offer/joining modules consume these outcomes instead of building duplicate verification systems.",
+          "status": "planned"
+        }
+      ],
+      "events": "screening.completed, screening.needs_information, progression.authorized, disposition.recorded",
+      "accept": "Approved not_proceeding cannot authorize a placement; completed interview is not a hire; an existing screening can progress without unique-key failure."
+    },
+    {
+      "id": "M17",
+      "name": "Shortlisting, client submission aur review",
+      "baseline": "Consent/approval rows; status-only sharing and bypasses.",
+      "owns": "Submission packages, recipient-specific grants, actual release records, client review and submission outcomes.",
+      "deps": [
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M12",
+        "M14",
+        "M15",
+        "M16"
+      ],
+      "features": [
+        {
+          "id": "M17-F01",
+          "description": "Evidence-backed shortlist with candidate-approved profile, anonymization/redaction, job fit and transparent uncertainties.",
+          "status": "planned"
+        },
+        {
+          "id": "M17-F02",
+          "description": "Exact job/client/purpose consent plus resource-version authorization; last-moment recheck of withdrawal/DNC/suppression.",
+          "status": "planned"
+        },
+        {
+          "id": "M17-F03",
+          "description": "Authenticated client review portal and recipient-bound expiring access; download controls, watermarking where needed and revocation.",
+          "status": "planned"
+        },
+        {
+          "id": "M17-F04",
+          "description": "Actual release/view/feedback evidence with precise semantics; shared means access released, not merely approved.",
+          "status": "planned"
+        },
+        {
+          "id": "M17-F05",
+          "description": "Client compare/review, request clarification, select interview or record authorized disposition; ownership/exclusivity/submission-conflict rules.",
+          "status": "planned"
+        },
+        {
+          "id": "M17-F06",
+          "description": "Central follow-ups for unviewed/awaiting-feedback/expired submissions; no parallel shortlist status endpoint can bypass release policy.",
+          "status": "planned"
+        }
+      ],
+      "events": "submission.released, submission.viewed, submission.feedback_received, submission.revoked",
+      "accept": "Withdrawal between approval and release prevents access; expired links fail; duplicate release is idempotent; client sees only authorized candidates."
+    },
+    {
+      "id": "M18",
+      "name": "Interview coordination, calendars aur feedback",
+      "baseline": "Manual datetime/ICS/reminders exist; calendar auth, folding and reschedule issues.",
+      "owns": "Interview rounds, participant availability, slot reservations, calendar event mappings and interview feedback.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M08",
+        "M16",
+        "M17"
+      ],
+      "features": [
+        {
+          "id": "M18-F01",
+          "description": "Two-sided availability collection, timezone/DST/business-hour handling, interviewer panels, buffers and conflict-aware slot proposals.",
+          "status": "planned"
+        },
+        {
+          "id": "M18-F02",
+          "description": "Google/Microsoft free-busy/event sync, meeting creation, ICS fallback, scoped subscription tokens and revocation.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M18-F03",
+          "description": "Versioned schedule/RSVP lifecycle, temporary slot holds, reschedule/cancel reconciliation, no-show and alternative-slot recovery.",
+          "status": "planned"
+        },
+        {
+          "id": "M18-F04",
+          "description": "Preparation packs, authorized reminders, joining instructions, accessibility requests and candidate/client confirmations.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M18-F05",
+          "description": "Structured evidence-based feedback, interviewer reminders, differing-feedback reconciliation and explicit next-round/client decision.",
+          "status": "planned"
+        },
+        {
+          "id": "M18-F06",
+          "description": "All timer/reminder delivery goes through M06/M05/M07; old schedule version invalidates old reminder attempts.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        }
+      ],
+      "events": "interview.confirmed, interview.rescheduled, interview.completed, feedback.received, interview.no_show",
+      "accept": "DST and duration exports are correct; reschedule cannot send old reminder; unauthenticated calendar cannot leak notes; concurrent slot claims do not double-book."
+    },
+    {
+      "id": "M19",
+      "name": "Offer negotiation aur acceptance",
+      "baseline": "Internal offer state endpoints; document/delivery/acceptance loop missing.",
+      "owns": "Offer versions, negotiation cases, authorized compensation terms, signatures and acceptance evidence.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M08",
+        "M11",
+        "M12",
+        "M16",
+        "M18"
+      ],
+      "features": [
+        {
+          "id": "M19-F01",
+          "description": "Client-authorized offer terms, compensation breakdown/currency, benefits, role/location, conditions and intended joining date.",
+          "status": "planned"
+        },
+        {
+          "id": "M19-F02",
+          "description": "Generate/review/deliver versioned offer packs; secure signatures, expiry, authenticated candidate acceptance or rejection.",
+          "status": "planned"
+        },
+        {
+          "id": "M19-F03",
+          "description": "Negotiation within explicit client-approved bounds, counteroffer/competing-offer handling without invented facts or promises.",
+          "status": "planned"
+        },
+        {
+          "id": "M19-F04",
+          "description": "Acceptance linked to exact immutable terms; revised offers supersede older grants and follow-up plans.",
+          "status": "planned"
+        },
+        {
+          "id": "M19-F05",
+          "description": "Notice/buyout/relocation/credential contingencies, withdrawal/expiry paths and handoff to joining workflow.",
+          "status": "planned"
+        }
+      ],
+      "events": "offer.released, offer.countered, offer.accepted, offer.declined, offer.expired",
+      "accept": "A status update cannot masquerade as candidate acceptance; unapproved salary concession fails; old-version acceptance is rejected or routed for reconciliation."
+    },
+    {
+      "id": "M20",
+      "name": "Joining, placement, retention aur replacement",
+      "baseline": "Placement states and default guarantee calculations; no autonomous retention loop.",
+      "owns": "Joining cases, verified placements, guarantee obligations, retention check-ins and replacement cases.",
+      "deps": [
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M08",
+        "M11",
+        "M13",
+        "M19"
+      ],
+      "features": [
+        {
+          "id": "M20-F01",
+          "description": "Prejoining checklist, notice period, counteroffer/ghosting risk, joining-date changes and candidate/client check-ins.",
+          "status": "planned"
+        },
+        {
+          "id": "M20-F02",
+          "description": "Authenticated joining evidence from permitted parties; consume M16 identity/background/license verification outcomes and own overseas relocation/visa milestone evidence when applicable. Only the competent external authority can confirm visa/work authorization.",
+          "status": "planned"
+        },
+        {
+          "id": "M20-F03",
+          "description": "Placement creation tied to an authorized positive disposition and accepted offer; correct candidacy history and rehire semantics.",
+          "status": "planned"
+        },
+        {
+          "id": "M20-F04",
+          "description": "Guarantee windows, exclusions, replacement/refund eligibility and deadlines derived from accepted engagement, not hard-coded 90 days.",
+          "status": "planned"
+        },
+        {
+          "id": "M20-F05",
+          "description": "Configurable day-1/7/30/60/90 retention touchpoints, client/candidate satisfaction, attrition signals and escalation.",
+          "status": "planned"
+        },
+        {
+          "id": "M20-F06",
+          "description": "Replacement obligation creates a linked new recruiting workflow with original invoice/contract linkage and prevents double billing.",
+          "status": "planned"
+        },
+        {
+          "id": "M20-F07",
+          "description": "Post-guarantee closure, referral/repeat-hiring opportunities and evidence-triggered invoice eligibility.",
+          "status": "planned"
+        }
+      ],
+      "events": "joining.verified, placement.invoice_eligible, retention.at_risk, replacement.opened, guarantee.completed",
+      "accept": "No negative/unknown decision produces placement; guarantee matches contract version; replacement reuses workflow without duplicating person/financial obligation."
+    },
+    {
+      "id": "M21",
+      "name": "Finance, verified collections aur recruiter earnings",
+      "baseline": "Manual invoice/payment records; underpayment bug and fake checkout.",
+      "owns": "Fee calculations, invoices/credits, payment ledger, allocations, reconciliation, disputes and agency/recruiter receivables/payables.",
+      "deps": [
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "M07",
+        "M11",
+        "M20"
+      ],
+      "features": [
+        {
+          "id": "M21-F01",
+          "description": "Contract-derived contingency/retainer/milestone billing, placement salary basis, currency/minor units, tax configuration and sequential invoice numbering.",
+          "status": "planned"
+        },
+        {
+          "id": "M21-F02",
+          "description": "Versioned compliant invoice/credit documents with escaped output, legal entity/tax details, verified delivery and accounting exports.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M21-F03",
+          "description": "Genuine gateway checkout or bank instructions through configured providers; signed events, settlement proof and reconciliation.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M21-F04",
+          "description": "Append-only financial entries, atomic payment allocation, partial/overpayment/unallocated credit, refunds, chargebacks and duplicate-event protection.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M21-F05",
+          "description": "Separate client payment promises, manual evidence, verified receipts, cleared funds, fee splits and recruiter payout eligibility.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W3 separates evidenced client promises from receipts and clearing; newly recorded receipts since the promise baseline determine coverage. Fee splits, external clearing and payout eligibility remain open."
+        },
+        {
+          "id": "M21-F06",
+          "description": "Accounts receivable aging, promise-to-pay plans, dispute freezes and M06-controlled dunning; no AI-derived paid status.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W3 adds timezone-based AR aging, opted-in bounded FU26/FU27 review sequences, promise history and pending-dispute freezes; pre-due/acknowledgment flows and jurisdiction/custom cadence remain open. AI reconciliation is advisory only."
+        },
+        {
+          "id": "M21-F07",
+          "description": "Commission splits/referral fees/subcontractor milestones, payout approvals and contribution margin; payroll/EOR only through a separately enabled adapter and contract scope.",
+          "status": "planned"
+        }
+      ],
+      "events": "invoice.issued, payment.verified, balance.changed, invoice.disputed, payout.eligible",
+      "accept": "Paying 1 toward 100000 leaves 99999 outstanding; duplicate webhook adds zero; concurrent allocations preserve balance; checkout creates an actual provider session; currency/tax/guarantee terms match contract."
+    },
+    {
+      "id": "M22",
+      "name": "Owner command center, exceptions aur handoff",
+      "baseline": "Dashboard/approval/incident lists exist; incomplete action wiring.",
+      "owns": "Business exception cases, human assignments, SLA escalations, manual interventions and operator action history.",
+      "deps": [
+        "M01",
+        "M04",
+        "M05",
+        "M06",
+        "M07"
+      ],
+      "features": [
+        {
+          "id": "M22-F01",
+          "description": "Exception-first cockpit showing business objectives, stalled processes, blocked prerequisites, due follow-ups, spend and last verified outcomes.",
+          "status": "planned"
+        },
+        {
+          "id": "M22-F02",
+          "description": "Decision inbox with evidence, exact proposed effect, policy reason, resource version, approve/reject/delegate/cancel and grace-period visibility.",
+          "status": "planned"
+        },
+        {
+          "id": "M22-F03",
+          "description": "Unified case taxonomy for provider failures, unmatched inbound, consent disputes, conflicting facts, deadlines and commercial exceptions.",
+          "status": "planned"
+        },
+        {
+          "id": "M22-F04",
+          "description": "Manual takeover with automation pause for that scope, task ownership, notes and deliberate resume/reconciliation.",
+          "status": "planned"
+        },
+        {
+          "id": "M22-F05",
+          "description": "Daily/weekly operating brief, SLA ladder and internal alert routing; one case links infrastructure incident IDs from M25 rather than duplicate incidents.",
+          "status": "planned"
+        },
+        {
+          "id": "M22-F06",
+          "description": "Full-path actions from the UI instead of dead-end status badges; operational support/search and reviewable audit evidence.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        }
+      ],
+      "events": "case.opened, case.assigned, case.resolved, manual_takeover.started",
+      "accept": "Every blocked workflow has reason, owner and recovery action; manual takeover stops automation in that scope; resolving a case safely resumes once."
+    },
+    {
+      "id": "M23",
+      "name": "Analytics, attribution aur controlled improvement",
+      "baseline": "Dashboard counts/basic quota reporting.",
+      "owns": "Metric definitions, analytical read models, attribution, experiments and business/evaluation reports.",
+      "deps": [
+        "M03",
+        "M05",
+        "M06",
+        "M07",
+        "M08"
+      ],
+      "features": [
+        {
+          "id": "M23-F01",
+          "description": "Funnel metrics from sourced lead to cleared revenue; response/qualification/offer/joining/replacement conversion and time-in-stage.",
+          "status": "planned"
+        },
+        {
+          "id": "M23-F02",
+          "description": "Follow-up effectiveness by step/channel/persona, fatigue/complaint signals, attribution and incremental conversion rather than just open rates.",
+          "status": "planned"
+        },
+        {
+          "id": "M23-F03",
+          "description": "Source quality, candidate experience, client satisfaction, recruiter effort saved, cost-per-placement, margin and cash collection.",
+          "status": "planned"
+        },
+        {
+          "id": "M23-F04",
+          "description": "Workflow lag, SLA misses, task retries, model cost/factuality, ranking calibration and observable automation coverage.",
+          "status": "planned"
+        },
+        {
+          "id": "M23-F05",
+          "description": "Controlled cadence/prompt/ranking experiments with privacy, holdouts, minimum evidence, drift monitoring and rollback.",
+          "status": "planned"
+        },
+        {
+          "id": "M23-F06",
+          "description": "Versioned metrics and reconciled finance totals; optimization proposes changes to M04/M08/M09 instead of silently rewriting policies or hiring criteria.",
+          "status": "planned"
+        }
+      ],
+      "events": "metric.threshold_crossed, experiment.evaluated, improvement.proposed",
+      "accept": "Metric totals reconcile to source ledgers; a replay does not double-count; experiments cannot exceed consent/contact caps or become autonomous policy changes."
+    },
+    {
+      "id": "M24",
+      "name": "Product experience: owner, client aur candidate portals",
+      "baseline": "Owner pages exist; key APIs unwired and external portals missing.",
+      "owns": "UI composition, route navigation, accessibility/localization, public-facing forms and notification preferences; no duplicate domain authority.",
+      "deps": [
+        "M01",
+        "M04",
+        "M07",
+        "M22"
+      ],
+      "features": [
+        {
+          "id": "M24-F01",
+          "description": "Owner workspaces for strategy, CRM, agreements, jobs, talent, matching, screening, submissions, interviews, offers, joining, finance, follow-ups and exceptions.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W3 wires the owner Finance ledger, collection settings, promise history/controls and actual financial-adjustment evidence into the existing workspace."
+        },
+        {
+          "id": "M24-F02",
+          "description": "Client portal for approved requirements/contracts, shortlisted profiles, availability, feedback, offers, joining confirmation and invoices.",
+          "status": "planned"
+        },
+        {
+          "id": "M24-F03",
+          "description": "Candidate portal for profile/CV, consent, corrections/withdrawal, screening, availability, offer acceptance, joining updates and privacy requests.",
+          "status": "planned"
+        },
+        {
+          "id": "M24-F04",
+          "description": "Responsive mobile, keyboard/screen-reader support, localized communications/timezones, accessible assessments and secure session transitions.",
+          "status": "planned"
+        },
+        {
+          "id": "M24-F05",
+          "description": "One domain command per action; capability-based navigation, clear empty/loading/error/permission states and forms preserved on failed saves.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "W2 validated stale-tab conflicts and preserved edit/evidence forms. W3 Finance forms preserve failed drafts, require explicit stale-control reload and distinguish promises from receipts."
+        },
+        {
+          "id": "M24-F06",
+          "description": "Visible distinction between draft, authorized, sent, delivered, accepted and verified; no success toast before persisted success.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M24-F07",
+          "description": "Follow-up timeline showing intent, cadence, pause/stop reason and owner intervention for each relevant party.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        }
+      ],
+      "events": "No separate business events; UI invokes owning-domain commands.",
+      "accept": "Every launch-critical backend journey is usable in UI; failed mutation preserves input; client/candidate views cannot expose internal notes or other participants' records."
+    },
+    {
+      "id": "M25",
+      "name": "Security operations, reliability aur release quality",
+      "baseline": "Build/typecheck and mock tests pass partly; no production evidence established.",
+      "owns": "Runtime/deployment configuration, security controls, technical incidents, telemetry, backup/restore and release gates.",
+      "deps": [
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05"
+      ],
+      "features": [
+        {
+          "id": "M25-F01",
+          "description": "Production secrets management, environment separation, hardened auth/session/CORS/CSRF boundaries, rate limits, dependency and upload security.",
+          "status": "planned"
+        },
+        {
+          "id": "M25-F02",
+          "description": "Transactional migrations, restore drills, encrypted backups, retention/deletion propagation, capacity planning and tested rollback.",
+          "status": "planned"
+        },
+        {
+          "id": "M25-F03",
+          "description": "Structured redacted logs, traces and metrics correlated to workflow/action/provider attempts; security events and tamper-evident audit exports.",
+          "status": "planned"
+        },
+        {
+          "id": "M25-F04",
+          "description": "Real MySQL integration tests, provider sandboxes/contracts, browser owner/client/candidate journeys, concurrency/property tests and chaos/recovery tests.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M25-F05",
+          "description": "Environment startup/install reproducibility, readiness versus liveness versus provider capability; no mock-success acceptance in production.",
+          "status": "implementing",
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+        },
+        {
+          "id": "M25-F06",
+          "description": "Feature flags, shadow execution, controlled canaries, kill switches, recovery runbooks, staged production verification and regression ownership.",
+          "status": "planned"
+        },
+        {
+          "id": "M25-F07",
+          "description": "Set explicit scale, uptime/latency, recovery and cost targets from pilot measurements; alerts and release criteria enforce approved targets.",
+          "status": "planned"
+        }
+      ],
+      "events": "runtime.degraded, security.incident, restore.verified, release.verified",
+      "accept": "Restore recovers authoritative records and revocations; kill-switch behavior verified; no tenant/PII/finance release blocker remains; live capability claims have current evidence."
+    }
+  ],
+  "followups": [
+    {
+      "id": "FU01",
+      "trigger": "Approved prospect acquisition",
+      "objective_and_example_cadence": "Relevant first contact; optional +3/+7 business-day nudges, bounded sequence",
+      "stop_pause_escalate": "Any reply pauses; opt-out/bounce stops; exhaustion closes or schedules permitted later review",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU02",
+      "trigger": "Discovery slot requested",
+      "objective_and_example_cadence": "Obtain stakeholder availability; +1/+3 business days",
+      "stop_pause_escalate": "Booking/cancellation stops; missing authority opens case",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU03",
+      "trigger": "Discovery completed",
+      "objective_and_example_cadence": "Collect missing scope/budget/decision-maker facts; +2/+5 business days",
+      "stop_pause_escalate": "Required facts received; explicit refusal stops",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU04",
+      "trigger": "Proposal sent",
+      "objective_and_example_cadence": "Confirm review, answer objections; +2/+5/+10 business days",
+      "stop_pause_escalate": "Reply pauses; accepted/declined/superseded proposal cancels",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU05",
+      "trigger": "Agreement awaiting signature",
+      "objective_and_example_cadence": "Authenticate acceptance of current version before expiry",
+      "stop_pause_escalate": "Signed/withdrawn/revised stops; expired signature link cannot continue",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU06",
+      "trigger": "Job intake incomplete",
+      "objective_and_example_cadence": "Collect mandatory skills, pay, process and deadlines",
+      "stop_pause_escalate": "Requirement becomes complete, role paused/closed or client opts out",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU07",
+      "trigger": "Requirement awaiting confirmation",
+      "objective_and_example_cadence": "Obtain exact-version client sign-off",
+      "stop_pause_escalate": "Sign-off/revision cancels old plan; no fabricated confirmation",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU08",
+      "trigger": "Candidate consent request permitted",
+      "objective_and_example_cadence": "Ask for required purpose/channel consent, at most bounded permitted reminders",
+      "stop_pause_escalate": "Consent granted/refused/withdrawn/expired; refusal never treated as interest",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU09",
+      "trigger": "Candidate first contact",
+      "objective_and_example_cadence": "Determine interest and preferences; +2/+5 business days if eligible",
+      "stop_pause_escalate": "Reply pauses; DNC/withdrawal/filled role stops",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU10",
+      "trigger": "Missing CV/profile facts",
+      "objective_and_example_cadence": "Request required evidence through secure portal",
+      "stop_pause_escalate": "Upload/correction resolves; expiry escalates; avoid repeatedly requesting existing data",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU11",
+      "trigger": "Screening started/incomplete",
+      "objective_and_example_cadence": "Complete saved screening, accessible alternate route",
+      "stop_pause_escalate": "Submitted/declined/job closed stops; maximum attempts escalates",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU12",
+      "trigger": "Assessment invited",
+      "objective_and_example_cadence": "Remind before agreed deadline; resolve access/accommodation issues",
+      "stop_pause_escalate": "Completed/withdrawn/version changed; never penalize accessibility request",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU13",
+      "trigger": "Candidate clarification pending",
+      "objective_and_example_cadence": "Resolve contradictory or missing role evidence",
+      "stop_pause_escalate": "Answer/correction received; unresolved becomes review-needed",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU14",
+      "trigger": "Consent for client submission",
+      "objective_and_example_cadence": "Obtain exact client/job/version sharing permission",
+      "stop_pause_escalate": "Granted/declined/expired/withdrawn; never reuse another client's consent",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU15",
+      "trigger": "Client has not reviewed submission",
+      "objective_and_example_cadence": "Prompt review within contractual SLA",
+      "stop_pause_escalate": "Viewed may switch to feedback plan; revoked/expired/role closed stops",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU16",
+      "trigger": "Client feedback missing",
+      "objective_and_example_cadence": "Request actionable feedback and next-step decision",
+      "stop_pause_escalate": "Feedback/disposition received; job hold pauses",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU17",
+      "trigger": "Interview availability needed",
+      "objective_and_example_cadence": "Collect both parties' windows and confirm slot",
+      "stop_pause_escalate": "Slot confirmed/cancelled; no duplicate candidate/interviewer chase",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU18",
+      "trigger": "Confirmed interview approaching",
+      "objective_and_example_cadence": "Deterministic eligible reminders, e.g. 24h/2h before; combine when too close",
+      "stop_pause_escalate": "Cancel/reschedule/version mismatch invalidates; past event never sends a preparation reminder",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "implementing",
+      "foundation": "confirmed_interview_source_review_default",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU19",
+      "trigger": "Interview no-show/reschedule",
+      "objective_and_example_cadence": "Establish reason and offer alternatives",
+      "stop_pause_escalate": "New confirmed schedule, withdrawal or operator takeover",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU20",
+      "trigger": "Interview feedback pending",
+      "objective_and_example_cadence": "Request evidence-based scorecard, e.g. +1/+2 business days",
+      "stop_pause_escalate": "Submitted; overdue escalates to account owner without invented decision",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU21",
+      "trigger": "Offer review/negotiation pending",
+      "objective_and_example_cadence": "Answer questions and track genuine response before expiry",
+      "stop_pause_escalate": "Accepted/declined/revised/expired; old offer plan cancelled",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU22",
+      "trigger": "Notice period / prejoining",
+      "objective_and_example_cadence": "Check notice milestones, blockers and counteroffers at agreed intervals",
+      "stop_pause_escalate": "Date change replans; withdrawal stops; heightened risk opens case",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU23",
+      "trigger": "Joining-day confirmation",
+      "objective_and_example_cadence": "Obtain candidate/client joining evidence and resolve mismatch",
+      "stop_pause_escalate": "Verified joined/non-joined; conflicting evidence requires review",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU24",
+      "trigger": "Retention / guarantee",
+      "objective_and_example_cadence": "Contract-appropriate day-1/7/30/60/90 check-ins",
+      "stop_pause_escalate": "Guarantee ends/placement closes; concern starts a service case, not automatic termination",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU25",
+      "trigger": "Replacement obligation",
+      "objective_and_example_cadence": "Collect issue evidence and progress linked replacement search",
+      "stop_pause_escalate": "Resolved/contract ruling; dispute pauses automatic commercial changes",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU26",
+      "trigger": "Invoice approaching due / overdue",
+      "objective_and_example_cadence": "Deliver receipt, pre-due and bounded post-due reminders using actual remaining balance",
+      "stop_pause_escalate": "Verified paid stops; dispute/promise-to-pay changes cadence; no threats or invented legal claims",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "implementing",
+      "foundation": "opted_in_overdue_invoice_source_review_default",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+      "implementation_note": "W3 implements post-due actual-balance source enrollment. Pre-due reminders and delivery acknowledgment remain pending."
+    },
+    {
+      "id": "FU27",
+      "trigger": "Promise to pay / partial payment",
+      "objective_and_example_cadence": "Acknowledge payment, chase only remaining agreed balance after promised date",
+      "stop_pause_escalate": "Cleared balance/dispute/new verified agreement; allocation mismatch opens finance case",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "implementing",
+      "foundation": "missed_recorded_payment_promise_source_review_default",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+      "implementation_note": "W3 implements missed-promise collection with new-receipt baseline coverage. Payment acknowledgment and external clearing remain pending."
+    },
+    {
+      "id": "FU28",
+      "trigger": "Client renewal / repeat hiring",
+      "objective_and_example_cadence": "Request service feedback, upcoming roles and referrals where permitted",
+      "stop_pause_escalate": "Opt-out/inactivity rule; account owner controls relationship strategy",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU29",
+      "trigger": "Candidate availability refresh / talent community",
+      "objective_and_example_cadence": "Preference-based availability/skill refresh at an agreed interval",
+      "stop_pause_escalate": "DNC/withdrawal/changed preference; no reactivation without valid scope",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU30",
+      "trigger": "Rights request / complaint / critical exception",
+      "objective_and_example_cadence": "Internal SLA reminders and permitted acknowledgments",
+      "stop_pause_escalate": "Resolved with evidence; missed SLA escalates; no sales follow-up overlaps",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU31",
+      "trigger": "Reference/background/credential verification pending",
+      "objective_and_example_cadence": "Collect authorized third-party responses or candidate corrections before the agreed deadline",
+      "stop_pause_escalate": "Verified outcome/dispute/withdrawn authorization; unresolved discrepancy goes to review",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "FU32",
+      "trigger": "Overseas relocation/visa milestone pending",
+      "objective_and_example_cadence": "Request required document or official milestone update through the permitted party",
+      "stop_pause_escalate": "Official status received/date changed/placement withdrawn; never invent an approval",
+      "owner": "M06",
+      "executor": "M05",
+      "dispatch_owner": "M07",
+      "authorization_owner": "M04",
+      "status": "planned",
+      "foundation": "owner_selected_conversation",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    }
+  ],
+  "audit_mappings": [
+    {
+      "id": "R1",
+      "problem": "Calendar notes exposed",
+      "feature_ids": [
+        "M01-F04",
+        "M18-F02"
+      ],
+      "journeys": [
+        "J12"
+      ],
+      "status": "core_fix_validated_locally"
+    },
+    {
+      "id": "R2",
+      "problem": "Unsupported email approval",
+      "feature_ids": [
+        "M04-F01",
+        "M07-F03"
+      ],
+      "journeys": [
+        "J09",
+        "J13"
+      ],
+      "status": "core_fix_validated_locally"
+    },
+    {
+      "id": "R3",
+      "problem": "Negative disposition permits placement",
+      "feature_ids": [
+        "M16-F05",
+        "M20-F03"
+      ],
+      "journeys": [
+        "J03",
+        "J05"
+      ],
+      "status": "core_fix_validated_locally"
+    },
+    {
+      "id": "R4",
+      "problem": "Partial payment marks paid",
+      "feature_ids": [
+        "M21-F04"
+      ],
+      "journeys": [
+        "J06"
+      ],
+      "status": "core_fix_validated_locally"
+    },
+    {
+      "id": "R5",
+      "problem": "Direct shared-state bypass",
+      "feature_ids": [
+        "M04-F05",
+        "M17-F06"
+      ],
+      "journeys": [
+        "J04",
+        "J07"
+      ],
+      "status": "core_fix_validated_locally"
+    },
+    {
+      "id": "R6",
+      "problem": "Stale approval revives withdrawn share",
+      "feature_ids": [
+        "M04-F04",
+        "M04-F05",
+        "M17-F02"
+      ],
+      "journeys": [
+        "J07",
+        "J08"
+      ],
+      "status": "core_fix_validated_locally"
+    },
+    {
+      "id": "R7",
+      "problem": "Incomplete matching context",
+      "feature_ids": [
+        "M08-F04",
+        "M12-F01",
+        "M15-F01"
+      ],
+      "journeys": [
+        "J02"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "C1",
+      "problem": "Autopilot policy/mode contradiction",
+      "feature_ids": [
+        "M04-F02",
+        "M04-F08",
+        "M05-F06"
+      ],
+      "journeys": [
+        "J13"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "C2",
+      "problem": "Mock scheduler success",
+      "feature_ids": [
+        "M02-F05",
+        "M05-F02"
+      ],
+      "journeys": [
+        "J09",
+        "J13"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "C3",
+      "problem": "No business orchestration",
+      "feature_ids": [
+        "M05-F01",
+        "M06-F01"
+      ],
+      "journeys": [
+        "J01",
+        "J13"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "C4",
+      "problem": "Stranded running jobs",
+      "feature_ids": [
+        "M05-F03"
+      ],
+      "journeys": [
+        "J09"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "C5",
+      "problem": "Duplicate usage insert breaks recovery",
+      "feature_ids": [
+        "M05-F05",
+        "M08-F06"
+      ],
+      "journeys": [
+        "J09"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "C6",
+      "problem": "Concurrent/crash duplicate sends",
+      "feature_ids": [
+        "M07-F03",
+        "M05-F05"
+      ],
+      "journeys": [
+        "J09"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "C7",
+      "problem": "Reminder authority/context/reschedule mismatch",
+      "feature_ids": [
+        "M06-F03",
+        "M18-F06"
+      ],
+      "journeys": [
+        "J08"
+      ],
+      "status": "partially_mitigated",
+      "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+    },
+    {
+      "id": "C8",
+      "problem": "Quota blocks deterministic work",
+      "feature_ids": [
+        "M05-F04",
+        "M05-F06"
+      ],
+      "journeys": [
+        "J09",
+        "J13"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "C9",
+      "problem": "Real-DB screening/placement constraints",
+      "feature_ids": [
+        "M03-F06",
+        "M16-F04",
+        "M20-F03"
+      ],
+      "journeys": [
+        "J03",
+        "J05"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "C10",
+      "problem": "Approval transaction/state race",
+      "feature_ids": [
+        "M04-F05",
+        "M05-F05"
+      ],
+      "journeys": [
+        "J07",
+        "J09"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "M1",
+      "problem": "Missing acquisition/sourcing connectors",
+      "feature_ids": [
+        "M02-F04",
+        "M10-F01",
+        "M13-F01"
+      ],
+      "journeys": [
+        "J01",
+        "J02"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "M2",
+      "problem": "Outreach without campaign loop",
+      "feature_ids": [
+        "M06-F01",
+        "M07-F05",
+        "M07-F06",
+        "M10-F03"
+      ],
+      "journeys": [
+        "J01",
+        "J11"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "M3",
+      "problem": "Screening/negotiation/portals missing",
+      "feature_ids": [
+        "M11-F03",
+        "M16-F01",
+        "M19-F02",
+        "M24-F02",
+        "M24-F03"
+      ],
+      "journeys": [
+        "J01",
+        "J03",
+        "J05"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "M4",
+      "problem": "Submission/onboarding overstate truth",
+      "feature_ids": [
+        "M11-F06",
+        "M17-F03",
+        "M17-F04"
+      ],
+      "journeys": [
+        "J01",
+        "J04"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "M5",
+      "problem": "Fake gateway checkout",
+      "feature_ids": [
+        "M21-F03"
+      ],
+      "journeys": [
+        "J06"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "M6",
+      "problem": "Contract not driving finance/guarantees",
+      "feature_ids": [
+        "M11-F05",
+        "M20-F04",
+        "M21-F01"
+      ],
+      "journeys": [
+        "J05",
+        "J06",
+        "J10"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "M7",
+      "problem": "Expert judgement/memory missing",
+      "feature_ids": [
+        "M08-F02",
+        "M08-F03",
+        "M08-F05",
+        "M08-F07",
+        "M09-F04"
+      ],
+      "journeys": [
+        "J02",
+        "J13"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "D1",
+      "problem": "Consent paths conflict",
+      "feature_ids": [
+        "M04-F03",
+        "M04-F04",
+        "M17-F02"
+      ],
+      "journeys": [
+        "J04",
+        "J07"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "D2",
+      "problem": "Incomplete deletion/repopulation",
+      "feature_ids": [
+        "M04-F06",
+        "M14-F05"
+      ],
+      "journeys": [
+        "J07",
+        "J14"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "D3",
+      "problem": "Filename overwrites",
+      "feature_ids": [
+        "M14-F01"
+      ],
+      "journeys": [
+        "J02",
+        "J07"
+      ],
+      "status": "core_fix_validated_locally"
+    },
+    {
+      "id": "D4",
+      "problem": "Pre-scan extraction/heuristic scanner",
+      "feature_ids": [
+        "M14-F01",
+        "M14-F02"
+      ],
+      "journeys": [
+        "J02"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "D5",
+      "problem": "Hard-coded privilege/unverified email",
+      "feature_ids": [
+        "M01-F01",
+        "M04-F07"
+      ],
+      "journeys": [
+        "J12"
+      ],
+      "status": "core_fix_validated_locally"
+    },
+    {
+      "id": "D6",
+      "problem": "Unwired UI/error states",
+      "feature_ids": [
+        "M22-F06",
+        "M24-F01",
+        "M24-F05",
+        "M24-F06"
+      ],
+      "journeys": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "D7",
+      "problem": "Fabricated job confirmation",
+      "feature_ids": [
+        "M12-F05",
+        "M24-F02"
+      ],
+      "journeys": [
+        "J01"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "D8",
+      "problem": "Calendar and invoice presentation errors",
+      "feature_ids": [
+        "M18-F02",
+        "M18-F03",
+        "M21-F02"
+      ],
+      "journeys": [
+        "J04",
+        "J06"
+      ],
+      "status": "core_fix_validated_locally"
+    },
+    {
+      "id": "D9",
+      "problem": "Readiness is mere config presence",
+      "feature_ids": [
+        "M02-F02",
+        "M25-F05"
+      ],
+      "journeys": [
+        "J09",
+        "J13"
+      ],
+      "status": "partially_mitigated"
+    },
+    {
+      "id": "D10",
+      "problem": "Mock tests/acceptance overclaim",
+      "feature_ids": [
+        "M03-F06",
+        "M25-F04",
+        "M25-F07"
+      ],
+      "journeys": [
+        "J01",
+        "J02",
+        "J03",
+        "J04",
+        "J05",
+        "J06",
+        "J14"
+      ],
+      "status": "partially_mitigated"
+    }
+  ],
+  "implementation_tracking": {
+    "wave": "W0/W1/W2/W3",
+    "status": "in_progress",
+    "record": "IMPLEMENTATION_PROGRESS.md",
+    "completed_modules": 0,
+    "note": "W3 adds opted-in invoice aging/collection sources and evidenced payment promises through the existing review-default follow-up engine. These increment labels do not certify the similarly named master-plan delivery waves. Automated provider reconciliation, most lifecycle adapters and full advanced packages remain pending."
+  }
+}

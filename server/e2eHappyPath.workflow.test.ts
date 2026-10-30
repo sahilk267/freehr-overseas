@@ -285,6 +285,9 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
     // -------------------------------------------------------------------------
     await caller.recruitment.candidates.transition({ id: candidateId, state: "offer" });
 
+    const selection = await caller.recruitment.consequential.requestCandidateDecision({ candidateId, jobId, disposition: "advance", evidence: ["Client interview feedback supports progression"], rationale: "Owner reviewed the interview evidence and authorized progression" });
+    await caller.recruitment.approvals.decide({ id: selection.approvalId, decision: "approved" });
+
     const { id: placementId } = await caller.recruitment.placements.create({
       companyId,
       candidateId,
@@ -414,6 +417,7 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
     expect(invoice.status).toBe("issued");
 
     // Owner approves consequential payment status update
+    await caller.recruitment.invoices.recordPayment({ id: invoiceId, provider: "test_bank", providerEventId: `receipt-${invoiceId}`, note: "Synthetic evidenced receipt for the workflow fixture" });
     const paymentDecision = await caller.recruitment.consequential.decide({
       approvalId: paymentApprovalId,
       decision: "approved",
@@ -781,6 +785,7 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
       });
     expect(paymentApprovalId).toBeDefined();
 
+    await caller.recruitment.invoices.recordPayment({ id: invoiceId, provider: "test_bank", providerEventId: `receipt-${invoiceId}`, note: "Synthetic evidenced receipt for the workflow fixture" });
     const paymentDecision = await caller.recruitment.consequential.decide({
       approvalId: paymentApprovalId,
       decision: "approved",

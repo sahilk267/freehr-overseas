@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   index,
   int,
@@ -10,6 +11,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
+import type { FollowUpStep } from "../shared/followups";
 
 const id = (name: string) => varchar(name, { length: 36 });
 const state = (name: string, length = 48) => varchar(name, { length });
@@ -473,6 +475,28 @@ export const payments = mysqlTable(
   table => [uniqueIndex("payment_provider_event_unique").on(table.provider, table.providerEventId), index("payment_invoice_idx").on(table.invoiceId)],
 );
 
+export const invoiceCollectionSettings = mysqlTable("invoiceCollectionSettings", {
+  id: id("id").primaryKey(), ownerId: int("ownerId").notNull().references(() => users.id),
+  invoiceId: id("invoiceId").notNull().references(() => invoices.id),
+  contactId: id("contactId").notNull().references(() => contacts.id),
+  senderIdentityId: id("senderIdentityId").notNull().references(() => emailIdentities.id),
+  revision: int("revision").notNull().default(1), enabled: boolean("enabled").notNull().default(false),
+  onHold: boolean("onHold").notNull().default(false), holdReason: varchar("holdReason", { length: 500 }),
+  graceDays: int("graceDays").notNull().default(1), maxNudges: int("maxNudges").notNull().default(3),
+  replyCursor: json("replyCursor").$type<string[]>().notNull(),
+  lastEvaluatedAt: timestamp("lastEvaluatedAt", { fsp: 3 }),
+  updatedById: int("updatedById").notNull().references(() => users.id), createdAt, updatedAt,
+}, table => [uniqueIndex("collection_invoice_unique").on(table.invoiceId), index("collection_source_scan_idx").on(table.enabled, table.lastEvaluatedAt, table.id), index("collection_owner_idx").on(table.ownerId, table.invoiceId)]);
+
+export const invoicePaymentPromises = mysqlTable("invoicePaymentPromises", {
+  id: id("id").primaryKey(), ownerId: int("ownerId").notNull().references(() => users.id),
+  invoiceId: id("invoiceId").notNull().references(() => invoices.id), revision: int("revision").notNull(),
+  amount: int("amount").notNull(), currency: varchar("currency", { length: 8 }).notNull(), baselinePaid: bigint("baselinePaid", { mode: "number" }).notNull(),
+  dueAt: timestamp("dueAt", { fsp: 3 }).notNull(), status: state("status").notNull().default("open"),
+  evidence: text("evidence").notNull(), idempotencyKey: varchar("idempotencyKey", { length: 128 }).notNull(), commandHash: varchar("commandHash", { length: 128 }).notNull(),
+  recordedById: int("recordedById").notNull().references(() => users.id), settledAt: timestamp("settledAt", { fsp: 3 }), createdAt, updatedAt,
+}, table => [uniqueIndex("promise_invoice_revision_unique").on(table.invoiceId, table.revision), uniqueIndex("promise_command_unique").on(table.ownerId, table.idempotencyKey), index("promise_invoice_status_idx").on(table.ownerId, table.invoiceId, table.status)]);
+
 export const automationQueue = mysqlTable(
   "automationQueue",
   {
@@ -482,7 +506,7 @@ export const automationQueue = mysqlTable(
     status: state("status").notNull().default("queued"),
     payload: json("payload").notNull(),
     priority: int("priority").notNull().default(100),
-    scheduledAt: timestamp("scheduledAt").defaultNow().notNull(),
+    scheduledAt: timestamp("scheduledAt", { fsp: 3 }).defaultNow().notNull(),
     lockedAt: timestamp("lockedAt"),
     lockToken: varchar("lockToken", { length: 96 }),
     attempts: int("attempts").notNull().default(0),
@@ -555,6 +579,77 @@ export const approvals = mysqlTable(
   },
   table => [index("approval_owner_status_idx").on(table.ownerId, table.status), index("approval_resource_idx").on(table.resourceType, table.resourceId)],
 );
+
+export const followUpPlans = mysqlTable("followUpPlans", {
+  id: id("id").primaryKey(),
+  ownerId: int("ownerId").notNull().references(() => users.id),
+  conversationId: id("conversationId").notNull().references(() => conversations.id),
+  candidateId: id("candidateId").references(() => candidates.id),
+  senderIdentityId: id("senderIdentityId").notNull().references(() => emailIdentities.id),
+  recipient: varchar("recipient", { length: 320 }).notNull(),
+  recipientHash: varchar("recipientHash", { length: 128 }).notNull(),
+  scenarioId: varchar("scenarioId", { length: 8 }).notNull(),
+  resourceType: varchar("resourceType", { length: 32 }).notNull(),
+  resourceId: varchar("resourceId", { length: 64 }).notNull(),
+  resourceFingerprint: varchar("resourceFingerprint", { length: 128 }).notNull(),
+  replyCursor: json("replyCursor").$type<string[]>().notNull(),
+  enrollmentKey: varchar("enrollmentKey", { length: 128 }).notNull(),
+  objective: varchar("objective", { length: 500 }).notNull(),
+  status: state("status").notNull().default("scheduled"),
+  revision: int("revision").notNull().default(1),
+  stepIndex: int("stepIndex").notNull().default(0),
+  steps: json("steps").$type<FollowUpStep[]>().notNull(),
+  timezone: varchar("timezone", { length: 64 }).notNull(),
+  businessDaysOnly: boolean("businessDaysOnly").notNull().default(false),
+  responseWindowMinutes: int("responseWindowMinutes").notNull().default(1440),
+  executionMode: varchar("executionMode", { length: 16 }).notNull().default("review"),
+  nextActionAt: timestamp("nextActionAt", { fsp: 3 }),
+  deadlineAt: timestamp("deadlineAt", { fsp: 3 }).notNull(),
+  reason: text("reason"),
+  createdAt, updatedAt,
+}, table => [uniqueIndex("followup_enrollment_unique").on(table.ownerId, table.enrollmentKey), index("followup_owner_status_idx").on(table.ownerId, table.status), index("followup_candidate_idx").on(table.ownerId, table.candidateId), index("followup_conversation_idx").on(table.ownerId, table.conversationId)]);
+
+export const automationGrants = mysqlTable("automationGrants", {
+  id: id("id").primaryKey(),
+  ownerId: int("ownerId").notNull().references(() => users.id),
+  planId: id("planId").notNull().references(() => followUpPlans.id),
+  planRevision: int("planRevision").notNull(),
+  scopeHash: varchar("scopeHash", { length: 128 }).notNull(),
+  maxSends: int("maxSends").notNull(),
+  expiresAt: timestamp("expiresAt", { fsp: 3 }).notNull(),
+  active: boolean("active").notNull().default(true),
+  createdById: int("createdById").notNull().references(() => users.id),
+  createdAt, updatedAt,
+}, table => [index("grant_plan_scope_idx").on(table.ownerId, table.planId, table.active)]);
+
+export const emailDispatches = mysqlTable("emailDispatches", {
+  id: id("id").primaryKey(),
+  ownerId: int("ownerId").notNull().references(() => users.id),
+  messageId: id("messageId").notNull().references(() => messages.id),
+  approvalId: id("approvalId").notNull().references(() => approvals.id),
+  planId: id("planId").references(() => followUpPlans.id),
+  planRevision: int("planRevision"),
+  stepIndex: int("stepIndex"),
+  grantId: id("grantId").references(() => automationGrants.id),
+  recipientHash: varchar("recipientHash", { length: 128 }).notNull(),
+  status: state("status").notNull().default("queued"),
+  scheduledAt: timestamp("scheduledAt", { fsp: 3 }).notNull(),
+  claimedAt: timestamp("claimedAt", { fsp: 3 }),
+  completedAt: timestamp("completedAt", { fsp: 3 }),
+  lastError: text("lastError"),
+  createdAt, updatedAt,
+}, table => [uniqueIndex("dispatch_approval_unique").on(table.approvalId), uniqueIndex("dispatch_message_unique").on(table.messageId), index("dispatch_owner_recipient_time_idx").on(table.ownerId, table.recipientHash, table.claimedAt)]);
+
+export const workflowEvents = mysqlTable("workflowEvents", {
+  id: id("id").primaryKey(),
+  ownerId: int("ownerId").notNull().references(() => users.id),
+  eventKey: varchar("eventKey", { length: 128 }).notNull(),
+  eventType: varchar("eventType", { length: 96 }).notNull(),
+  aggregateId: varchar("aggregateId", { length: 64 }).notNull(),
+  revision: int("revision").notNull(),
+  metadata: json("metadata"),
+  createdAt,
+}, table => [uniqueIndex("workflow_event_key_unique").on(table.ownerId, table.eventKey), index("workflow_event_aggregate_idx").on(table.ownerId, table.aggregateId)]);
 
 export const auditEvents = mysqlTable(
   "auditEvents",

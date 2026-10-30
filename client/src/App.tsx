@@ -4,6 +4,7 @@ import { Route, Switch } from "wouter";
 import DashboardLayout from "./components/DashboardLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import FollowUpsPage from "./pages/FollowUpsPage";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import TeamAcceptPage from "./pages/TeamAcceptPage";
@@ -17,6 +18,7 @@ const CommandCenter = withDashboard(Home);
 const Prospects = withDashboard(ProspectsPage);
 const Jobs = withDashboard(JobsPage);
 const Candidates = withDashboard(CandidatesPage);
+const FollowUps = withDashboard(FollowUpsPage);
 const Interviews = withDashboard(InterviewsPage);
 const Placements = withDashboard(PlacementsPage);
 const Finance = withDashboard(FinancePage);
@@ -30,6 +32,7 @@ function Router() {
     <Route path="/prospects" component={Prospects} />
     <Route path="/jobs" component={Jobs} />
     <Route path="/candidates" component={Candidates} />
+    <Route path="/follow-ups" component={FollowUps} />
     <Route path="/interviews" component={Interviews} />
     <Route path="/placements" component={Placements} />
     <Route path="/finance" component={Finance} />

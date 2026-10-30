@@ -440,12 +440,16 @@ describe("candidate privacy deletion workflow & cascade controls", () => {
 
       // 3. Candidate profile must NOT be deleted
       const cand = (await db.select().from(candidates).where(eq(candidates.id, candidateId)))[0];
-      expect(cand.profileState).toBe("available");
+      expect(cand.profileState).toBe("deletion_pending");
       expect(cand.fullName).toBe("Physical Deletion Candidate");
 
       // 4. Audit event privacy.erasure_failed must be recorded
       const audits = await db.select().from(auditEvents).where(and(eq(auditEvents.action, "privacy.erasure_failed"), eq(auditEvents.resourceId, docId)));
       expect(audits.length).toBeGreaterThan(0);
+      // Recovery retries the investigation case; it must not leave the candidate available.
+      process.env.PRIVATE_STORAGE_MODE = "local";
+      await caller.recruitment.candidateWorkflows.privacy.fulfillDeletion({ requestId: reqId, resolutionNote: "Storage restored; erasure retried" });
+      expect((await db.select().from(rightsRequests).where(eq(rightsRequests.id, reqId)))[0].status).toBe("resolved");
     } finally {
       process.env.PRIVATE_STORAGE_MODE = prevMode;
     }

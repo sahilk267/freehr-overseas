@@ -47,6 +47,7 @@ const menuItems = [
   { icon: Building2, label: "Prospects", path: "/prospects" },
   { icon: BriefcaseBusiness, label: "Jobs", path: "/jobs" },
   { icon: UsersRound, label: "Candidates", path: "/candidates" },
+  { icon: Activity, label: "Follow-ups", path: "/follow-ups" },
   { icon: CalendarDays, label: "Interviews", path: "/interviews" },
   { icon: ShieldCheck, label: "Placements", path: "/placements" },
   { icon: BadgeDollarSign, label: "Finance", path: "/finance" },

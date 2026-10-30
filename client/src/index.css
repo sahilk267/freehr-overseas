@@ -70,11 +70,11 @@
   --border: oklch(0.92 0.004 286.32);
   --input: oklch(0.92 0.004 286.32);
   --ring: oklch(0.623 0.214 259.815);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.235 0.015 65);
-  --sidebar-accent: oklch(0.967 0.001 286.375);
-  --sidebar-accent-foreground: oklch(0.141 0.005 285.823);
-  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar: #10213d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: #1a3156;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #263954;
   --sidebar-ring: oklch(0.623 0.214 259.815);
 }
 

@@ -50,6 +50,14 @@ export function getSenderAddress(purpose: EmailPurpose) {
   return configured || `${purpose}.fl@${approvedDomain}`;
 }
 
+export function isSenderPurposeConfigured(purpose: EmailPurpose) {
+  return Boolean(process.env.HOSTINGER_MAIL_API_TOKEN?.trim() && process.env[mailboxResourceEnvKey[purpose]]?.trim());
+}
+
+export function isSenderIdentityConfigured(identity: { purpose: EmailPurpose; email: string }) {
+  return isSenderPurposeConfigured(identity.purpose) && identity.email.trim().toLowerCase() === getSenderAddress(identity.purpose) && isApprovedSenderAddress(identity.email);
+}
+
 export function detectOptOut(text: string) {
   return /\b(stop|unsubscribe|do not contact|remove me|don't contact|dont contact)\b/i.test(text);
 }

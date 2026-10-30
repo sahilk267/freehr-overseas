@@ -1,3 +1,4 @@
+import { createCalendarSubscriptionToken } from "./services/calendarFeed";
 import { describe, expect, it, vi } from "vitest";
 import { buildFastifyServer } from "./hostinger";
 import { requireDb, createId } from "./db";
@@ -398,6 +399,7 @@ describe("Fastify production server (server/hostinger.ts)", () => {
   });
 
   it("verifies GET /api/calendar/feed/:userId returns valid RFC 5545 feed", async () => {
+    vi.stubEnv("JWT_SECRET", "calendar-unit-test-key-32-characters-long");
     const app = await buildFastifyServer({ logger: false });
 
     // 1. Invalid user ID -> 400
@@ -410,7 +412,7 @@ describe("Fastify production server (server/hostinger.ts)", () => {
     // 2. Valid user ID -> 200 with text/calendar
     const validRes = await app.inject({
       method: "GET",
-      url: "/api/calendar/feed/1",
+      url: `/api/calendar/feed/1?token=${await createCalendarSubscriptionToken(1)}`,
     });
     expect(validRes.statusCode).toBe(200);
     expect(validRes.headers["content-type"]).toContain("text/calendar");

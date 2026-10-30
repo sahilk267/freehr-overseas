@@ -4,6 +4,8 @@ const inserts: Array<{ table: unknown; values: Record<string, unknown> }> = [];
 const audits: Array<Record<string, unknown>> = [];
 let matched = true;
 
+vi.mock("./followupEvents", () => ({ stopOwnerFollowUps: vi.fn() }));
+
 vi.mock("../db", () => ({
   createId: (prefix = "") => `${prefix}test-id`,
   getUserByOpenId: async () => ({ id: 7, openId: "owner" }),

@@ -1,3 +1,4 @@
+import { createCalendarSubscriptionToken } from "../server/services/calendarFeed";
 /**
  * Standalone verification script for Fastify production server route parity & bodyLimit.
  * 
@@ -52,6 +53,7 @@ async function runVerification() {
   const testUserId = 1;
 
   // Build server instance in local storage mode
+  process.env.JWT_SECRET ||= "calendar-script-test-key-32-characters-long";
   const app = await buildFastifyServer({ logger: false });
 
   console.log("Section 1: Private Storage Route (GET /api/private-storage/*)");
@@ -251,7 +253,7 @@ async function runVerification() {
   // 4b. Valid user ID -> 200 with text/calendar
   const validCalRes = await app.inject({
     method: "GET",
-    url: "/api/calendar/feed/1",
+    url: `/api/calendar/feed/1?token=${await createCalendarSubscriptionToken(1)}`,
   });
   assert(validCalRes.statusCode === 200, "Valid user ID returns 200 for calendar feed");
   assert(validCalRes.headers["content-type"]?.includes("text/calendar"), "Content-Type is text/calendar");

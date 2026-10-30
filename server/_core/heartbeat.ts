@@ -66,15 +66,7 @@ const callForge = async <T>(
   userSession: string
 ): Promise<T> => {
   if (!ENV.forgeApiUrl || !ENV.forgeApiKey) {
-    // Development / non-preview fallback: When running outside of preview containers or on self-hosted
-    // Hostinger deployments, scheduled tasks are driven by external Linux crontabs calling /api/scheduled/*
-    // rather than the internal Forge heartbeat service. Return a deterministic mock UID with explanatory logging.
-    if (process.env.NODE_ENV !== "test") {
-      console.warn(
-        `[FreelanceHR Heartbeat] BUILT_IN_FORGE_API_URL or BUILT_IN_FORGE_API_KEY not configured. Falling back to local mock heartbeat UID for RPC '${rpc}'. In production on Hostinger, use native crontab against /api/scheduled/* with CRON_SECRET.`
-      );
-    }
-    return { taskUid: `mock_heartbeat_${Date.now()}`, nextExecutionAt: null } as T;
+    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No scheduler was registered. Configure the heartbeat service, or install an external authenticated schedule for /api/scheduled/* and verify its callbacks." });
   }
   const endpoint = buildEndpoint(rpc);
   const headers: Record<string, string> = {

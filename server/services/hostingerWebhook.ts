@@ -1,3 +1,4 @@
+import { stopOwnerFollowUps } from "./followupEvents";
 import { timingSafeEqual } from "node:crypto";
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import {
@@ -425,6 +426,8 @@ export async function processHostingerMailWebhook(input: { authorization?: strin
       lastMessageAt: new Date(),
     })
     .where(eq(conversations.id, matchedParent.conversationId));
+
+  await stopOwnerFollowUps(owner.id, optedOut ? { recipientHash: hashContactValue(event.sender) } : { conversationId: matchedParent.conversationId }, optedOut ? "cancelled" : "paused", optedOut ? "Recipient opted out." : "Recipient replied; review before resuming.");
 
   if (!optedOut) {
     await db

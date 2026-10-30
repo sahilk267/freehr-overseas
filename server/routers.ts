@@ -1,3 +1,4 @@
+import { collectionsRouter } from "./routers/collections";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -5,6 +6,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { operationsRouter } from "./routers/operations";
 import { recruitmentRouter } from "./routers/recruitment";
 import { emailRouter } from "./routers/email";
+import { followupsRouter } from "./routers/followups";
 import { teamRouter } from "./routers/team";
 import { getRuntimeLogoutCookie } from "./services/runtimeAuth";
 import { recordAudit } from "./db";
@@ -46,6 +48,8 @@ export const appRouter = router({
   operations: operationsRouter,
   email: emailRouter,
   team: teamRouter,
+  followups: followupsRouter,
+  collections: collectionsRouter,
 
   // TODO: add feature routers here, e.g.
   // todo: router({

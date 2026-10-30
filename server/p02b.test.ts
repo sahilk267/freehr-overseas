@@ -321,7 +321,7 @@ describe("P0.2-B Safety & Security Suite", () => {
       // Verify fail-closed invariants:
       // 1. Candidate remains intact (not deleted)
       const [cand] = await db.select().from(candidates).where(eq(candidates.id, candidateId));
-      expect(cand.profileState).toBe("available");
+      expect(cand.profileState).toBe("deletion_pending");
       expect(cand.email).toBe("fail_candidate@test.local");
 
       // 2. Document is NOT marked redacted

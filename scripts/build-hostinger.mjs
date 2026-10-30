@@ -12,3 +12,5 @@ await buildBackend({
   sourcemap: true,
   outfile: "dist/hostinger.js",
 });
+
+await buildBackend({ entryPoints: ["server/worker.ts"], platform: "node", packages: "external", bundle: true, format: "esm", sourcemap: true, outfile: "dist/worker.js" });

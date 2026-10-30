@@ -162,14 +162,10 @@ describe("invoice state machine and re-invoicing workflow", () => {
     const { approvalId } = await caller.invoices.requestIssueApproval({ id: invoiceId });
     await caller.approvals.decide({ id: approvalId, decision: "approved" });
 
-    // Create payment link
-    const linkResult = await caller.invoices.createPaymentLink({ id: invoiceId, provider: "stripe" });
-    expect(linkResult.paymentId).toBeTruthy();
-    expect(linkResult.amount).toBe(212400);
-
-    // Verify invoice transitioned to payment_pending
+    // An unconfigured provider must not manufacture a checkout URL or payment event.
+    await expect(caller.invoices.createPaymentLink({ id: invoiceId, provider: "stripe" })).rejects.toThrow(/No payment gateway checkout adapter/);
     const [pendingInv] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
-    expect(pendingInv.status).toBe("payment_pending");
+    expect(pendingInv.status).toBe("issued");
 
     // Record payment receipt
     const payResult = await caller.invoices.recordPayment({

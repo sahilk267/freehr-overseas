@@ -22,7 +22,19 @@ function formatUtc(date: Date) {
 
 function foldLine(line: string) {
   const chunks: string[] = [];
-  for (let index = 0; index < line.length; index += 74) chunks.push(index === 0 ? line.slice(index, index + 75) : ` ${line.slice(index, index + 74)}`);
+  let chunk = "";
+  let bytes = 0;
+  for (const character of line) {
+    const size = Buffer.byteLength(character, "utf8");
+    if (bytes + size > 75) {
+      chunks.push(chunk);
+      chunk = " ";
+      bytes = 1;
+    }
+    chunk += character;
+    bytes += size;
+  }
+  if (chunk) chunks.push(chunk);
   return chunks.join("\r\n");
 }
 

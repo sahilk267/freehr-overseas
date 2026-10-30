@@ -3,8 +3,12 @@ import { and, desc, eq } from "drizzle-orm";
 import {
   approvals,
   auditEvents,
+  candidates,
+  consents,
+  jobs,
   companies,
   invoices,
+  payments,
   placements,
   screenings,
   shortlists,
@@ -23,14 +27,14 @@ describe("approvalEngine and decide() endpoints", () => {
 
   const caller = recruitmentRouter.createCaller(ownerCtx);
 
-  async function getAuditForApproval(approvalId: string) {
+  async function getAuditForApproval(approvalId: string, action?: string) {
     const db = await requireDb();
     const rows = await db
       .select()
       .from(auditEvents)
       .where(eq(auditEvents.ownerId, ownerId))
       .orderBy(desc(auditEvents.createdAt));
-    return rows.find((r: any) => (r.metadata as any)?.approvalId === approvalId);
+    return rows.find((r: any) => (r.metadata as any)?.approvalId === approvalId && (!action || r.action === action));
   }
 
   describe("approvalsRouter.decide() - 4 standard approval action types", () => {
@@ -99,7 +103,13 @@ describe("approvalEngine and decide() endpoints", () => {
     it("2. candidate_share: approves shortlist sharing, updates status and share expiry, records audit", async () => {
       const db = await requireDb();
       const shortlistId = createId("shl_test_");
+      const candidateId = createId("can_share_");
+      await db.insert(candidates).values({ id: candidateId, ownerId, fullName: "Consenting candidate", profileState: "consented" });
+      await db.insert(companies).values({ id: "cmp_test_dummy", ownerId, name: "Share client" });
+      await db.insert(jobs).values({ id: "job_test_dummy", ownerId, companyId: "cmp_test_dummy", title: "Share job", pipelineState: "screening" });
+      await db.insert(consents).values({ id: createId("cns_"), ownerId, candidateId, jobId: "job_test_dummy", companyId: "cmp_test_dummy", consentType: "client_sharing", status: "granted", noticeVersion: "v1", method: "test", grantedAt: new Date() });
       await db.insert(shortlists).values({
+        candidateId,
         id: shortlistId,
         ownerId,
         companyId: "cmp_test_dummy",
@@ -362,6 +372,8 @@ describe("approvalEngine and decide() endpoints", () => {
         payload: { status: "paid" },
       });
 
+      await expect(caller.consequential.decide({ approvalId, decision: "approved" })).rejects.toThrow(/matching payment receipts/);
+      await db.insert(payments).values({ id: createId("pay_"), ownerId, invoiceId, provider: "test_bank", providerEventId: createId("receipt_"), amount: 250000, currency: "INR", status: "succeeded" });
       const res = await caller.consequential.decide({
         approvalId,
         decision: "approved",
@@ -375,7 +387,7 @@ describe("approvalEngine and decide() endpoints", () => {
       expect(inv.paidAt).toBeInstanceOf(Date);
 
       // Verify audit row
-      const audit = await getAuditForApproval(approvalId);
+      const audit = await getAuditForApproval(approvalId, "consequential.approved");
       expect(audit).toBeDefined();
       expect(audit.action).toBe("consequential.approved");
       expect(audit.metadata).toMatchObject({

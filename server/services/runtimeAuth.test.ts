@@ -9,7 +9,7 @@ const originalEnv = { ...process.env };
 describe("portable production authentication guard", () => {
   beforeEach(() => {
     process.env = { ...originalEnv, NODE_ENV: "production" };
-    for (const key of ["AUTH_MODE", "OIDC_ISSUER_URL", "OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "APP_BASE_URL", "SESSION_SECRET", "PRIMARY_OWNER_OPEN_ID", "PRIMARY_OWNER_EMAIL", "STORAGE_BUCKET", "STORAGE_REGION", "STORAGE_ACCESS_KEY_ID", "STORAGE_SECRET_ACCESS_KEY", "PRIVATE_STORAGE_MODE"]) delete process.env[key];
+    for (const key of ["AUTH_MODE", "OIDC_ISSUER_URL", "OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "APP_BASE_URL", "SESSION_SECRET", "CRON_SECRET", "PRIMARY_OWNER_OPEN_ID", "PRIMARY_OWNER_EMAIL", "STORAGE_BUCKET", "STORAGE_REGION", "STORAGE_ACCESS_KEY_ID", "STORAGE_SECRET_ACCESS_KEY", "PRIVATE_STORAGE_MODE"]) delete process.env[key];
   });
   afterEach(() => { process.env = { ...originalEnv }; });
 
@@ -32,6 +32,7 @@ describe("portable production authentication guard", () => {
       OIDC_CLIENT_SECRET: "test-client-secret",
       APP_BASE_URL: "https://freelancehr.overseasjob.in",
       SESSION_SECRET: "01234567890123456789012345678901",
+      CRON_SECRET: "cron-test-only-secret",
       PRIMARY_OWNER_OPEN_ID: "oidc_owner",
       STORAGE_BUCKET: "private-freelancehr",
       STORAGE_REGION: "ap-south-1",

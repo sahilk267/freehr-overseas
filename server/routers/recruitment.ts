@@ -1,3 +1,6 @@
+import { stopOwnerFollowUps } from "../services/followupEvents";
+import { createCalendarSubscriptionToken, interviewCalendarEvent } from "../services/calendarFeed";
+import { assertSharingEligible } from "../services/sharingEligibility";
 import { createHash } from "crypto";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, like, not, notInArray, or } from "drizzle-orm";
@@ -28,7 +31,6 @@ import {
 import { createId, ensureWorkspace, hashContactValue, recordAudit, requireDb } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
 import { createHeartbeatJob } from "../_core/heartbeat";
-import { extractDocumentText } from "../services/documentText";
 import { getPrivateDocumentUrl, putPrivateDocument } from "../services/privateStorage";
 import { createInterviewEventUid, createInterviewIcs, generateCalendarFeedIcs } from "../services/calendar";
 import { scanCandidateDocument } from "../services/documentScanner";
@@ -151,7 +153,7 @@ export const prospectsRouter = router({
     const bytes = Buffer.from(input.dataBase64, "base64");
     if (!bytes.length || bytes.length > 5 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "KYB verification documents must be no larger than 5 MB." });
     const safeName = input.originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
-    const uploaded = await putPrivateDocument(`private/${ctx.user.id}/companies/${company.id}/kyb/${safeName}`, bytes, input.mimeType);
+    const uploaded = await putPrivateDocument(`private/${ctx.user.id}/companies/${company.id}/kyb/${createId("kyb_")}/${safeName}`, bytes, input.mimeType);
     
     await db.update(companies).set({ verificationState: "in_review" }).where(eq(companies.id, company.id));
     await recordAudit({
@@ -211,7 +213,7 @@ export const jobsRouter = router({
     return db.select().from(jobs).where(eq(jobs.ownerId, ctx.user.id)).orderBy(desc(jobs.updatedAt)).limit(input.limit);
   }),
   create: protectedProcedure.input(z.object({
-    companyId: z.string().min(4), title: z.string().trim().min(2).max(200), department: z.string().trim().max(120).optional(), location: z.string().trim().max(160).optional(), workModel: z.enum(["remote", "hybrid", "onsite"]).optional(), compensationMin: z.number().int().nonnegative().optional(), compensationMax: z.number().int().nonnegative().optional(), experienceMinYears: z.number().int().min(0).max(40).optional(), experienceMaxYears: z.number().int().min(0).max(40).optional(), mustHaveSkills: stringArray.default([]), niceToHaveSkills: stringArray.default([]), scorecard: z.array(z.object({ criterion: z.string().trim().min(2).max(160), weight: z.number().int().min(1).max(100), required: z.boolean().default(false) })).max(12).default([]),
+    companyId: z.string().min(4), title: z.string().trim().min(2).max(200), description: z.string().trim().max(16000).optional(), department: z.string().trim().max(120).optional(), location: z.string().trim().max(160).optional(), workModel: z.enum(["remote", "hybrid", "onsite"]).optional(), compensationMin: z.number().int().nonnegative().optional(), compensationMax: z.number().int().nonnegative().optional(), experienceMinYears: z.number().int().min(0).max(40).optional(), experienceMaxYears: z.number().int().min(0).max(40).optional(), mustHaveSkills: stringArray.default([]), niceToHaveSkills: stringArray.default([]), scorecard: z.array(z.object({ criterion: z.string().trim().min(2).max(160), weight: z.number().int().min(1).max(100), required: z.boolean().default(false) })).max(12).default([]),
   })).mutation(async ({ ctx, input }) => {
     for (const item of input.scorecard) {
       ensureSafeAiText(item.criterion);
@@ -227,7 +229,7 @@ export const jobsRouter = router({
     await db.insert(jobs).values({
       id, ownerId: ctx.user.id, companyId: input.companyId, title: input.title, department: input.department ?? null, location: input.location ?? null, workModel: input.workModel ?? null,
       compensationMin: input.compensationMin ?? null, compensationMax: input.compensationMax ?? null, experienceMinYears: input.experienceMinYears ?? null, experienceMaxYears: input.experienceMaxYears ?? null,
-      mustHaveSkills: input.mustHaveSkills, niceToHaveSkills: input.niceToHaveSkills, scorecard: input.scorecard, pipelineState: "draft", requirementQuality: quality,
+      intake: { description: input.description ?? null }, mustHaveSkills: input.mustHaveSkills, niceToHaveSkills: input.niceToHaveSkills, scorecard: input.scorecard, pipelineState: "draft", requirementQuality: quality,
     });
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "job.created", resourceType: "job", resourceId: id, nextState: "draft", metadata: { requirementQuality: quality } });
     return { id, requirementQuality: quality };
@@ -445,6 +447,7 @@ export const candidatesRouter = router({
     return { id };
   }),
   transition: protectedProcedure.input(z.object({ id: z.string().min(4), state: z.string().min(2).max(48) })).mutation(async ({ ctx, input }) => {
+    if (["deleted", "deletion_pending"].includes(input.state)) throw new TRPCError({ code: "FORBIDDEN", message: "Candidate erasure must use the privacy deletion workflow." });
     const db = await requireDb();
     const rows = await db.select().from(candidates).where(eq(candidates.id, input.id)).limit(1);
     const candidate = await requireOwned(rows[0], ctx.user.id, "Candidate");
@@ -515,6 +518,7 @@ export const candidatesRouter = router({
     await db.update(consents).set({ status: "withdrawn", withdrawnAt: new Date() }).where(and(eq(consents.ownerId, ctx.user.id), eq(consents.candidateId, candidate.id), eq(consents.status, "granted")));
     if (candidate.emailHash) await db.insert(suppressionList).values({ id: createId("sup_"), ownerId: ctx.user.id, channel: "email", valueHash: candidate.emailHash, reason: input.reason ?? "candidate_withdrawal", source: "candidate_rights" }).onDuplicateKeyUpdate({ set: { active: true, reason: input.reason ?? "candidate_withdrawal" } });
     await db.update(shortlists).set({ status: "withdrawn" }).where(and(eq(shortlists.ownerId, ctx.user.id), eq(shortlists.candidateId, candidate.id)));
+    await stopOwnerFollowUps(ctx.user.id, { candidateId: candidate.id }, "cancelled", "Candidate withdrew.");
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "candidate.withdrawn", resourceType: "candidate", resourceId: candidate.id, previousState: candidate.profileState, nextState: "withdrawn", metadata: { reason: input.reason ?? null } });
     return { success: true };
   }),
@@ -524,6 +528,7 @@ export const candidatesRouter = router({
     const candidate = await requireOwned(rows[0], ctx.user.id, "Candidate");
     await db.update(candidates).set({ profileState: "do_not_contact", doNotContactAt: new Date() }).where(eq(candidates.id, candidate.id));
     if (candidate.emailHash) await db.insert(suppressionList).values({ id: createId("sup_"), ownerId: ctx.user.id, channel: "email", valueHash: candidate.emailHash, reason: input.reason, source: "owner" }).onDuplicateKeyUpdate({ set: { active: true, reason: input.reason } });
+    await stopOwnerFollowUps(ctx.user.id, { candidateId: candidate.id }, "cancelled", "Candidate must not be contacted.");
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "candidate.do_not_contact", resourceType: "candidate", resourceId: candidate.id, previousState: candidate.profileState, nextState: "do_not_contact", metadata: { reason: input.reason } });
     return { success: true };
   }),
@@ -582,7 +587,7 @@ export const candidatesRouter = router({
       if (!bytes.length || bytes.length > 5 * 1024 * 1024) throw new TRPCError({ code: "PAYLOAD_TOO_LARGE", message: "Candidate documents must be no larger than 5 MB." });
       const safeName = input.originalName.replace(/[^a-zA-Z0-9._-]/g, "_");
       const sha256 = createHash("sha256").update(bytes).digest("hex");
-      const uploaded = await putPrivateDocument(`private/${ctx.user.id}/candidates/${candidate.id}/${safeName}`, bytes, input.mimeType);
+      const uploaded = await putPrivateDocument(`private/${ctx.user.id}/candidates/${candidate.id}/${createId("upload_")}/${safeName}`, bytes, input.mimeType);
       const id = createId("doc_");
       await db.insert(candidateDocuments).values({
         id, candidateId: candidate.id, ownerId: ctx.user.id, documentType: input.documentType, storageKey: uploaded.key, storageUrl: uploaded.url,
@@ -594,23 +599,15 @@ export const candidatesRouter = router({
         id: createId("que_"),
         ownerId: ctx.user.id,
         jobType: "scan_document",
+        status: "queued",
+        attempts: 0,
         payload: { candidateId: candidate.id, documentId: id },
         priority: 1,
-        scheduledAt: new Date(),
+        scheduledAt: new Date(Math.floor(Date.now() / 1000) * 1000),
         maxAttempts: 3,
         idempotencyKey: `scan_document:${id}`,
       });
-      if (input.documentType === "cv") {
-        try {
-          const extractedText = await extractDocumentText(bytes, input.mimeType);
-          await db.insert(automationQueue).values({
-            id: createId("que_"), ownerId: ctx.user.id, jobType: "parse_cv", payload: { candidateId: candidate.id, documentId: id, cvText: extractedText }, idempotencyKey: `parse_cv:${id}`,
-          });
-        } catch (error) {
-          await db.update(candidateDocuments).set({ parseState: "blocked" }).where(eq(candidateDocuments.id, id));
-          await recordAudit({ ownerId: ctx.user.id, actorType: "system", action: "candidate.document_parse_blocked", resourceType: "candidate_document", resourceId: id, metadata: { error: error instanceof Error ? error.message : "Document extraction failed." } });
-        }
-      }
+      // Extraction is scheduled by the scan worker only after a clean result.
       await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "candidate.document_uploaded", resourceType: "candidate_document", resourceId: id, metadata: { candidateId: candidate.id, documentType: input.documentType, sha256 } });
       return { id, storageUrl: uploaded.url };
     }),
@@ -652,6 +649,7 @@ export const matchingRouter = router({
       await requireOwned(jobRows[0], ctx.user.id, "Job");
       const candidate = candidateRows[0];
       const job = jobRows[0];
+      const documents = await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.ownerId, ctx.user.id), eq(candidateDocuments.candidateId, candidate.id), eq(candidateDocuments.scanState, "clean"), eq(candidateDocuments.parseState, "parsed")));
       const queueId = createId("que_");
       await db.insert(automationQueue).values({
         id: queueId,
@@ -661,14 +659,27 @@ export const matchingRouter = router({
           candidateId: candidate.id,
           jobId: job.id,
           candidate: {
-            fullName: candidate.fullName,
             headline: candidate.headline,
             location: candidate.location,
+            availability: candidate.availability,
+            compensationExpectation: candidate.compensationExpectation,
+            currency: candidate.currency,
+            workAuthorization: candidate.workAuthorization,
+            evidence: documents.map((doc: typeof candidateDocuments.$inferSelect) => ({ documentId: doc.id, sha256: doc.sha256, parsedData: doc.parsedData })),
           },
           job: {
             title: job.title,
-            description: job.description,
+            description: (job.intake as { description?: string } | null)?.description,
             location: job.location,
+            mustHaveSkills: job.mustHaveSkills,
+            niceToHaveSkills: job.niceToHaveSkills,
+            scorecard: job.scorecard,
+            experienceMinYears: job.experienceMinYears,
+            experienceMaxYears: job.experienceMaxYears,
+            compensationMin: job.compensationMin,
+            compensationMax: job.compensationMax,
+            currency: job.currency,
+            workModel: job.workModel,
           },
         },
         idempotencyKey: `score_match:${job.id}:${candidate.id}`,
@@ -699,91 +710,7 @@ export const matchingRouter = router({
     .mutation(async ({ ctx, input }) => {
       const db = await requireDb();
 
-      // 1. Authorize candidate
-      const candidateRows = await db
-        .select()
-        .from(candidates)
-        .where(eq(candidates.id, input.candidateId))
-        .limit(1);
-      const candidate = await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
-
-      // 2. Validate candidate eligibility
-      if (["deleted", "do_not_contact", "withdrawn"].includes(candidate.profileState)) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `Candidate is in ineligible state "${candidate.profileState}" and cannot be shared.`,
-        });
-      }
-
-      // 3. Validate suppression
-      const contactHashes = [candidate.emailHash, candidate.phoneHash].filter(Boolean) as string[];
-      if (contactHashes.length > 0) {
-        const suppressed = await db
-          .select()
-          .from(suppressionList)
-          .where(
-            and(
-              eq(suppressionList.ownerId, ctx.user.id),
-              eq(suppressionList.active, true),
-              inArray(suppressionList.valueHash, contactHashes),
-            ),
-          )
-          .limit(1);
-        if (suppressed.length > 0) {
-          throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Candidate contact is suppressed on the suppression list and cannot be shared.",
-          });
-        }
-      }
-
-      // 4. Authorize company and job
-      const companyRows = await db
-        .select()
-        .from(companies)
-        .where(eq(companies.id, input.companyId))
-        .limit(1);
-      await requireOwned(companyRows[0], ctx.user.id, "Client");
-
-      const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
-      const job = await requireOwned(jobRows[0], ctx.user.id, "Job");
-
-      if (job.companyId !== input.companyId) {
-        throw new TRPCError({
-          code: "BAD_REQUEST",
-          message: "The specified job does not belong to the specified client.",
-        });
-      }
-
-      if (["cancelled", "archived", "filled"].includes(job.pipelineState)) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: `Job is in state "${job.pipelineState}" and is not open for candidate sharing.`,
-        });
-      }
-
-      // 5. Check candidate consent for client sharing
-      const consentRows = await db
-        .select()
-        .from(consents)
-        .where(
-          and(
-            eq(consents.ownerId, ctx.user.id),
-            eq(consents.candidateId, input.candidateId),
-            eq(consents.jobId, input.jobId),
-            eq(consents.companyId, input.companyId),
-            eq(consents.consentType, "client_sharing"),
-            eq(consents.status, "granted"),
-          ),
-        )
-        .limit(1);
-
-      if (!consentRows[0] || (consentRows[0].expiresAt && consentRows[0].expiresAt <= new Date())) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Explicit candidate client-sharing consent is required before a shortlist can be shared.",
-        });
-      }
+      const { consent } = await assertSharingEligible(db, { ownerId: ctx.user.id, candidateId: input.candidateId, jobId: input.jobId, companyId: input.companyId });
 
       // 6. Check existing shortlist for duplicate / idempotent handling
       const existingShortlists = await db
@@ -840,7 +767,7 @@ export const matchingRouter = router({
           candidateId: input.candidateId,
           matchId: input.matchId ?? null,
           status: "prepared",
-          consentId: consentRows[0].id,
+          consentId: consent.id,
         });
       }
 
@@ -921,6 +848,7 @@ export const interviewsRouter = router({
     const interview = await requireOwned((await db.select().from(interviews).where(eq(interviews.id, input.id)).limit(1))[0], ctx.user.id, "Interview");
     assertTransition("interview", interview.status, "reschedule_requested");
     await db.update(interviews).set({ status: "scheduled", scheduledAt: input.scheduledAt, timezone: input.timezone, durationMinutes: input.durationMinutes, meetingUrl: input.meetingUrl ?? null, calendarSequence: interview.calendarSequence + 1, calendarStatus: "tentative", rescheduleCount: interview.rescheduleCount + 1, reminderAt: new Date(input.scheduledAt.getTime() - 24 * 60 * 60 * 1000), reminderSentAt: null }).where(eq(interviews.id, interview.id));
+    await stopOwnerFollowUps(ctx.user.id, { resourceType: "interview", resourceId: interview.id }, "cancelled", "Interview rescheduled; old reminders are invalid.");
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.rescheduled", resourceType: "interview", resourceId: interview.id, previousState: interview.status, nextState: "scheduled", metadata: { calendarSequence: interview.calendarSequence + 1 } });
     return { success: true };
   }),
@@ -929,6 +857,7 @@ export const interviewsRouter = router({
     const interview = await requireOwned((await db.select().from(interviews).where(eq(interviews.id, input.id)).limit(1))[0], ctx.user.id, "Interview");
     assertTransition("interview", interview.status, "cancelled");
     await db.update(interviews).set({ status: "cancelled", calendarStatus: "cancelled", calendarSequence: interview.calendarSequence + 1, reminderAt: null }).where(eq(interviews.id, interview.id));
+    await stopOwnerFollowUps(ctx.user.id, { resourceType: "interview", resourceId: interview.id }, "cancelled", "Interview cancelled.");
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.cancelled", resourceType: "interview", resourceId: interview.id, previousState: interview.status, nextState: "cancelled", metadata: { calendarSequence: interview.calendarSequence + 1 } });
     return { success: true };
   }),
@@ -944,22 +873,13 @@ export const interviewsRouter = router({
   calendarFeed: protectedProcedure.query(async ({ ctx }) => {
     const db = await requireDb();
     const rows = await db.select().from(interviews).where(eq(interviews.ownerId, ctx.user.id)).orderBy(desc(interviews.scheduledAt)).limit(200);
-    const events = rows.map(item => ({
-      uid: createInterviewEventUid(item.id),
-      sequence: item.calendarSequence,
-      start: item.scheduledAt,
-      end: item.scheduledEndAt ?? new Date(item.scheduledAt.getTime() + 45 * 60 * 1000),
-      summary: `Interview (${item.stage || "Standard"})`,
-      description: item.preparationNotes || "FreelanceHR scheduled interview",
-      location: item.location || "Online Meeting",
-      status: (item.status === "cancelled" ? "CANCELLED" : "CONFIRMED") as "CONFIRMED" | "CANCELLED",
-    }));
+    const events = rows.filter(item => item.scheduledAt).map(interviewCalendarEvent);
     const ics = generateCalendarFeedIcs(events);
     const appBaseUrl = (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "");
     return {
       eventCount: events.length,
       icsContent: ics,
-      subscriptionUrl: `${appBaseUrl}/api/calendar/feed/${ctx.user.id}`,
+      subscriptionUrl: `${appBaseUrl}/api/calendar/feed/${ctx.user.id}?token=${encodeURIComponent(await createCalendarSubscriptionToken(ctx.user.id))}`,
     };
   }),
 });
@@ -1145,60 +1065,9 @@ export const placementsRouter = router({
       }
 
       // 4. Verify positive final candidate decision or passed status for the exact candidate/job relationship
-      let hasPositiveDecision = screeningRows.some(
-        s =>
-          s.recommendation === "advance" ||
-          s.status === "owner_decided" ||
-          s.status === "passed" ||
-          s.status === "selected",
+      const hasPositiveDecision = screeningRows.some(
+        s => s.status === "owner_decided" && s.recommendation === "advance",
       );
-
-      if (!hasPositiveDecision && interviewRows.length > 0) {
-        const interviewIds = interviewRows.map(i => i.id);
-        const feedbackRows = interviewIds.length > 0
-          ? await db
-              .select()
-              .from(feedback)
-              .where(
-                and(
-                  eq(feedback.ownerId, ctx.user.id),
-                  inArray(feedback.interviewId, interviewIds),
-                ),
-              )
-          : [];
-
-        hasPositiveDecision =
-          interviewRows.some(
-            i =>
-              i.status === "selected" ||
-              i.status === "passed" ||
-              i.status === "offer_extended" ||
-              i.status === "completed" ||
-              i.status === "feedback_received",
-          ) ||
-          feedbackRows.some(
-            f =>
-              f.finalDecision === "hire" ||
-              f.finalDecision === "advance" ||
-              f.finalDecision === "selected" ||
-              f.finalDecision === "offer",
-          );
-      }
-
-      if (!hasPositiveDecision && shortlistRows.length > 0) {
-        hasPositiveDecision = shortlistRows.some(
-          sh =>
-            sh.status === "client_approved" ||
-            sh.status === "selected" ||
-            sh.status === "offer",
-        );
-      }
-
-      if (!hasPositiveDecision && matchRows.length > 0) {
-        hasPositiveDecision = matchRows.some(
-          m => m.status === "selected" || m.status === "accepted",
-        );
-      }
 
       if (!hasPositiveDecision) {
         throw new TRPCError({
@@ -1478,7 +1347,7 @@ export const invoicesRouter = router({
       });
     }
     const id = createId("inv_");
-    await db.insert(invoices).values({ id, ownerId: ctx.user.id, companyId: input.companyId, placementId: input.placementId, invoiceNumber: input.invoiceNumber, amount: input.amount, taxAmount: input.taxAmount, dueAt: input.dueAt ?? null, status: "draft" });
+    await db.insert(invoices).values({ id, ownerId: ctx.user.id, companyId: input.companyId, placementId: input.placementId, invoiceNumber: input.invoiceNumber, currency: placement.currency ?? "INR", amount: input.amount, taxAmount: input.taxAmount, dueAt: input.dueAt ?? null, status: "draft" });
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "invoice.drafted", resourceType: "invoice", resourceId: id, nextState: "draft" });
     return { id };
   }),

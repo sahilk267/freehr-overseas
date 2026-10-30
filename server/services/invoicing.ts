@@ -1,6 +1,10 @@
+import { scheduleCollectionEvaluation, settlePaymentPromises } from "./collectionTimers";
+import { stopRelatedFollowUps } from "./followups";
+import { formatMoney } from "../../shared/money";
+import { lockedSelect } from "./database";
 import { and, eq } from "drizzle-orm";
-import { companies, invoices, payments, placements } from "../../drizzle/schema";
-import { createId, recordAudit, requireDb } from "../db";
+import { companies, invoices, payments, placements, workspaceSettings } from "../../drizzle/schema";
+import { createId, ensureWorkspace, recordAudit, requireDb } from "../db";
 import { assertTransition } from "../workflow";
 import { TRPCError } from "@trpc/server";
 
@@ -48,6 +52,7 @@ export async function generateInvoiceDocument(
 
   const total = invoice.amount + (invoice.taxAmount || 0);
   const companyName = company?.name || "Client Enterprise";
+  const escapeHtml = (value: string) => value.replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]!));
   const dueFormatted = invoice.dueAt ? new Date(invoice.dueAt).toLocaleDateString("en-IN", { dateStyle: "long" }) : "Due on receipt";
   const issuedFormatted = invoice.issuedAt ? new Date(invoice.issuedAt).toLocaleDateString("en-IN", { dateStyle: "long" }) : new Date(invoice.createdAt).toLocaleDateString("en-IN", { dateStyle: "long" });
 
@@ -55,7 +60,7 @@ export async function generateInvoiceDocument(
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Invoice ${invoice.invoiceNumber}</title>
+  <title>Invoice ${escapeHtml(invoice.invoiceNumber)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 40px; color: #10213d; background: #fff; }
     .header { display: flex; justify-content: space-between; border-bottom: 2px solid #10213d; padding-bottom: 20px; }
@@ -80,7 +85,7 @@ export async function generateInvoiceDocument(
     </div>
     <div style="text-align: right;">
       <h1 style="margin: 0; font-size: 20px;">INVOICE</h1>
-      <p style="margin: 4px 0; font-weight: 600;">#${invoice.invoiceNumber}</p>
+      <p style="margin: 4px 0; font-weight: 600;">#${escapeHtml(invoice.invoiceNumber)}</p>
       <span class="badge">${invoice.status}</span>
     </div>
   </div>
@@ -88,14 +93,14 @@ export async function generateInvoiceDocument(
   <div class="meta">
     <div class="details">
       <h3>Billed To:</h3>
-      <strong>${companyName}</strong><br>
+      <strong>${escapeHtml(companyName)}</strong><br>
       Placement ID: ${invoice.placementId}
     </div>
     <div class="details" style="text-align: right;">
       <h3>Payment Details:</h3>
       <strong>Issued Date:</strong> ${issuedFormatted}<br>
       <strong>Payment Due:</strong> ${dueFormatted}<br>
-      <strong>Currency:</strong> ${invoice.currency}
+      <strong>Currency:</strong> ${escapeHtml(invoice.currency)}
     </div>
   </div>
 
@@ -112,11 +117,11 @@ export async function generateInvoiceDocument(
           <strong>Executive Placement Fee</strong><br>
           <span style="font-size: 12px; color: #718096;">Placement reference: ${placement?.id || invoice.placementId}</span>
         </td>
-        <td style="text-align: right;">${invoice.currency} ${(invoice.amount / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+        <td style="text-align: right;">${escapeHtml(formatMoney(invoice.amount, invoice.currency))}</td>
       </tr>
       ${invoice.taxAmount ? `<tr>
         <td>GST / Applicable Taxes</td>
-        <td style="text-align: right;">${invoice.currency} ${(invoice.taxAmount / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+        <td style="text-align: right;">${escapeHtml(formatMoney(invoice.taxAmount, invoice.currency))}</td>
       </tr>` : ""}
     </tbody>
   </table>
@@ -124,20 +129,20 @@ export async function generateInvoiceDocument(
   <div class="totals">
     <div>
       <span>Subtotal:</span>
-      <span>${invoice.currency} ${(invoice.amount / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+      <span>${escapeHtml(formatMoney(invoice.amount, invoice.currency))}</span>
     </div>
     ${invoice.taxAmount ? `<div>
       <span>Taxes:</span>
-      <span>${invoice.currency} ${(invoice.taxAmount / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+      <span>${escapeHtml(formatMoney(invoice.taxAmount, invoice.currency))}</span>
     </div>` : ""}
     <div class="grand-total">
       <span>Total Due:</span>
-      <span>${invoice.currency} ${(total / 100).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+      <span>${escapeHtml(formatMoney(total, invoice.currency))}</span>
     </div>
   </div>
 
   <div class="footer">
-    <p>Thank you for partnering with FreelanceHR. For remittance confirmation, reference invoice number #${invoice.invoiceNumber}.</p>
+    <p>Thank you for partnering with FreelanceHR. For remittance confirmation, reference invoice number #${escapeHtml(invoice.invoiceNumber)}.</p>
   </div>
 </body>
 </html>`;
@@ -175,115 +180,46 @@ export async function createInvoicePaymentLink(
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This invoice has already been marked as paid." });
   }
 
-  const paymentId = createId("pay_");
-  const totalAmount = invoice.amount + (invoice.taxAmount || 0);
-
-  // Transition invoice to payment_pending if currently issued or delivered
-  if (["issued", "delivered"].includes(invoice.status)) {
-    assertTransition("invoice", invoice.status, "payment_pending");
-    await db.update(invoices).set({ status: "payment_pending" }).where(eq(invoices.id, invoice.id));
-    await recordAudit({
-      ownerId,
-      actorType: "system",
-      actorId: "billing_service",
-      action: "invoice.state_changed",
-      resourceType: "invoice",
-      resourceId: invoice.id,
-      previousState: invoice.status,
-      nextState: "payment_pending",
-      metadata: { paymentId, provider },
-    });
-  }
-
-  const providerEventId = `link_${Date.now()}_${paymentId}`;
-  await db.insert(payments).values({
-    id: paymentId,
-    ownerId,
-    invoiceId: invoice.id,
-    provider,
-    providerEventId,
-    amount: totalAmount,
-    currency: invoice.currency,
-    status: "pending",
-  });
-
-  const appBaseUrl = (process.env.APP_BASE_URL ?? "").replace(/\/+$/, "");
-  const checkoutUrl = `${appBaseUrl}/finance?invoice=${invoice.id}&pay=${paymentId}`;
-
-  return {
-    paymentId,
-    checkoutUrl,
-    amount: totalAmount,
-    currency: invoice.currency,
-    provider,
-  };
+  throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No payment gateway checkout adapter is configured. No payment link was created; use an evidenced bank receipt instead." });
 }
 
 export async function recordInvoicePayment(
   invoiceId: string,
   ownerId: number,
-  details: {
-    amount?: number;
-    provider: string;
-    providerEventId: string;
-    note?: string;
-  }
+  details: { amount?: number; provider: string; providerEventId: string; note?: string },
 ) {
   const db = await requireDb();
-  const [invoice] = await db
-    .select()
-    .from(invoices)
-    .where(and(eq(invoices.id, invoiceId), eq(invoices.ownerId, ownerId)))
-    .limit(1);
-
-  if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found." });
-  if (invoice.status === "paid") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Invoice is already paid." });
-
-  // Valid previous states for paid: delivered, payment_pending, partially_paid, overdue
-  // If invoice is in 'issued', transition through payment_pending first
-  if (invoice.status === "issued") {
-    assertTransition("invoice", "issued", "payment_pending");
-    await db.update(invoices).set({ status: "payment_pending" }).where(eq(invoices.id, invoice.id));
-    invoice.status = "payment_pending";
-  }
-
-  assertTransition("invoice", invoice.status, "paid");
-
-  const now = new Date();
-  const paidAmount = details.amount ?? (invoice.amount + (invoice.taxAmount || 0));
-
-  await db.update(invoices).set({ status: "paid", paidAt: now }).where(eq(invoices.id, invoice.id));
-
-  const paymentId = createId("pay_");
-  await db.insert(payments).values({
-    id: paymentId,
-    ownerId,
-    invoiceId: invoice.id,
-    provider: details.provider,
-    providerEventId: details.providerEventId,
-    amount: paidAmount,
-    currency: invoice.currency,
-    status: "succeeded",
-    paidAt: now,
+  await ensureWorkspace(ownerId);
+  const result = await db.transaction(async (tx: any) => {
+    await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, ownerId)).limit(1));
+    const [invoice] = await lockedSelect(tx.select().from(invoices).where(and(eq(invoices.id, invoiceId), eq(invoices.ownerId, ownerId))).limit(1));
+    if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found." });
+    const existing = (await tx.select().from(payments).where(and(eq(payments.provider, details.provider), eq(payments.providerEventId, details.providerEventId))).limit(1))[0];
+    if (existing) {
+      if (existing.ownerId !== ownerId || existing.invoiceId !== invoiceId || existing.status !== "succeeded" || (details.amount !== undefined && details.amount !== existing.amount)) {
+        throw new TRPCError({ code: "CONFLICT", message: "Payment event is already associated with a different receipt." });
+      }
+      return { success: true, paymentId: existing.id, status: invoice.status, alreadyRecorded: true };
+    }
+    if (!["issued", "delivered", "payment_pending", "partially_paid", "overdue"].includes(invoice.status)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Invoice is not eligible for payment recording." });
+    const receipts = await tx.select().from(payments).where(and(eq(payments.invoiceId, invoiceId), eq(payments.ownerId, ownerId), eq(payments.status, "succeeded")));
+    if (receipts.some((receipt: typeof payments.$inferSelect) => receipt.currency !== invoice.currency)) throw new Error("Invoice payment currency mismatch.");
+    const received = receipts.reduce((sum: number, receipt: typeof payments.$inferSelect) => sum + receipt.amount, 0);
+    const remaining = invoice.amount + invoice.taxAmount - received;
+    const paidAmount = details.amount ?? remaining;
+    if (!Number.isSafeInteger(paidAmount) || paidAmount <= 0 || paidAmount > remaining) throw new TRPCError({ code: "BAD_REQUEST", message: "Payment must be positive and cannot exceed the remaining invoice balance." });
+    const status = paidAmount === remaining ? "paid" : "partially_paid";
+    const previousState = invoice.status === "issued" ? "payment_pending" : invoice.status;
+    assertTransition("invoice", previousState, status);
+    const now = new Date();
+    const paymentId = createId("pay_");
+    await tx.insert(payments).values({ id: paymentId, ownerId, invoiceId, provider: details.provider, providerEventId: details.providerEventId, amount: paidAmount, currency: invoice.currency, status: "succeeded", paidAt: now });
+    await tx.update(invoices).set({ status, paidAt: status === "paid" ? now : null }).where(and(eq(invoices.id, invoiceId), eq(invoices.ownerId, ownerId)));
+    await settlePaymentPromises(tx, ownerId, invoiceId, received + paidAmount, now);
+    await scheduleCollectionEvaluation(tx, ownerId, invoiceId, `collection_receipt:${paymentId}`, now);
+    await stopRelatedFollowUps(tx, ownerId, { resourceType: "invoice", resourceId: invoiceId }, status === "paid" ? "Invoice paid." : "Payment changed the balance; review collection content.", status === "paid" ? "completed" : "cancelled");
+    return { success: true, paymentId, status, alreadyRecorded: false, remainingBalance: remaining - paidAmount };
   });
-
-  await recordAudit({
-    ownerId,
-    actorType: "user",
-    actorId: String(ownerId),
-    action: "invoice.paid",
-    resourceType: "invoice",
-    resourceId: invoice.id,
-    previousState: invoice.status,
-    nextState: "paid",
-    metadata: {
-      paymentId,
-      provider: details.provider,
-      providerEventId: details.providerEventId,
-      amount: paidAmount,
-      note: details.note,
-    },
-  });
-
-  return { success: true, paymentId, status: "paid" as const };
+  if (!result.alreadyRecorded) await recordAudit({ ownerId, actorType: "user", actorId: String(ownerId), action: result.status === "paid" ? "invoice.paid" : "invoice.partially_paid", resourceType: "invoice", resourceId: invoiceId, nextState: result.status, metadata: { paymentId: result.paymentId, provider: details.provider, providerEventId: details.providerEventId, remainingBalance: result.remainingBalance, note: details.note } });
+  return result;
 }

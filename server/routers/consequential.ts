@@ -1,3 +1,5 @@
+import { stopOwnerFollowUps } from "../services/followupEvents";
+import { assertSharingEligible } from "../services/sharingEligibility";
 import { TRPCError } from "@trpc/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -71,17 +73,14 @@ export const consequentialRouter = router({
       if (!candidate || !job) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Candidate or job was not found." });
       }
-      const screeningId = createId("scr_");
-      await db.insert(screenings).values({
-        id: screeningId,
-        ownerId,
-        candidateId: candidate.id,
-        jobId: job.id,
-        status: "decision_pending",
-        evidence: input.evidence,
-        confidence: 0,
-        recommendation: input.disposition,
-      });
+      const existing = (await db.select().from(screenings).where(and(eq(screenings.ownerId, ownerId), eq(screenings.candidateId, candidate.id), eq(screenings.jobId, job.id))).limit(1))[0];
+      if (existing && ["decision_pending", "owner_decided", "closed"].includes(existing.status)) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This screening already has a pending or final decision." });
+      }
+      const screeningId = existing?.id ?? createId("scr_");
+      const screeningValues = { status: "decision_pending", evidence: input.evidence, confidence: 0, recommendation: input.disposition };
+      if (existing) await db.update(screenings).set(screeningValues).where(and(eq(screenings.id, screeningId), eq(screenings.ownerId, ownerId)));
+      else await db.insert(screenings).values({ id: screeningId, ownerId, candidateId: candidate.id, jobId: job.id, ...screeningValues });
       const approvalId = await requestApproval(
         ctx,
         "candidate_final_decision",
@@ -158,16 +157,16 @@ export const consequentialRouter = router({
             : input.action === "credit"
               ? "invoice_credit"
               : "invoice_write_off";
-      return {
-        approvalId: await requestApproval(
+      const approvalId = await requestApproval(
           ctx,
           actionType,
           "invoice",
           invoice.id,
           "This revenue action requires owner approval and supporting evidence.",
           { status: input.status, evidence: input.evidence },
-        ),
-      };
+        );
+      if (["dispute", "credit", "write_off"].includes(input.action)) await stopOwnerFollowUps(ownerId, { resourceType: "invoice", resourceId: invoice.id }, "cancelled", "Financial dispute or adjustment requested; collection is frozen pending review.");
+      return { approvalId };
     }),
 
   requestAutomationStop: protectedProcedure
@@ -291,48 +290,7 @@ export const consequentialRouter = router({
         });
       }
 
-      const candidate = (
-        await db
-          .select()
-          .from(candidates)
-          .where(and(eq(candidates.id, shortlist.candidateId), eq(candidates.ownerId, ownerId)))
-          .limit(1)
-      )[0];
-      const company = (
-        await db
-          .select()
-          .from(companies)
-          .where(and(eq(companies.id, shortlist.companyId), eq(companies.ownerId, ownerId)))
-          .limit(1)
-      )[0];
-      if (!candidate || !company) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Candidate or company relationship is invalid.",
-        });
-      }
-
-      const consent = (
-        await db
-          .select()
-          .from(consents)
-          .where(
-            and(
-              eq(consents.ownerId, ownerId),
-              eq(consents.candidateId, shortlist.candidateId),
-              eq(consents.companyId, shortlist.companyId),
-              eq(consents.consentType, "client_sharing"),
-              eq(consents.status, "granted"),
-            ),
-          )
-          .limit(1)
-      )[0];
-      if (!consent) {
-        throw new TRPCError({
-          code: "PRECONDITION_FAILED",
-          message: "Explicit candidate client-sharing consent is required before shortlist can be shared.",
-        });
-      }
+      await assertSharingEligible(db, { ownerId, candidateId: shortlist.candidateId, jobId: shortlist.jobId, companyId: shortlist.companyId });
 
       const existingApproval = (
         await db

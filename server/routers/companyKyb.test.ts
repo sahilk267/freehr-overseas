@@ -53,7 +53,7 @@ describe("company KYB document upload and verification workflow", () => {
 
     expect(attachResult.success).toBe(true);
     expect(attachResult.verificationState).toBe("in_review");
-    expect(attachResult.storageKey).toContain("kyb/gst_certificate_2026.pdf");
+    expect(attachResult.storageKey).toMatch(/kyb\/kyb_[^/]+\/gst_certificate_2026\.pdf$/);
 
     // Verify company state in DB
     let [comp] = await db.select().from(companies).where(eq(companies.id, companyId));

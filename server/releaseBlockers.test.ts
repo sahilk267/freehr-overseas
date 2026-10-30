@@ -500,6 +500,10 @@ describe("Release Blocker Remediation Suite (RB-07, RB-08, RB-09, RB-10, RB-11, 
         data: { messageId: "<hostinger_prov_999@overseasjob.in>" },
       })) as any;
 
+      const previousToken = process.env.HOSTINGER_MAIL_API_TOKEN;
+      const previousMailbox = process.env.HOSTINGER_MAILBOX_TALENT_ID;
+      process.env.HOSTINGER_MAIL_API_TOKEN = "mock-test-token";
+      process.env.HOSTINGER_MAILBOX_TALENT_ID = "mock-talent-mailbox";
       try {
         const res = await sendViaHostingerMailApi({
           purpose: "talent",
@@ -514,6 +518,8 @@ describe("Release Blocker Remediation Suite (RB-07, RB-08, RB-09, RB-10, RB-11, 
         expect(res.senderAddress).toContain("overseasjob.in");
       } finally {
         SendApi.prototype.sendEmail = originalSend;
+        if (previousToken === undefined) delete process.env.HOSTINGER_MAIL_API_TOKEN; else process.env.HOSTINGER_MAIL_API_TOKEN = previousToken;
+        if (previousMailbox === undefined) delete process.env.HOSTINGER_MAILBOX_TALENT_ID; else process.env.HOSTINGER_MAILBOX_TALENT_ID = previousMailbox;
       }
     });
 
@@ -694,115 +700,45 @@ describe("Release Blocker Remediation Suite (RB-07, RB-08, RB-09, RB-10, RB-11, 
   // RB-05: AI QUEUE COMPLETION (send_reminder & reconcile_invoice)
   // =========================================================================
   describe("RB-05: AI Queue Task Completion", () => {
-    it("1. send_reminder updates confirmed interview to reminder_sent and creates draft", async () => {
+    it("legacy AI output cannot bypass follow-up enrollment and owner authorization", async () => {
       const db = await requireDb();
-      await ensureWorkspace(ownerId);
-
-      const candidateId = createId("cnd_rem_");
-      const companyId = createId("cmp_rem_");
-      const jobId = createId("job_rem_");
-      const interviewId = createId("int_rem_");
-
-      process.env.HOSTINGER_MAIL_API_TOKEN = "mock-token";
-      process.env.HOSTINGER_MAILBOX_INTERVIEWS_ID = "box-interviews";
-      const { SendApi } = await import("hostinger-mail-api-sdk");
-      const sendSpy = vi.spyOn(SendApi.prototype, "sendEmail").mockResolvedValueOnce({
-        data: { messageId: "prov_rem_1" },
-      } as any);
-
-      await db.insert(companies).values({ id: companyId, ownerId, name: "Reminder Client" });
-      await db.insert(candidates).values({ id: candidateId, ownerId, fullName: "Reminder Candidate", email: "reminder.candidate@test.local" });
-      await db.insert(jobs).values({ id: jobId, ownerId, companyId, title: "Reminder Job", status: "published" });
-
-      await db.insert(interviews).values({
-        id: interviewId,
-        ownerId,
-        companyId,
-        candidateId,
-        jobId,
-        status: "confirmed",
-        calendarStatus: "confirmed",
-        scheduledAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-
       const { handleAiTaskResult } = await import("./services/queue");
-
-      const fakeJob: any = {
-        id: createId("que_rem_"),
-        ownerId,
-        jobType: "send_reminder",
-        payload: {
-          interviewId,
-        },
-      };
-
-      await handleAiTaskResult(
-        fakeJob,
-        {
-          subject: "Your interview is tomorrow",
-          body: "Please join on time.",
-          channel: "email",
-          sendAfter: null,
-        },
-        "test-model",
-        ownerId,
-        db
-      );
-
-      const [updatedInterview] = await db.select().from(interviews).where(eq(interviews.id, interviewId));
-      expect(updatedInterview.status).toBe("reminder_sent");
-      expect(updatedInterview.reminderSentAt).toBeInstanceOf(Date);
-      expect(sendSpy).toHaveBeenCalled();
-
-      // Verify sent message was created and marked sent
-      const allMessages = await db.select().from(messages).where(eq(messages.ownerId, ownerId));
-      const sentMsg = allMessages.find((m: any) => m.subject === "Your interview is tomorrow");
-      expect(sentMsg).toBeDefined();
-      expect(sentMsg?.status).toBe("sent");
-      expect(sentMsg?.providerMessageId).toBe("prov_rem_1");
-
-      sendSpy.mockRestore();
+      await expect(handleAiTaskResult({ id: createId("que_"), ownerId, jobType: "send_reminder", payload: {} } as any, { subject: "Unapproved", body: "Must never send directly", channel: "email" }, "test-model", ownerId, db)).rejects.toThrow(/central follow-up/);
     });
 
-    it("2. reconcile_invoice transitions overdue invoice when confidence is high without altering monetary truth", async () => {
+    it("AI reconciliation preserves actual invoice state even for a high-confidence overdue suggestion", async () => {
       const db = await requireDb();
       await ensureWorkspace(ownerId);
-
-      const invoiceId = createId("inv_rec_test_");
-      await db.insert(invoices).values({
-        id: invoiceId,
-        ownerId,
-        invoiceNumber: "INV-REC-99",
-        amount: 150000,
-        status: "delivered",
-        dueAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      });
-
       const { handleAiTaskResult } = await import("./services/queue");
 
-      const fakeJob: any = {
-        id: createId("que_inv_"),
-        ownerId,
-        jobType: "reconcile_invoice",
-        payload: {
-          invoiceId,
-        },
-      };
+      for (const example of [
+        { status: "delivered" as const, dueDays: -7 },
+        { status: "delivered" as const, dueDays: 7 },
+        { status: "paid" as const, dueDays: -7 },
+      ]) {
+        const invoiceId = createId("inv_rec_test_");
+        const dueAt = new Date(Date.now() + example.dueDays * 24 * 60 * 60 * 1000);
+        await db.insert(invoices).values({
+          id: invoiceId, ownerId, invoiceNumber: invoiceId,
+          amount: 150000, status: example.status, dueAt,
+        });
+        await handleAiTaskResult(
+          { id: createId("que_inv_"), ownerId, jobType: "reconcile_invoice", payload: { invoiceId } } as any,
+          { status: "overdue", confidence: 95, rationale: "Unverified model suggestion." },
+          "test-model", ownerId, db
+        );
 
-      await handleAiTaskResult(
-        fakeJob,
-        {
-          status: "overdue",
-          confidence: 95,
-          rationale: "Due date elapsed 7 days ago with no settlement recorded.",
-        },
-        "test-model",
-        ownerId,
-        db
-      );
-
-      const [updatedInv] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
-      expect(updatedInv.status).toBe("overdue");
+        const [invoice] = await db.select().from(invoices).where(eq(invoices.id, invoiceId));
+        expect(invoice.status).toBe(example.status);
+        expect(invoice.amount).toBe(150000);
+        expect(invoice.dueAt?.getTime()).toBe(dueAt.getTime());
+        const [audit] = await db.select().from(auditEvents).where(and(
+          eq(auditEvents.resourceId, invoiceId), eq(auditEvents.action, "invoice.reconciled")
+        ));
+        expect(audit.previousState).toBe(example.status);
+        expect(audit.nextState).toBe(example.status);
+        expect(audit.metadata).toMatchObject({ suggestedStatus: "overdue", confidence: 95, appliedStatusChange: false });
+      }
     });
   });
 });

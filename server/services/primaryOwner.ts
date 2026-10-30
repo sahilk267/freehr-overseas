@@ -48,13 +48,8 @@ export function isPrimaryOwner(
     }
   }
 
-  // Developer owner email defined in .env.example / AI Studio environment
-  if (actorEmail === "mohd.aziz.sk@gmail.com") {
-    return true;
-  }
-
   // Only recognize dev owner identity in dev/test, NEVER in strict production
-  const isStrictProduction = process.env.NODE_ENV === "production" && !process.env.VITEST;
+  const isStrictProduction = process.env.NODE_ENV === "production";
   if (!isStrictProduction && (actor.openId === "owner_dev" || actorEmail === "owner@freelancehr.local")) {
     return true;
   }
@@ -113,21 +108,8 @@ export async function resolvePrimaryOwner(): Promise<User | null> {
     } catch {}
   }
 
-  // Check developer owner email
-  if (db) {
-    try {
-      const directDevEmail = (
-        await db.select().from(users).where(eq(users.email, "mohd.aziz.sk@gmail.com")).limit(1)
-      )[0];
-      if (directDevEmail) return directDevEmail;
-    } catch {}
-  }
-
-  // 3. Fallback to local dev owner ("owner_dev" or first admin) ONLY when no owner is explicitly configured in env
-  // In automated test mode, return null if no explicit owner is configured
-  if (process.env.NODE_ENV === "test" || process.env.VITEST) {
-    return null;
-  }
+  // Production requires an explicitly configured owner; never pick a developer or arbitrary admin.
+  if (configuredOpenId || configuredEmail || process.env.NODE_ENV === "production" || process.env.NODE_ENV === "test" || process.env.VITEST) return null;
 
   if (typeof dbModule.getUserByOpenId === "function") {
     try {

@@ -17,7 +17,10 @@
     "check": "tsc --noEmit",
     "test": "vitest run",
     "test:hostinger": "tsx scripts/verify-hostinger.ts",
-    "seed:demo": "node scripts/seed-demo.mjs"
+    "db:migrate": "node scripts/migrate-db.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "worker": "tsx server/worker.ts",
+    "start:worker": "node dist/worker.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",

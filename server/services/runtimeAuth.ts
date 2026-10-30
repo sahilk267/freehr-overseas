@@ -178,6 +178,8 @@ export async function completeOidcLogin(input: { code?: string; state?: string; 
   const verified = await jwtVerify(token.id_token, jwks, { issuer: discovery.issuer, audience: config.clientId });
   const claims = verified.payload;
   if (typeof claims.sub !== "string" || claims.nonce !== statePayload.nonce) throw new Error("OIDC identity token validation failed.");
+  // Email-based ownership and team invites require an IdP-verified address.
+  if (claims.email && claims.email_verified !== true) throw new Error("OIDC email must be verified.");
   const email = typeof claims.email === "string" ? claims.email.trim().toLowerCase() : null;
   const name = typeof claims.name === "string" ? claims.name.slice(0, 160) : email;
   const openId = stableOpenId(discovery.issuer, claims.sub);

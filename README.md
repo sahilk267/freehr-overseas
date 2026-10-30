@@ -17,15 +17,19 @@ The application is deliberately designed as a **controlled automation system**, 
 
 ## Implemented workspaces
 
-The dashboard includes Command Center, Prospects, Jobs, Candidates, Interviews, Placements, Finance, Exceptions, and Control Plane. All user-created operational records are saved in the database; the product deliberately starts with no fabricated candidate, client, review, or placement data.
+The dashboard includes Command Center, Prospects, Jobs, Candidates, Follow-ups, Interviews, Placements, Finance, Exceptions, and Control Plane. All user-created operational records are saved in the database; the product deliberately starts with no fabricated candidate, client, review, or placement data.
 
 ## Workflow guardrails
 
 Candidate profiles begin as `consent_pending`. Candidate sharing requires purpose-specific client-sharing consent for the selected job/client pair and then requires an owner approval. Withdrawal revokes granted consent and creates email suppression when a hashed email identifier is present. Recruitment matching records evidence and uncertainty; it does not expose an autonomous reject action.
 
-Outbound work is drafted and queued, not silently delivered. An external email provider integration must be configured before actual sending is enabled. Calendar synchronization, payment rails, and external candidate-source APIs likewise need explicit credentials and owner-approved integration setup; they are intentionally not simulated.
+Follow-up sequences support versioned editing/restart, snooze, history and owner evidence recovery for uncertain delivery. They start in owner review; the owner can delegate only their exact messages, recipient, count and expiry. Outbound work is drafted and queued. An external email provider integration must be configured before actual sending is enabled. Calendar synchronization, payment rails, and external candidate-source APIs likewise need explicit credentials and owner-approved integration setup; they are intentionally not simulated.
+
+Finance includes receivable aging, owner-opted-in overdue collection sequences, payment promises, partial-receipt balances and collection holds. A client promise never counts as payment. Pending disputes/adjustments freeze collection, and AI reconciliation remains advisory. Collection messages use the same Follow-ups review, authorization and delivery path.
 
 ## Local development
+
+Automation implementation is underway. See [implementation progress](docs/IMPLEMENTATION_PROGRESS.md) for verified fixes and remaining gaps, and [the module master plan](docs/freehr-module-master-plan.md) for the approved advanced scope. The complete autonomous recruitment workflow is not yet implemented.
 
 ```bash
 pnpm install
@@ -35,6 +39,8 @@ pnpm dev
 ```
 
 The managed development version uses the supplied authentication and private storage facilities. See `HOSTINGER_DEPLOYMENT.md` before transferring it to Hostinger, because a non-managed deployment requires equivalent production credentials for authentication, storage, database, and outbound communication.
+
+For persistent follow-ups, apply `pnpm db:migrate` through 0014 to the intended database, then run `pnpm worker` alongside the API with the same MySQL `DATABASE_URL`. The standalone worker refuses an in-memory adapter and reports missing collection tables. See [implementation progress](docs/IMPLEMENTATION_PROGRESS.md) for verified behavior and remaining limits.
 
 ## Test coverage
 

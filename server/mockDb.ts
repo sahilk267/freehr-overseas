@@ -7,6 +7,21 @@ export type StoreData = Map<string, Map<string | number, any>>;
 
 function createFilter(expr: any): (item: any) => boolean {
   if (!expr) return () => true;
+  // Preserve each outer predicate when one child uses SQL this lightweight
+  // adapter cannot evaluate (e.g. a correlated subquery). Real MySQL tests
+  // exercise those subqueries; they must not erase an owner/status filter here.
+  const chunks = expr.queryChunks;
+  const chunkText = (chunk: any) => Array.isArray(chunk?.value) ? chunk.value.join("").trim().toLowerCase() : null;
+  if (Array.isArray(chunks)) {
+    if (chunks.length === 3 && chunkText(chunks[0]) === "(" && chunkText(chunks[2]) === ")") return createFilter(chunks[1]);
+    if (chunks.length >= 3 && chunks.length % 2 === 1) {
+      const separators = chunks.filter((_: any, index: number) => index % 2 === 1).map(chunkText);
+      if (separators.every((separator: string) => separator === "and" || separator === "or") && new Set(separators).size === 1) {
+        const filters = chunks.filter((_: any, index: number) => index % 2 === 0).map(createFilter);
+        return separators[0] === "and" ? item => filters.every((filter: (item: any) => boolean) => filter(item)) : item => filters.some((filter: (item: any) => boolean) => filter(item));
+      }
+    }
+  }
   try {
     const q = dialect.sqlToQuery(expr);
     const parts = q.sql.split("?");
@@ -86,8 +101,7 @@ export function createMockDrizzle(store: StoreData) {
     select(selection?: any) {
       let currentTable = "";
       const conditions: Array<(item: any) => boolean> = [];
-      let sortCol = "";
-      let isDesc = false;
+      const ordering: Array<{ column: string; descending: boolean }> = [];
       let limitNum = 1000;
       let offsetNum = 0;
 
@@ -101,18 +115,16 @@ export function createMockDrizzle(store: StoreData) {
           return builder;
         },
         orderBy(...exprs: any[]) {
+          ordering.length = 0;
           for (const expr of exprs) {
             if (!expr) continue;
+            if (typeof expr.name === "string") { ordering.push({ column: expr.name, descending: false }); continue; }
             try {
               const q = dialect.sqlToQuery(expr);
-              if (q.params[0] && typeof (q.params[0] as any).name === "string") {
-                sortCol = (q.params[0] as any).name;
-                isDesc = /desc/i.test(q.sql);
-                break;
-              }
-            } catch {
-              // Ignore
-            }
+              const match = q.sql.match(/`(?:[a-zA-Z0-9_]+)`\.`([a-zA-Z0-9_]+)`/);
+              const column = match?.[1] ?? (q.params[0] as any)?.name;
+              if (column) ordering.push({ column, descending: /\bdesc\b/i.test(q.sql) });
+            } catch { /* The SQL adapter intentionally supports only column ordering. */ }
           }
           return builder;
         },
@@ -131,15 +143,17 @@ export function createMockDrizzle(store: StoreData) {
             for (const cond of conditions) {
               items = items.filter(cond);
             }
-            if (sortCol) {
+            if (ordering.length) {
               items.sort((a, b) => {
-                const valA = a[sortCol];
-                const valB = b[sortCol];
-                if (valA === valB) return 0;
-                if (valA == null) return 1;
-                if (valB == null) return -1;
-                const cmp = valA < valB ? -1 : 1;
-                return isDesc ? -cmp : cmp;
+                for (const { column, descending } of ordering) {
+                  const valA = a[column], valB = b[column];
+                  if (valA === valB) continue;
+                  if (valA == null) return descending ? 1 : -1;
+                  if (valB == null) return descending ? -1 : 1;
+                  const cmp = valA < valB ? -1 : valA > valB ? 1 : 0;
+                  if (cmp) return descending ? -cmp : cmp;
+                }
+                return 0;
               });
             }
             const sliced = items.slice(offsetNum, offsetNum + limitNum);

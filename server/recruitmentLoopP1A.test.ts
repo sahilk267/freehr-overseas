@@ -588,7 +588,8 @@ describe("P1-A Core Recruitment Operating Loop", () => {
       ).rejects.toThrow(/no relationship or pipeline history/i);
 
       // Update screening on jobA to advance
-      await db.update(screenings).set({ recommendation: "advance" }).where(eq(screenings.id, screeningId));
+      const selection = await callerA.recruitment.consequential.requestCandidateDecision({ candidateId: unconsentedCandidate.id, jobId: jobA.id, disposition: "advance", evidence: ["Required evidence verified"], rationale: "Owner authorizes advancement after evidence review" });
+      await callerA.recruitment.approvals.decide({ id: selection.approvalId, decision: "approved" });
 
       // 5. Success on jobA with positive decision
       const validPlacement = await callerA.recruitment.placements.create({
