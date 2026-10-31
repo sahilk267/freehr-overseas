@@ -2,6 +2,16 @@
 
 Updated 31 October 2026. This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
+## Latest live verification: personal owner login and recruitment-to-receipt QA
+
+The deployed target is `https://freelancehr.overseasjob.in`, using personal owner-password authentication without Google login and a persistent MySQL database migrated through 0014. Earlier deployment/connector notes below describe their historical checkpoints, not the current live setup.
+
+Code fixes `6037e15` and `cd0e315` were pushed to `main` and retested live: prospect progression, preserved failed form drafts, actual client confirmation, independent evidence matching, combined candidate search filters, selected-timezone interviews, placement controls, stable queue idempotency, hosting-compatible sender registration, truthful readiness/scheduler errors and mobile Finance/Control layout.
+
+The [dated end-to-end report](qa/2026-10-31-e2e-report.md) maps all 25 planned modules and links every one of the 142 current API procedures. All 139 protected-procedure anonymous guards, 36 authenticated default reads and public health passed. The consolidated browser set has 46 passing assertions. Local validation recorded 370 passing tests with 14 skips, 91 passing targeted MySQL tests, an additional concurrent-receipt locking check, TypeScript/build success and four entry smokes.
+
+The report explicitly distinguishes 120 representative live-verified procedures, five guard-only procedures and 17 with blocked provider/prerequisite-dependent positive flows. Mail credentials/mailbox IDs and OpenRouter credentials are absent; no unattended scheduler or real checkout adapter is proven. The pnpm lock graph also has unresolved dependency advisories and differs from Hostinger's npm resolution. These remain open; this QA does not certify a fully autonomous recruiter or a clean security audit. Synthetic data/audit history remains labelled, QA senders and memberships are disabled/revoked, and effective operating settings/policy content were restored. No actual email or funds were sent.
+
 ## Hostinger deployment follow-up: entry and empty-database handoff
 
 The supplied Hostinger build for `cb8bf4a` successfully installed dependencies and compiled the application, then failed because its configured entry was root `server.js`. The release now supplies that stable entry and declares it in package metadata. It calls the same compiled Fastify startup as the existing direct artifact; it defaults to production mode and keeps missing database/OIDC configuration blocking. The frontend production build defaults to the matching OIDC login route.

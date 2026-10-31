@@ -1,0 +1,3075 @@
+{
+  "date": "2026-10-31",
+  "timezone": "Asia/Calcutta",
+  "target": "https://freelancehr.overseasjob.in",
+  "tested_code_commits": [
+    "6037e15",
+    "cd0e315"
+  ],
+  "authentication": "owner_password; no Google login",
+  "counts": {
+    "api_procedures": 142,
+    "api_statuses": {
+      "LIVE_VERIFIED": 120,
+      "LIVE_GUARD_ONLY": 5,
+      "LIVE_DEPENDENCY_BLOCKED": 17
+    },
+    "anonymous_protected_guards": 139,
+    "authenticated_default_reads": 36,
+    "public_health": 1,
+    "guard_and_read_assertions": 176,
+    "browser_consolidated_assertions": 46,
+    "viewports": [
+      390,
+      1440
+    ],
+    "routes_per_viewport": 13,
+    "vitest_passed": 370,
+    "vitest_skipped": 14,
+    "separate_mysql_passed": 92,
+    "targeted_mysql_passed": 91,
+    "additional_mysql_receipt_concurrency_passed": 1,
+    "entry_smokes_passed": 4
+  },
+  "browser_cases": [
+    {
+      "name": "UI prospect progresses through every main stage and owner approval",
+      "status": "PASS",
+      "evidence": "ui-workflow-results.json"
+    },
+    {
+      "name": "UI invalid scorecard shows error and preserves draft before successful job creation",
+      "status": "PASS",
+      "evidence": "ui-workflow-results.json"
+    },
+    {
+      "name": "UI failed candidate save retains inputs; successful retry stores one record",
+      "status": "PASS",
+      "evidence": "ui-workflow-results.json"
+    },
+    {
+      "name": "UI text search combines source, state and availability filters",
+      "status": "PASS",
+      "evidence": "ui-workflow-results.json"
+    },
+    {
+      "name": "UI private document upload, scan and authenticated access",
+      "status": "PASS",
+      "evidence": "ui-workflow-results.json"
+    },
+    {
+      "name": "UI evidence match saves independently of sharing consent or approvals",
+      "status": "PASS",
+      "evidence": "ui-workflow-results.json"
+    },
+    {
+      "name": "UI job confirmation records real client email and supports prompt cancellation",
+      "status": "PASS",
+      "evidence": "ui-recruit-to-receipt-results.json"
+    },
+    {
+      "name": "UI interview uses selected timezone and reschedules confirmed appointments",
+      "status": "PASS",
+      "evidence": "ui-recruit-to-receipt-results.json"
+    },
+    {
+      "name": "UI interview feedback form records structured evidence",
+      "status": "PASS",
+      "evidence": "ui-recruit-to-receipt-results.json"
+    },
+    {
+      "name": "UI owner progression approval precedes placement",
+      "status": "PASS",
+      "evidence": "ui-recruit-to-receipt-results.json"
+    },
+    {
+      "name": "UI offer, joining approval, invoice eligibility and guarantee controls",
+      "status": "PASS",
+      "evidence": "ui-recruit-to-receipt-results.json"
+    },
+    {
+      "name": "UI invoice draft, issue approval and absent real checkout adapter",
+      "status": "PASS",
+      "evidence": "ui-recruit-to-receipt-results.json"
+    },
+    {
+      "name": "UI synthetic partial receipt, rejected overpayment and final settlement",
+      "status": "PASS",
+      "evidence": "ui-recruit-to-receipt-results.json"
+    },
+    {
+      "name": "UI team invitation, role change and revocation",
+      "status": "PASS",
+      "evidence": "ui-controls-results.json"
+    },
+    {
+      "name": "UI operating controls save values and restore original boundaries",
+      "status": "PASS",
+      "evidence": "ui-controls-results.json"
+    },
+    {
+      "name": "UI displays actual missing AI key and unverified purpose-specific senders",
+      "status": "PASS",
+      "evidence": "ui-controls-results.json"
+    },
+    {
+      "name": "UI owner sign-out removes dashboard access",
+      "status": "PASS",
+      "evidence": "ui-controls-results.json"
+    },
+    {
+      "name": "UI follow-up scenario catalog, documented permission and inactive sender boundary",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "UI policy draft, rule inspection and safe activation",
+      "status": "PASS",
+      "evidence": "ui-retests-results.json"
+    },
+    {
+      "name": "Populated page / at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /prospects at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /jobs at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /candidates at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /follow-ups at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /interviews at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /placements at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /finance at 1440px",
+      "status": "PASS",
+      "evidence": "ui-retests-results.json"
+    },
+    {
+      "name": "Populated page /exceptions at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /team at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /control at 1440px",
+      "status": "PASS",
+      "evidence": "ui-retests-results.json"
+    },
+    {
+      "name": "Populated page /team/accept at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /404 at 1440px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page / at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /prospects at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /jobs at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /candidates at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /follow-ups at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /interviews at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /placements at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /finance at 390px",
+      "status": "PASS",
+      "evidence": "ui-retests-results.json"
+    },
+    {
+      "name": "Populated page /exceptions at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /team at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /control at 390px",
+      "status": "PASS",
+      "evidence": "ui-retests-results.json"
+    },
+    {
+      "name": "Populated page /team/accept at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Populated page /404 at 390px",
+      "status": "PASS",
+      "evidence": "ui-final-results.json"
+    },
+    {
+      "name": "Mobile collection controls open the selected invoice",
+      "status": "PASS",
+      "evidence": "ui-retests-results.json"
+    }
+  ],
+  "guards_and_reads": [
+    {
+      "name": "Anonymous denied: system.notifyOwner",
+      "status": "PASS",
+      "procedure": "system.notifyOwner",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.prospects.list",
+      "status": "PASS",
+      "procedure": "recruitment.prospects.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.prospects.create",
+      "status": "PASS",
+      "procedure": "recruitment.prospects.create",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.prospects.transition",
+      "status": "PASS",
+      "procedure": "recruitment.prospects.transition",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.prospects.requestOnboardingApproval",
+      "status": "PASS",
+      "procedure": "recruitment.prospects.requestOnboardingApproval",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.prospects.attachKybDocument",
+      "status": "PASS",
+      "procedure": "recruitment.prospects.attachKybDocument",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.prospects.addContact",
+      "status": "PASS",
+      "procedure": "recruitment.prospects.addContact",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.prospects.verifyKyb",
+      "status": "PASS",
+      "procedure": "recruitment.prospects.verifyKyb",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.outreach.classifyInboundReply",
+      "status": "PASS",
+      "procedure": "recruitment.outreach.classifyInboundReply",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.outreach.draftSequence",
+      "status": "PASS",
+      "procedure": "recruitment.outreach.draftSequence",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.outreach.list",
+      "status": "PASS",
+      "procedure": "recruitment.outreach.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.agreements.list",
+      "status": "PASS",
+      "procedure": "recruitment.agreements.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.jobs.create",
+      "status": "PASS",
+      "procedure": "recruitment.jobs.create",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.agreements.draft",
+      "status": "PASS",
+      "procedure": "recruitment.agreements.draft",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.agreements.recordAcceptance",
+      "status": "PASS",
+      "procedure": "recruitment.agreements.recordAcceptance",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.jobs.list",
+      "status": "PASS",
+      "procedure": "recruitment.jobs.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.jobs.transition",
+      "status": "PASS",
+      "procedure": "recruitment.jobs.transition",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.list",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.searchSkills",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.searchSkills",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.search",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.search",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.transition",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.transition",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.create",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.create",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.grantConsent",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.grantConsent",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.withdraw",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.withdraw",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.doNotContact",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.doNotContact",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.documents.access",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.documents.access",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.requestRights",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.requestRights",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.documents.list",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.documents.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.documents.scan",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.documents.scan",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidates.documents.upload",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.documents.upload",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidateWorkflows.screenings.list",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.screenings.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidateWorkflows.screenings.updateState",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.screenings.updateState",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidateWorkflows.shortlists.list",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.shortlists.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidateWorkflows.screenings.create",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.screenings.create",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidateWorkflows.privacy.fulfillCorrection",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.privacy.fulfillCorrection",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidateWorkflows.shortlists.updateNote",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.shortlists.updateNote",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidateWorkflows.shortlists.updateState",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.shortlists.updateState",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidateWorkflows.privacy.pendingRights",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.privacy.pendingRights",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.matching.listForJob",
+      "status": "PASS",
+      "procedure": "recruitment.matching.listForJob",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.candidateWorkflows.privacy.fulfillDeletion",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.privacy.fulfillDeletion",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.matching.createEvidenceMatch",
+      "status": "PASS",
+      "procedure": "recruitment.matching.createEvidenceMatch",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.interviews.list",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.matching.requestShareApproval",
+      "status": "PASS",
+      "procedure": "recruitment.matching.requestShareApproval",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.matching.queueScoreMatch",
+      "status": "PASS",
+      "procedure": "recruitment.matching.queueScoreMatch",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.interviews.enableReminderSchedule",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.enableReminderSchedule",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.interviews.create",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.create",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.interviews.exportIcs",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.exportIcs",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.interviews.setReminder",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.setReminder",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.interviews.reschedule",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.reschedule",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.interviews.cancel",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.cancel",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.interviews.transition",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.transition",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.interviews.calendarFeed",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.calendarFeed",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.feedback.record",
+      "status": "PASS",
+      "procedure": "recruitment.feedback.record",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.feedback.list",
+      "status": "PASS",
+      "procedure": "recruitment.feedback.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.consequential.requestReplacement",
+      "status": "PASS",
+      "procedure": "recruitment.consequential.requestReplacement",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.consequential.requestCandidateDecision",
+      "status": "PASS",
+      "procedure": "recruitment.consequential.requestCandidateDecision",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.consequential.requestInvoiceAction",
+      "status": "PASS",
+      "procedure": "recruitment.consequential.requestInvoiceAction",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.consequential.requestAutomationStop",
+      "status": "PASS",
+      "procedure": "recruitment.consequential.requestAutomationStop",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.consequential.requestCandidateShare",
+      "status": "PASS",
+      "procedure": "recruitment.consequential.requestCandidateShare",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.consequential.requestClientOnboarding",
+      "status": "PASS",
+      "procedure": "recruitment.consequential.requestClientOnboarding",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.consequential.requestInvoiceIssue",
+      "status": "PASS",
+      "procedure": "recruitment.consequential.requestInvoiceIssue",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.placements.list",
+      "status": "PASS",
+      "procedure": "recruitment.placements.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.consequential.requestPlacementConfirmation",
+      "status": "PASS",
+      "procedure": "recruitment.consequential.requestPlacementConfirmation",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.consequential.decide",
+      "status": "PASS",
+      "procedure": "recruitment.consequential.decide",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.placements.getGuaranteeStatus",
+      "status": "PASS",
+      "procedure": "recruitment.placements.getGuaranteeStatus",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.placements.extendOffer",
+      "status": "PASS",
+      "procedure": "recruitment.placements.extendOffer",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.placements.create",
+      "status": "PASS",
+      "procedure": "recruitment.placements.create",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.placements.recordOfferDecision",
+      "status": "PASS",
+      "procedure": "recruitment.placements.recordOfferDecision",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.placements.transition",
+      "status": "PASS",
+      "procedure": "recruitment.placements.transition",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.invoices.draft",
+      "status": "PASS",
+      "procedure": "recruitment.invoices.draft",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.invoices.list",
+      "status": "PASS",
+      "procedure": "recruitment.invoices.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.invoices.generateDocument",
+      "status": "PASS",
+      "procedure": "recruitment.invoices.generateDocument",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.invoices.requestIssueApproval",
+      "status": "PASS",
+      "procedure": "recruitment.invoices.requestIssueApproval",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.invoices.recordPayment",
+      "status": "PASS",
+      "procedure": "recruitment.invoices.recordPayment",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.invoices.createPaymentLink",
+      "status": "PASS",
+      "procedure": "recruitment.invoices.createPaymentLink",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.approvals.list",
+      "status": "PASS",
+      "procedure": "recruitment.approvals.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.approvals.decide",
+      "status": "PASS",
+      "procedure": "recruitment.approvals.decide",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: recruitment.workspace.bootstrap",
+      "status": "PASS",
+      "procedure": "recruitment.workspace.bootstrap",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.dashboard",
+      "status": "PASS",
+      "procedure": "operations.dashboard",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.settings.readiness",
+      "status": "PASS",
+      "procedure": "operations.settings.readiness",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.settings.get",
+      "status": "PASS",
+      "procedure": "operations.settings.get",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.settings.update",
+      "status": "PASS",
+      "procedure": "operations.settings.update",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.settings.setEmergencyStop",
+      "status": "PASS",
+      "procedure": "operations.settings.setEmergencyStop",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.policies.activate",
+      "status": "PASS",
+      "procedure": "operations.policies.activate",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.policies.list",
+      "status": "PASS",
+      "procedure": "operations.policies.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.policies.create",
+      "status": "PASS",
+      "procedure": "operations.policies.create",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.queue.enqueue",
+      "status": "PASS",
+      "procedure": "operations.queue.enqueue",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.approvals.list",
+      "status": "PASS",
+      "procedure": "operations.approvals.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.queue.list",
+      "status": "PASS",
+      "procedure": "operations.queue.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.queue.retry",
+      "status": "PASS",
+      "procedure": "operations.queue.retry",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.queue.cancel",
+      "status": "PASS",
+      "procedure": "operations.queue.cancel",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.queue.enableSchedule",
+      "status": "PASS",
+      "procedure": "operations.queue.enableSchedule",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.queue.runNext",
+      "status": "PASS",
+      "procedure": "operations.queue.runNext",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.exceptions.createIncident",
+      "status": "PASS",
+      "procedure": "operations.exceptions.createIncident",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.audits.list",
+      "status": "PASS",
+      "procedure": "operations.audits.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.exceptions.list",
+      "status": "PASS",
+      "procedure": "operations.exceptions.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.identities.register",
+      "status": "PASS",
+      "procedure": "email.identities.register",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: operations.exceptions.updateIncidentState",
+      "status": "PASS",
+      "procedure": "operations.exceptions.updateIncidentState",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.status",
+      "status": "PASS",
+      "procedure": "email.status",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.identities.list",
+      "status": "PASS",
+      "procedure": "email.identities.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.identities.verify",
+      "status": "PASS",
+      "procedure": "email.identities.verify",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.identities.setStatus",
+      "status": "PASS",
+      "procedure": "email.identities.setStatus",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.outbound.approvalDetail",
+      "status": "PASS",
+      "procedure": "email.outbound.approvalDetail",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.outbound.requestApproval",
+      "status": "PASS",
+      "procedure": "email.outbound.requestApproval",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.outbound.deliverApproved",
+      "status": "PASS",
+      "procedure": "email.outbound.deliverApproved",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.inbound.verify",
+      "status": "PASS",
+      "procedure": "email.inbound.verify",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.inbound.status",
+      "status": "PASS",
+      "procedure": "email.inbound.status",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.inbound.messages",
+      "status": "PASS",
+      "procedure": "email.inbound.messages",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.inbound.record",
+      "status": "PASS",
+      "procedure": "email.inbound.record",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.inbound.recordByThread",
+      "status": "PASS",
+      "procedure": "email.inbound.recordByThread",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: team.overview",
+      "status": "PASS",
+      "procedure": "team.overview",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: team.invite",
+      "status": "PASS",
+      "procedure": "team.invite",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: email.inbound.conversations",
+      "status": "PASS",
+      "procedure": "email.inbound.conversations",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: team.permissions",
+      "status": "PASS",
+      "procedure": "team.permissions",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: team.myAccess",
+      "status": "PASS",
+      "procedure": "team.myAccess",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: team.updateRole",
+      "status": "PASS",
+      "procedure": "team.updateRole",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: team.activity",
+      "status": "PASS",
+      "procedure": "team.activity",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: team.revoke",
+      "status": "PASS",
+      "procedure": "team.revoke",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: team.accept",
+      "status": "PASS",
+      "procedure": "team.accept",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.catalog",
+      "status": "PASS",
+      "procedure": "followups.catalog",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.list",
+      "status": "PASS",
+      "procedure": "followups.list",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.detail",
+      "status": "PASS",
+      "procedure": "followups.detail",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.enroll",
+      "status": "PASS",
+      "procedure": "followups.enroll",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.control",
+      "status": "PASS",
+      "procedure": "followups.control",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.options",
+      "status": "PASS",
+      "procedure": "followups.options",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.grantSending",
+      "status": "PASS",
+      "procedure": "followups.grantSending",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.versions",
+      "status": "PASS",
+      "procedure": "followups.versions",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.snooze",
+      "status": "PASS",
+      "procedure": "followups.snooze",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.reconcileDispatch",
+      "status": "PASS",
+      "procedure": "followups.reconcileDispatch",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.recoveryQueue",
+      "status": "PASS",
+      "procedure": "followups.recoveryQueue",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.processDue",
+      "status": "PASS",
+      "procedure": "followups.processDue",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.replan",
+      "status": "PASS",
+      "procedure": "followups.replan",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: collections.ledger",
+      "status": "PASS",
+      "procedure": "collections.ledger",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: collections.detail",
+      "status": "PASS",
+      "procedure": "collections.detail",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: collections.saveSettings",
+      "status": "PASS",
+      "procedure": "collections.saveSettings",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: followups.recordPermission",
+      "status": "PASS",
+      "procedure": "followups.recordPermission",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: collections.recordPromise",
+      "status": "PASS",
+      "procedure": "collections.recordPromise",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: collections.cancelPromise",
+      "status": "PASS",
+      "procedure": "collections.cancelPromise",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Anonymous denied: collections.processDue",
+      "status": "PASS",
+      "procedure": "collections.processDue",
+      "coverage": "unauthenticated guard"
+    },
+    {
+      "name": "Read: auth.me",
+      "status": "PASS",
+      "procedure": "auth.me",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.prospects.list",
+      "status": "PASS",
+      "procedure": "recruitment.prospects.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.outreach.list",
+      "status": "PASS",
+      "procedure": "recruitment.outreach.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.agreements.list",
+      "status": "PASS",
+      "procedure": "recruitment.agreements.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.jobs.list",
+      "status": "PASS",
+      "procedure": "recruitment.jobs.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.candidates.list",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.candidates.documents.list",
+      "status": "PASS",
+      "procedure": "recruitment.candidates.documents.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.candidateWorkflows.screenings.list",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.screenings.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.candidateWorkflows.shortlists.list",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.shortlists.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.candidateWorkflows.privacy.pendingRights",
+      "status": "PASS",
+      "procedure": "recruitment.candidateWorkflows.privacy.pendingRights",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.interviews.list",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.interviews.calendarFeed",
+      "status": "PASS",
+      "procedure": "recruitment.interviews.calendarFeed",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.placements.list",
+      "status": "PASS",
+      "procedure": "recruitment.placements.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.invoices.list",
+      "status": "PASS",
+      "procedure": "recruitment.invoices.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: recruitment.approvals.list",
+      "status": "PASS",
+      "procedure": "recruitment.approvals.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: operations.dashboard",
+      "status": "PASS",
+      "procedure": "operations.dashboard",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: operations.settings.get",
+      "status": "PASS",
+      "procedure": "operations.settings.get",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: operations.settings.readiness",
+      "status": "PASS",
+      "procedure": "operations.settings.readiness",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: operations.policies.list",
+      "status": "PASS",
+      "procedure": "operations.policies.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: operations.approvals.list",
+      "status": "PASS",
+      "procedure": "operations.approvals.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: operations.queue.list",
+      "status": "PASS",
+      "procedure": "operations.queue.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: operations.exceptions.list",
+      "status": "PASS",
+      "procedure": "operations.exceptions.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: operations.audits.list",
+      "status": "PASS",
+      "procedure": "operations.audits.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: email.status",
+      "status": "PASS",
+      "procedure": "email.status",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: email.identities.list",
+      "status": "PASS",
+      "procedure": "email.identities.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: email.inbound.status",
+      "status": "PASS",
+      "procedure": "email.inbound.status",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: email.inbound.conversations",
+      "status": "PASS",
+      "procedure": "email.inbound.conversations",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: team.permissions",
+      "status": "PASS",
+      "procedure": "team.permissions",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: team.overview",
+      "status": "PASS",
+      "procedure": "team.overview",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: team.myAccess",
+      "status": "PASS",
+      "procedure": "team.myAccess",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: team.activity",
+      "status": "PASS",
+      "procedure": "team.activity",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: followups.catalog",
+      "status": "PASS",
+      "procedure": "followups.catalog",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: followups.options",
+      "status": "PASS",
+      "procedure": "followups.options",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: followups.list",
+      "status": "PASS",
+      "procedure": "followups.list",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: followups.recoveryQueue",
+      "status": "PASS",
+      "procedure": "followups.recoveryQueue",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Read: collections.ledger",
+      "status": "PASS",
+      "procedure": "collections.ledger",
+      "coverage": "authenticated read"
+    },
+    {
+      "name": "Public system health",
+      "status": "PASS",
+      "procedure": "system.health"
+    }
+  ],
+  "successful_api_assertions": [
+    {
+      "name": "Client contacts, private KYB upload and verification",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Prospect pipeline, fee agreement and governed client activation",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Job confirmation gate and sourcing activation",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Candidate directory search and state filters",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Candidate document quarantine, scan and private access",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Consent, candidate progression and evidence match",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Screening creation, evidence state and owner progression approval",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Placement, offer issue and acceptance",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Invoice draft, duplicate prevention, owner issue and HTML document",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Payment promise, cancellation and no fictional settlement",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Synthetic partial receipt, idempotency, overpayment rejection and settlement",
+      "status": "PASS",
+      "source": "journey-results.json"
+    },
+    {
+      "name": "Sharing immutability, shortlist view and candidate lifecycle",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Calendar subscriptions, missing-token denial and guarantee status",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Interview cancellation and disabled reminders",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Candidate structured-skills query and ownership rejection",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Outreach drafts and reply classification enter the controlled queue",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Inbound messages, header threading and opt-out suppression",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Unverified outbound sender cannot create or deliver a message",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Personal owner can invite, restrict, change and revoke synthetic membership",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Workspace settings round-trip and emergency stop restore",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Versioned policy can activate an unchanged configuration",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Scheduled endpoints and inbound webhook reject unauthenticated access",
+      "status": "PASS",
+      "source": "extras-results.json"
+    },
+    {
+      "name": "Withdrawn and DNC candidates reject further communication permission",
+      "status": "PASS",
+      "source": "privacy-queue-results.json"
+    },
+    {
+      "name": "Mislabeled PDF is quarantined and cannot be opened",
+      "status": "PASS",
+      "source": "privacy-queue-results.json"
+    },
+    {
+      "name": "Queue retry and cancellation target only QA-created work",
+      "status": "PASS",
+      "source": "privacy-queue-results.json"
+    },
+    {
+      "name": "Process-due entry points complete without external delivery",
+      "status": "PASS",
+      "source": "privacy-queue-results.json"
+    },
+    {
+      "name": "Provider readiness truthfully shows AI and mail unconfigured",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Mail registration uses a hosting-compatible API path for all six purposes",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Missing mail credentials cannot verify or activate senders",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Outbound request and delivery remain blocked for unverified QA sender",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Follow-up enrollment rejects an inactive sender",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Resource/precondition guard followups.grantSending",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Resource/precondition guard followups.snooze",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Resource/precondition guard followups.replan",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Resource/precondition guard followups.reconcileDispatch",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Resource/precondition guard collections.saveSettings",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Manual queue retries return the same stored ID and reject changed intent",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Invalid compensation, timezone, quiet hours and fees are rejected before saving",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Standalone schedule APIs report configuration dependency rather than false login failure",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Client onboarding alias creates one review request for converted QA client",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Replacement and financial requests require review and reject cleanly",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Repeated or stale consequential aliases cannot bypass lifecycle gates",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Erased documents retain only tombstones and incident resolution is audited",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Workspace bootstrap is idempotent and notification validation sends nothing",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "Authenticated cron callbacks accept the configured secret",
+      "status": "PASS",
+      "source": "postdeploy-results.json"
+    },
+    {
+      "name": "AI worker records missing provider key and never fabricates completion",
+      "status": "PASS",
+      "source": "finish-results.json"
+    },
+    {
+      "name": "Cleanup cancels only QA queued tasks and future QA appointments",
+      "status": "PASS",
+      "source": "finish-results.json"
+    },
+    {
+      "name": "QA senders disabled and synthetic team access revoked",
+      "status": "PASS",
+      "source": "finish-results.json"
+    },
+    {
+      "name": "Effective original operating settings and policy are restored",
+      "status": "PASS",
+      "source": "finish-results.json"
+    },
+    {
+      "name": "Synthetic invoices settled with no real checkout or transfers",
+      "status": "PASS",
+      "source": "finish-results.json"
+    },
+    {
+      "name": "Final HTTPS health is 200",
+      "status": "PASS",
+      "source": "finish-results.json"
+    },
+    {
+      "name": "Manual queue runner returns cleanly after QA cleanup",
+      "status": "PASS",
+      "source": "endpoint-final-results.json"
+    },
+    {
+      "name": "Payment checkout remains unavailable and settled invoices cannot pay twice",
+      "status": "PASS",
+      "source": "endpoint-final-results.json"
+    },
+    {
+      "name": "Authenticated synthetic mail webhook correlates a thread and deduplicates replay",
+      "status": "PASS",
+      "source": "endpoint-final-results.json"
+    },
+    {
+      "name": "Viewed synthetic shortlist accepts owner-recorded feedback while shared-state edits remain protected",
+      "status": "PASS",
+      "source": "note-final-results.json"
+    }
+  ],
+  "api_coverage": [
+    {
+      "module": "system",
+      "procedure": "system.health",
+      "type": "query",
+      "authentication": "PUBLIC_SESSION_OR_HEALTH",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "Public system health",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "system",
+      "procedure": "system.notifyOwner",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_GUARD_ONLY",
+      "observed_authenticated_http_statuses": "400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Anonymous and invalid-input guards only. Actual external notification delivery was deliberately not invoked."
+    },
+    {
+      "module": "auth",
+      "procedure": "auth.me",
+      "type": "query",
+      "authentication": "PUBLIC_SESSION_OR_HEALTH",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: authenticated read; Authenticated owner browser session and unauthenticated session check",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "auth",
+      "procedure": "auth.logout",
+      "type": "mutation",
+      "authentication": "PUBLIC_SESSION_OR_HEALTH",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "UI owner sign-out removes dashboard access",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.prospects",
+      "procedure": "recruitment.prospects.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.prospects",
+      "procedure": "recruitment.prospects.create",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.prospects",
+      "procedure": "recruitment.prospects.transition",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 403/FORBIDDEN",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.prospects",
+      "procedure": "recruitment.prospects.requestOnboardingApproval",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.prospects",
+      "procedure": "recruitment.prospects.addContact",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.prospects",
+      "procedure": "recruitment.prospects.attachKybDocument",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.prospects",
+      "procedure": "recruitment.prospects.verifyKyb",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.outreach",
+      "procedure": "recruitment.outreach.draftSequence",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Controlled AI work enqueued; real AI generation/classification is blocked by missing OpenRouter credentials."
+    },
+    {
+      "module": "recruitment.outreach",
+      "procedure": "recruitment.outreach.classifyInboundReply",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Controlled AI work enqueued; real AI generation/classification is blocked by missing OpenRouter credentials."
+    },
+    {
+      "module": "recruitment.outreach",
+      "procedure": "recruitment.outreach.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.agreements",
+      "procedure": "recruitment.agreements.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.agreements",
+      "procedure": "recruitment.agreements.draft",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.agreements",
+      "procedure": "recruitment.agreements.recordAcceptance",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.jobs",
+      "procedure": "recruitment.jobs.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.jobs",
+      "procedure": "recruitment.jobs.create",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; UI invalid scorecard shows error and preserves draft before successful job creation; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.jobs",
+      "procedure": "recruitment.jobs.transition",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; extras-results.json; journey-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.search",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.searchSkills",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.create",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.transition",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.grantConsent",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.withdraw",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.doNotContact",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.requestRights",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.documents.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; postdeploy-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.documents.access",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 403/FORBIDDEN; 404/NOT_FOUND",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.documents.scan",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidates",
+      "procedure": "recruitment.candidates.documents.upload",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidateWorkflows",
+      "procedure": "recruitment.candidateWorkflows.screenings.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidateWorkflows",
+      "procedure": "recruitment.candidateWorkflows.screenings.create",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidateWorkflows",
+      "procedure": "recruitment.candidateWorkflows.screenings.updateState",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidateWorkflows",
+      "procedure": "recruitment.candidateWorkflows.shortlists.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; note-final-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidateWorkflows",
+      "procedure": "recruitment.candidateWorkflows.shortlists.updateNote",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json; note-final-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidateWorkflows",
+      "procedure": "recruitment.candidateWorkflows.shortlists.updateState",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 403/FORBIDDEN",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidateWorkflows",
+      "procedure": "recruitment.candidateWorkflows.privacy.pendingRights",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidateWorkflows",
+      "procedure": "recruitment.candidateWorkflows.privacy.fulfillCorrection",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.candidateWorkflows",
+      "procedure": "recruitment.candidateWorkflows.privacy.fulfillDeletion",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.matching",
+      "procedure": "recruitment.matching.listForJob",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.matching",
+      "procedure": "recruitment.matching.createEvidenceMatch",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.matching",
+      "procedure": "recruitment.matching.queueScoreMatch",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Evidence-bound idempotent enqueue verified. Worker blocks with missing OpenRouter key; no real AI score was produced."
+    },
+    {
+      "module": "recruitment.matching",
+      "procedure": "recruitment.matching.requestShareApproval",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.interviews",
+      "procedure": "recruitment.interviews.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; finish-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.interviews",
+      "procedure": "recruitment.interviews.enableReminderSchedule",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Standalone hosting returns PRECONDITION_FAILED; no automatic reminder cron registration."
+    },
+    {
+      "module": "recruitment.interviews",
+      "procedure": "recruitment.interviews.create",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.interviews",
+      "procedure": "recruitment.interviews.exportIcs",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.interviews",
+      "procedure": "recruitment.interviews.setReminder",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.interviews",
+      "procedure": "recruitment.interviews.reschedule",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.interviews",
+      "procedure": "recruitment.interviews.cancel",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.interviews",
+      "procedure": "recruitment.interviews.transition",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.interviews",
+      "procedure": "recruitment.interviews.calendarFeed",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; extras-results.json; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.feedback",
+      "procedure": "recruitment.feedback.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.feedback",
+      "procedure": "recruitment.feedback.record",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.consequential",
+      "procedure": "recruitment.consequential.requestCandidateDecision",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.consequential",
+      "procedure": "recruitment.consequential.requestReplacement",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.consequential",
+      "procedure": "recruitment.consequential.requestInvoiceAction",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.consequential",
+      "procedure": "recruitment.consequential.requestAutomationStop",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.consequential",
+      "procedure": "recruitment.consequential.requestClientOnboarding",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.consequential",
+      "procedure": "recruitment.consequential.requestCandidateShare",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_GUARD_ONLY",
+      "observed_authenticated_http_statuses": "400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Stale/duplicate-state guard tested. Main matching.requestShareApproval business route succeeded; this alternative request path was not positively exercised live."
+    },
+    {
+      "module": "recruitment.consequential",
+      "procedure": "recruitment.consequential.requestPlacementConfirmation",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_GUARD_ONLY",
+      "observed_authenticated_http_statuses": "400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Stale-state guard tested. Main placements.transition joining review and approval succeeded; this alternative request path was not positively exercised live."
+    },
+    {
+      "module": "recruitment.consequential",
+      "procedure": "recruitment.consequential.requestInvoiceIssue",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_GUARD_ONLY",
+      "observed_authenticated_http_statuses": "400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Stale-state guard tested. Main invoices.requestIssueApproval succeeded; this alternative request path was not positively exercised live."
+    },
+    {
+      "module": "recruitment.consequential",
+      "procedure": "recruitment.consequential.decide",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.placements",
+      "procedure": "recruitment.placements.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.placements",
+      "procedure": "recruitment.placements.getGuaranteeStatus",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.placements",
+      "procedure": "recruitment.placements.create",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.placements",
+      "procedure": "recruitment.placements.extendOffer",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.placements",
+      "procedure": "recruitment.placements.recordOfferDecision",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.placements",
+      "procedure": "recruitment.placements.transition",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.invoices",
+      "procedure": "recruitment.invoices.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.invoices",
+      "procedure": "recruitment.invoices.draft",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.invoices",
+      "procedure": "recruitment.invoices.requestIssueApproval",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.invoices",
+      "procedure": "recruitment.invoices.generateDocument",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.invoices",
+      "procedure": "recruitment.invoices.createPaymentLink",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; endpoint-final-results.json",
+      "scope_or_limitation": "Unpaid checkout rejected because no gateway adapter exists; paid invoice also rejects double payment."
+    },
+    {
+      "module": "recruitment.invoices",
+      "procedure": "recruitment.invoices.recordPayment",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Synthetic owner-recorded ledger receipts only; no external bank/gateway verification or money movement."
+    },
+    {
+      "module": "recruitment.approvals",
+      "procedure": "recruitment.approvals.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.approvals",
+      "procedure": "recruitment.approvals.decide",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "recruitment.workspace",
+      "procedure": "recruitment.workspace.bootstrap",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.dashboard",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.settings.get",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; extras-results.json; finish-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.settings.readiness",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.settings.update",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.settings.setEmergencyStop",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.policies.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.policies.create",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.policies.activate",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.approvals.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.queue.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; endpoint-final-results.json; finish-results.json; postdeploy-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.queue.enqueue",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 409/CONFLICT",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.queue.retry",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; finish-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.queue.cancel",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; finish-results.json; postdeploy-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.queue.runNext",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; endpoint-final-results.json",
+      "scope_or_limitation": "Bounded authenticated runner invocation verified; no actual external delivery or unattended scheduling demonstrated."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.queue.enableSchedule",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "401/UNAUTHORIZED; 412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Standalone hosting returns PRECONDITION_FAILED; an external authenticated scheduler is not installed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.exceptions.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.exceptions.createIncident",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.exceptions.updateIncidentState",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "operations",
+      "procedure": "operations.audits.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.status",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; extras-results.json; finish-results.json; postdeploy-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.identities.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.identities.register",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 400/BAD_REQUEST",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.identities.setStatus",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; finish-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.identities.verify",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Verification endpoint returned ok=false; Mail API token and mailbox IDs are absent. No provider verification claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.outbound.approvalDetail",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "404/NOT_FOUND",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Only missing-owned-resource guard exercised live; no valid provider-ready email approval was created."
+    },
+    {
+      "module": "email",
+      "procedure": "email.outbound.requestApproval",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "400/BAD_REQUEST; 412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Inactive/unverified sender rejected. Live positive authorization requires a verified purpose-specific mailbox."
+    },
+    {
+      "module": "email",
+      "procedure": "email.outbound.deliverApproved",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Inactive sender or missing authorization rejected. No real message sent."
+    },
+    {
+      "module": "email",
+      "procedure": "email.inbound.status",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.inbound.verify",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Verification endpoint returned ok=false; actual provider inbox connectivity is unverified."
+    },
+    {
+      "module": "email",
+      "procedure": "email.inbound.record",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Synthetic message/thread records verified; real Hostinger ingress and real reply delivery are not claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.inbound.recordByThread",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Synthetic message/thread records verified; real Hostinger ingress and real reply delivery are not claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.inbound.messages",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; endpoint-final-results.json; extras-results.json",
+      "scope_or_limitation": "Synthetic message/thread records verified; real Hostinger ingress and real reply delivery are not claimed."
+    },
+    {
+      "module": "email",
+      "procedure": "email.inbound.conversations",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Synthetic message/thread records verified; real Hostinger ingress and real reply delivery are not claimed."
+    },
+    {
+      "module": "team",
+      "procedure": "team.permissions",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "team",
+      "procedure": "team.overview",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; extras-results.json; finish-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "team",
+      "procedure": "team.invite",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 409/CONFLICT",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "team",
+      "procedure": "team.updateRole",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "team",
+      "procedure": "team.revoke",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "team",
+      "procedure": "team.accept",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_GUARD_ONLY",
+      "observed_authenticated_http_statuses": "403/FORBIDDEN",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Wrong-recipient/revoked-invitation checks only. Personal owner-only authentication does not provide another invited recipient login."
+    },
+    {
+      "module": "team",
+      "procedure": "team.myAccess",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "team",
+      "procedure": "team.activity",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.catalog",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read; extras-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.options",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.list",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.detail",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "404/NOT_FOUND",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Missing-owned-resource guard only; positive live plan inspection requires successful enrollment."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.versions",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "404/NOT_FOUND",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Missing-owned-resource guard only; positive version history requires a live enrolled plan."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.enroll",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "400/BAD_REQUEST; 412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Inactive sender rejected. No live sender-backed follow-up was enrolled."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.control",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "404/NOT_FOUND",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json",
+      "scope_or_limitation": "Missing-owned-resource guard only; positive live plan lifecycle requires successful enrollment."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.grantSending",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; postdeploy-results.json",
+      "scope_or_limitation": "Resource/precondition guards exercised; no actual sending delegation granted live."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.replan",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "404/NOT_FOUND",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Missing-owned-resource guard only. Revision lifecycle is covered by separate local MySQL tests."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.snooze",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "404/NOT_FOUND",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Missing-owned-resource guard only. Timing lifecycle is covered by separate local MySQL tests."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.reconcileDispatch",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "404/NOT_FOUND",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Missing-owned-resource guard only. No actual provider attempt was adjudicated."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.recoveryQueue",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.processDue",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; privacy-queue-results.json",
+      "scope_or_limitation": "Bounded authenticated runner invocation verified; no actual external delivery or unattended scheduling demonstrated."
+    },
+    {
+      "module": "followups",
+      "procedure": "followups.recordPermission",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200; 412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; extras-results.json; privacy-queue-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "collections",
+      "procedure": "collections.ledger",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "",
+      "evidence": "guards-and-reads-results.json: anonymous guard; guards-and-reads-results.json: authenticated read",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "collections",
+      "procedure": "collections.detail",
+      "type": "query",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; finish-results.json; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "collections",
+      "procedure": "collections.saveSettings",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_DEPENDENCY_BLOCKED",
+      "observed_authenticated_http_statuses": "412/PRECONDITION_FAILED",
+      "evidence": "guards-and-reads-results.json: anonymous guard; postdeploy-results.json",
+      "scope_or_limitation": "Active finance sender and collectible-invoice prerequisites rejected. Synthetic invoices are settled; no live collection sequence enabled."
+    },
+    {
+      "module": "collections",
+      "procedure": "collections.recordPromise",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "collections",
+      "procedure": "collections.cancelPromise",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; journey-results.json",
+      "scope_or_limitation": "Representative owned synthetic or read flow only; exhaustive branch coverage is not claimed."
+    },
+    {
+      "module": "collections",
+      "procedure": "collections.processDue",
+      "type": "mutation",
+      "authentication": "ANONYMOUS_DENIED",
+      "live_status": "LIVE_VERIFIED",
+      "observed_authenticated_http_statuses": "200",
+      "evidence": "guards-and-reads-results.json: anonymous guard; privacy-queue-results.json",
+      "scope_or_limitation": "Bounded authenticated runner invocation verified; no actual external delivery or unattended scheduling demonstrated."
+    }
+  ],
+  "dependency_audit": {
+    "scope": "pnpm-lock.yaml graph, not an attested live npm deployment inventory",
+    "severity_counts": {
+      "info": 0,
+      "low": 20,
+      "moderate": 77,
+      "high": 51,
+      "critical": 3
+    },
+    "advisory_count": 151,
+    "critical_advisories": [
+      {
+        "module_name": "fast-xml-parser",
+        "severity": "critical",
+        "title": "fast-xml-parser has an entity encoding bypass via regex injection in DOCTYPE entity names",
+        "vulnerable_versions": ">=5.0.0 <5.3.5",
+        "patched_versions": ">=5.3.5",
+        "url": "https://github.com/advisories/GHSA-m7jm-9gc2-mpf2"
+      },
+      {
+        "module_name": "tar",
+        "severity": "critical",
+        "title": "node-tar: Decompression/parse DoS via unlimited input",
+        "vulnerable_versions": "<=7.5.18",
+        "patched_versions": ">=7.5.19",
+        "url": "https://github.com/advisories/GHSA-23hp-3jrh-7fpw"
+      },
+      {
+        "module_name": "proxy-addr",
+        "severity": "critical",
+        "title": "proxy-addr vulnerable to IP spoofing via IPv4-mapped IPv6 trust subnet",
+        "vulnerable_versions": ">=1.1.0 <2.0.8",
+        "patched_versions": ">=2.0.8",
+        "url": "https://github.com/advisories/GHSA-jqcg-44mw-7w3h"
+      }
+    ]
+  },
+  "retest_notes": [
+    "Browser cases are consolidated by name using the latest retest. Selector and async-wait harness errors were corrected and rerun.",
+    "Initial candidate lifecycle assertions depended on a prematurely aborted harness case; the complete UI recruitment-to-receipt journey passed independently.",
+    "Erasure preserves redacted document tombstones; the original zero-row assertion was corrected to check privacy-safe tombstones and denied old URLs.",
+    "Shared shortlists reject modification; viewed synthetic shortlist feedback was separately saved and read back.",
+    "Queue safety checks refused broader processing until the target QA IDs were identified. The eventual AI task blocked on missing credentials; an empty manual runner and authenticated callback were checked separately.",
+    "HTTP 200 with ok=false from provider verification is classified as blocked, not provider success.",
+    "No real email, recruiter notification, provider checkout or bank transfer was sent."
+  ],
+  "finalSmoke": {
+    "httpsHealth": "PASS",
+    "ownerLoginAndDashboard": "PASS",
+    "knownPendingQATasks": 0,
+    "effectiveOperatingSettingsRestored": "PASS",
+    "effectivePolicyContentRestored": "PASS"
+  }
+}
