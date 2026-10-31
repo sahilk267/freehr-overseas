@@ -15,7 +15,8 @@ export const emailRouter = router({
   status: protectedProcedure.query(() => getHostingerMailApiStatus()),
   identities: router({
     list: protectedProcedure.query(async ({ ctx }) => (await requireDb()).select().from(emailIdentities).where(eq(emailIdentities.ownerId, ctx.user.id)).orderBy(emailIdentities.purpose)),
-    save: protectedProcedure.input(identityInput).mutation(async ({ ctx, input }) => {
+    // Hosting filters can treat a URL ending in .save as a backup-file write.
+    register: protectedProcedure.input(identityInput).mutation(async ({ ctx, input }) => {
       if (!isApprovedSenderAddress(input.email)) throw new TRPCError({ code: "BAD_REQUEST", message: "Sender must use the configured approved domain." });
       const db = await requireDb(); const existing = (await db.select().from(emailIdentities).where(and(eq(emailIdentities.ownerId, ctx.user.id), eq(emailIdentities.email, input.email))).limit(1))[0];
       const id = existing?.id ?? createId("eid_");

@@ -1,4 +1,5 @@
 import { stopOwnerFollowUps } from "../services/followupEvents";
+import { isValidTimezone } from "../../shared/dateTime";
 import { createCalendarSubscriptionToken, interviewCalendarEvent } from "../services/calendarFeed";
 import { assertSharingEligible } from "../services/sharingEligibility";
 import { createHash } from "crypto";
@@ -218,7 +219,7 @@ export const jobsRouter = router({
     for (const item of input.scorecard) {
       ensureSafeAiText(item.criterion);
     }
-    if (input.compensationMin && input.compensationMax && input.compensationMin > input.compensationMax) throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum compensation cannot be above maximum compensation." });
+    if (input.compensationMin !== undefined && input.compensationMax !== undefined && input.compensationMin > input.compensationMax) throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum compensation cannot be above maximum compensation." });
     if (input.scorecard.length && input.scorecard.reduce((sum, item) => sum + item.weight, 0) !== 100) throw new TRPCError({ code: "BAD_REQUEST", message: "Weighted scorecard criteria must total 100%." });
     if (input.experienceMinYears !== undefined && input.experienceMaxYears !== undefined && input.experienceMinYears > input.experienceMaxYears) throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum experience cannot be above maximum experience." });
     const db = await requireDb();
@@ -256,10 +257,14 @@ export const candidatesRouter = router({
     if (input.availability) filters.push(like(candidates.availability, `%${input.availability}%`));
     return db.select().from(candidates).where(and(...filters)).orderBy(desc(candidates.updatedAt)).limit(input.limit);
   }),
-  search: protectedProcedure.input(z.object({ query: z.string().trim().min(1).max(120), limit: z.number().int().min(1).max(100).default(50) })).query(async ({ ctx, input }) => {
+  search: protectedProcedure.input(z.object({ query: z.string().trim().min(1).max(120), limit: z.number().int().min(1).max(100).default(50), profileState: z.string().min(2).max(48).optional(), sourceType: z.string().min(2).max(64).optional(), availability: z.string().min(1).max(120).optional() })).query(async ({ ctx, input }) => {
     const db = await requireDb();
     const term = `%${input.query.replace(/[\\%_]/g, "\\$&")}%`;
-    return db.select().from(candidates).where(and(eq(candidates.ownerId, ctx.user.id), notInArray(candidates.profileState, ["deleted", "do_not_contact", "withdrawn"]), or(like(candidates.fullName, term), like(candidates.headline, term), like(candidates.location, term)))).orderBy(desc(candidates.updatedAt)).limit(input.limit);
+    const filters = [eq(candidates.ownerId, ctx.user.id)];
+    if (input.profileState) filters.push(eq(candidates.profileState, input.profileState));
+    if (input.sourceType) filters.push(eq(candidates.sourceType, input.sourceType));
+    if (input.availability) filters.push(like(candidates.availability, `%${input.availability}%`));
+    return db.select().from(candidates).where(and(...filters, notInArray(candidates.profileState, ["deleted", "do_not_contact", "withdrawn"]), or(like(candidates.fullName, term), like(candidates.headline, term), like(candidates.location, term)))).orderBy(desc(candidates.updatedAt)).limit(input.limit);
   }),
   searchSkills: protectedProcedure
     .input(
@@ -651,11 +656,7 @@ export const matchingRouter = router({
       const job = jobRows[0];
       const documents = await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.ownerId, ctx.user.id), eq(candidateDocuments.candidateId, candidate.id), eq(candidateDocuments.scanState, "clean"), eq(candidateDocuments.parseState, "parsed")));
       const queueId = createId("que_");
-      await db.insert(automationQueue).values({
-        id: queueId,
-        ownerId: ctx.user.id,
-        jobType: "score_match",
-        payload: {
+      const payload = {
           candidateId: candidate.id,
           jobId: job.id,
           candidate: {
@@ -665,7 +666,7 @@ export const matchingRouter = router({
             compensationExpectation: candidate.compensationExpectation,
             currency: candidate.currency,
             workAuthorization: candidate.workAuthorization,
-            evidence: documents.map((doc: typeof candidateDocuments.$inferSelect) => ({ documentId: doc.id, sha256: doc.sha256, parsedData: doc.parsedData })),
+            evidence: documents.sort((a: typeof candidateDocuments.$inferSelect, b: typeof candidateDocuments.$inferSelect) => a.id.localeCompare(b.id)).map((doc: typeof candidateDocuments.$inferSelect) => ({ documentId: doc.id, sha256: doc.sha256, parsedData: doc.parsedData })),
           },
           job: {
             title: job.title,
@@ -681,22 +682,30 @@ export const matchingRouter = router({
             currency: job.currency,
             workModel: job.workModel,
           },
-        },
-        idempotencyKey: `score_match:${job.id}:${candidate.id}`,
+        };
+      const idempotencyKey = `score_match:${createHash("sha256").update(JSON.stringify([ctx.user.id, payload])).digest("hex")}`;
+      await db.insert(automationQueue).values({
+        id: queueId,
+        ownerId: ctx.user.id,
+        jobType: "score_match",
+        payload: payload,
+        idempotencyKey,
         priority: 2,
         scheduledAt: new Date(),
         maxAttempts: 3,
-      });
+      }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
+      const queued = (await db.select().from(automationQueue).where(and(eq(automationQueue.ownerId, ctx.user.id), eq(automationQueue.idempotencyKey, idempotencyKey))).limit(1))[0];
+      if (!queued) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Matching work could not be loaded." });
       await recordAudit({
         ownerId: ctx.user.id,
         actorType: "user",
         actorId: String(ctx.user.id),
-        action: "match.score_queued",
+        action: queued.id === queueId ? "match.score_queued" : "match.score_reused",
         resourceType: "candidate",
         resourceId: candidate.id,
-        metadata: { jobId: job.id, queueId },
+        metadata: { jobId: job.id, queueId: queued.id },
       });
-      return { queueId };
+      return { queueId: queued.id as string, alreadyQueued: queued.id !== queueId, status: queued.status as string };
     }),
   requestShareApproval: protectedProcedure
     .input(
@@ -803,6 +812,7 @@ export const interviewsRouter = router({
     return db.select().from(interviews).where(eq(interviews.ownerId, ctx.user.id)).orderBy(desc(interviews.scheduledAt)).limit(input.limit);
   }),
   enableReminderSchedule: protectedProcedure.mutation(async ({ ctx }) => {
+    if (["owner_password", "oidc"].includes(process.env.AUTH_MODE ?? "")) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No Hostinger schedule was registered. Configure and verify an external authenticated callback for /api/scheduled/interview-reminders." });
     if (ctx.actor && ctx.actor.id !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the workspace owner can manage reminder schedules." });
     const db = await requireDb();
     const cookie = parseCookieHeader(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
@@ -812,7 +822,7 @@ export const interviewsRouter = router({
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.reminder_schedule_enabled", resourceType: "workspace", resourceId: String(ctx.user.id), metadata: { taskUid: job.taskUid, cron: "0 */5 * * * *" } });
     return job;
   }),
-  create: protectedProcedure.input(z.object({ companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).default("Asia/Kolkata"), durationMinutes: z.number().int().min(15).max(240).default(45), meetingUrl: z.string().url().optional() })).mutation(async ({ ctx, input }) => {
+  create: protectedProcedure.input(z.object({ companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone.").default("Asia/Kolkata"), durationMinutes: z.number().int().min(15).max(240).default(45), meetingUrl: z.string().url().optional() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
     await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
@@ -843,7 +853,7 @@ export const interviewsRouter = router({
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.reminder_configured", resourceType: "interview", resourceId: interview.id, metadata: { reminderAt: input.reminderAt?.toISOString() ?? null } });
     return { success: true };
   }),
-  reschedule: protectedProcedure.input(z.object({ id: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64), durationMinutes: z.number().int().min(15).max(240), meetingUrl: z.string().url().nullable().optional() })).mutation(async ({ ctx, input }) => {
+  reschedule: protectedProcedure.input(z.object({ id: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone."), durationMinutes: z.number().int().min(15).max(240), meetingUrl: z.string().url().nullable().optional() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     const interview = await requireOwned((await db.select().from(interviews).where(eq(interviews.id, input.id)).limit(1))[0], ctx.user.id, "Interview");
     assertTransition("interview", interview.status, "reschedule_requested");

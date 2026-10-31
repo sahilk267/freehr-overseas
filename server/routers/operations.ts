@@ -23,6 +23,8 @@ import { createId, ensureWorkspace, getRecentAudits, recordAudit, requireDb } fr
 import { protectedProcedure, router } from "../_core/trpc";
 import { createHeartbeatJob } from "../_core/heartbeat";
 import { processOneQueuedJob } from "../services/queue";
+import { isValidTimezone } from "../../shared/dateTime";
+import { createHash } from "node:crypto";
 import { assertTransition } from "../workflow";
 import { getProductionRuntimeStatus } from "../services/runtimeAuth";
 import { getHostingerMailApiStatus } from "../services/hostingerMail";
@@ -73,10 +75,10 @@ export const operationsRouter = router({
         runtime: { configured: runtime.configured, authMode: runtime.authMode, authConfigured: runtime.authConfigured, authMissing: runtime.authMissing, oidcConfigured: runtime.oidcConfigured, oidcMissing: runtime.oidcMissing, privateStorage: runtime.privateStorage },
         mail: { configured: mail.configured, tokenConfigured: mail.tokenConfigured, webhookSecretConfigured: mail.webhookSecretConfigured, configuredMailboxCount: mail.configuredMailboxCount, configuredSenderAddressCount: mail.configuredSenderAddressCount },
         calendar: { provider: "ics", timezoneSafe: true, remindersOwnerApproved: true },
-        ai: { structuredValidation: true, ownerReviewOnLowConfidence: true, openRouterFallback: true, autonomousFinalRejection: false },
+        ai: { configured: Boolean(process.env.OPENROUTER_API_KEY?.trim()), structuredValidation: true, ownerReviewOnLowConfidence: true, openRouterFallback: true, autonomousFinalRejection: false },
       };
     }),
-    update: protectedProcedure.input(z.object({ automationMode: z.enum(["safe", "controlled", "autopilot"]).optional(), dailyOutboundLimit: z.number().int().min(1).max(500).optional(), quietHoursStart: z.string().regex(/^\d{2}:\d{2}$/).optional(), quietHoursEnd: z.string().regex(/^\d{2}:\d{2}$/).optional(), businessTimezone: z.string().min(2).max(64).optional() })).mutation(async ({ ctx, input }) => {
+    update: protectedProcedure.input(z.object({ automationMode: z.enum(["safe", "controlled", "autopilot"]).optional(), dailyOutboundLimit: z.number().int().min(1).max(500).optional(), quietHoursStart: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "Use a valid 24-hour time (HH:mm).").optional(), quietHoursEnd: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "Use a valid 24-hour time (HH:mm).").optional(), businessTimezone: z.string().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone.").optional() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
       await ensureWorkspace(ctx.user.id);
       await db.update(workspaceSettings).set(input).where(eq(workspaceSettings.ownerId, ctx.user.id));
@@ -130,10 +132,15 @@ export const operationsRouter = router({
       const db = await requireDb();
       const workspace = await ensureWorkspace(ctx.user.id);
       if (workspace.emergencyStop) throw new Error("Automation is paused by the emergency stop.");
-      const id = createId("que_");
-      await db.insert(automationQueue).values({ id, ownerId: ctx.user.id, jobType: input.jobType, payload: input.payload, idempotencyKey: input.idempotencyKey, scheduledAt: input.scheduledAt ?? new Date() }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
-      await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "automation.queued", resourceType: "automation_job", resourceId: id, nextState: "queued", metadata: { jobType: input.jobType } });
-      return { id };
+      const idempotencyKey = `manual:${ctx.user.id}:${createHash("sha256").update(input.idempotencyKey).digest("hex")}`;
+      const legacy = (await db.select().from(automationQueue).where(and(eq(automationQueue.ownerId, ctx.user.id), eq(automationQueue.idempotencyKey, input.idempotencyKey))).limit(1))[0];
+      if (!legacy) await db.insert(automationQueue).values({ id: createId("que_"), ownerId: ctx.user.id, jobType: input.jobType, payload: input.payload, idempotencyKey, scheduledAt: input.scheduledAt ?? new Date() }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
+      const job = legacy ?? (await db.select().from(automationQueue).where(and(eq(automationQueue.ownerId, ctx.user.id), eq(automationQueue.idempotencyKey, idempotencyKey))).limit(1))[0];
+      if (!job) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "The automation job could not be loaded." });
+      const canonical = (value: unknown): unknown => Array.isArray(value) ? value.map(canonical) : value instanceof Date ? value.toISOString() : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, canonical(item)])) : value;
+      if (job.jobType !== input.jobType || JSON.stringify(canonical(job.payload)) !== JSON.stringify(canonical(input.payload))) throw new TRPCError({ code: "CONFLICT", message: "This idempotency reference is already used for a different automation request." });
+      await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "automation.queued", resourceType: "automation_job", resourceId: job.id, nextState: job.status, metadata: { jobType: input.jobType } });
+      return { id: job.id };
     }),
     retry: protectedProcedure.input(z.object({ id: z.string().min(4) })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
@@ -200,6 +207,7 @@ export const operationsRouter = router({
       return processOneQueuedJob(ctx.user.id);
     }),
     enableSchedule: protectedProcedure.mutation(async ({ ctx }) => {
+      if (["owner_password", "oidc"].includes(process.env.AUTH_MODE ?? "")) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No Hostinger schedule was registered. Configure and verify an external authenticated callback for /api/scheduled/automation-queue." });
       if (ctx.actor && ctx.actor.id !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the workspace owner can manage queue schedules." });
       const db = await requireDb();
       const cookie = parseCookieHeader(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";

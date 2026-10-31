@@ -7,9 +7,16 @@ import superjson from "superjson";
 import App from "./App";
 import { startLogin } from "./const";
 import "./index.css";
+import { toast } from "sonner";
 
 const queryClient = new QueryClient({
   defaultOptions: {
+    mutations: {
+      onError(error) {
+        if (error instanceof TRPCClientError && error.data?.code === "UNAUTHORIZED") return;
+        toast.error(error instanceof Error ? error.message : "The change could not be saved. Please try again.");
+      },
+    },
     queries: {
       retry(failureCount, error) {
         if (error instanceof TRPCClientError) {
