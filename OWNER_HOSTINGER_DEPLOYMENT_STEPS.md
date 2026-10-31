@@ -1,6 +1,6 @@
 # Hostinger owner deployment steps
 
-The repository is `sahilk267/freehr-overseas`, branch `main`. Local implementation and validation are recorded in [implementation progress](docs/IMPLEMENTATION_PROGRESS.md); they do not establish a live production deployment. Enter completed credentials only in Hostinger's server-side Environment variables.
+The repository is `sahilk267/freehr-overseas`, branch `main`. The current website target is recorded in [`.hostinger/site.json`](.hostinger/site.json): `freelancehr.overseasjob.in` (`nodejs`). Resolve its exact hosting account through authenticated discovery before server changes. Local implementation and validation are recorded in [implementation progress](docs/IMPLEMENTATION_PROGRESS.md); they do not establish a live production deployment. Enter completed credentials only in Hostinger's server-side Environment variables.
 
 ## 1. Build and entry file
 
