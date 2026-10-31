@@ -31,7 +31,7 @@ const GET_USER_INFO_WITH_JWT_PATH = `/webdev.v1.WebDevAuthPublicService/GetUserI
 class OAuthService {
   constructor(private client: ReturnType<typeof axios.create>) {
     // Standalone OIDC does not use the managed-preview OAuth service.
-    if (process.env.AUTH_MODE === "oidc") return;
+    if (["oidc", "owner_password"].includes(process.env.AUTH_MODE ?? "")) return;
     console.log("[OAuth] Initialized with baseURL:", ENV.oAuthServerUrl);
     if (!ENV.oAuthServerUrl) {
       console.error(

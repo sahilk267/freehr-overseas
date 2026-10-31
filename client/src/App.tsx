@@ -8,6 +8,7 @@ import FollowUpsPage from "./pages/FollowUpsPage";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import TeamAcceptPage from "./pages/TeamAcceptPage";
+import OwnerLoginPage from "./pages/OwnerLoginPage";
 import { CandidatesPage, ControlPlanePage, ExceptionsPage, FinancePage, InterviewsPage, JobsPage, PlacementsPage, ProspectsPage, TeamPage } from "./pages/WorkspaceViews";
 
 function withDashboard(Page: React.ComponentType) {
@@ -28,6 +29,7 @@ const ControlPlane = withDashboard(ControlPlanePage);
 
 function Router() {
   return <Switch>
+    <Route path="/login" component={OwnerLoginPage} />
     <Route path="/" component={CommandCenter} />
     <Route path="/prospects" component={Prospects} />
     <Route path="/jobs" component={Jobs} />

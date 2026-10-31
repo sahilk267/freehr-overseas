@@ -13,6 +13,10 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 // with "invalid oauth state". It returns void by design, so there is no URL to
 // stash across renders.
 export const startLogin = () => {
+  if (import.meta.env.VITE_AUTH_MODE === "owner_password") {
+    if (window.location.pathname !== "/login") window.location.href = "/login";
+    return;
+  }
   if (import.meta.env.VITE_AUTH_MODE === "oidc") {
     window.location.href = "/api/auth/oidc/login";
     return;

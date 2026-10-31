@@ -7,6 +7,7 @@ import { getPrivateStorageStatus } from "./privateStorage";
 import { canUseApplication } from "./workspaceAccess";
 import { getConfiguredPrimaryOwner } from "./primaryOwner";
 import { sdk } from "../_core/sdk";
+import { createOwnerLoginLimiter, isOwnerPasswordHash, ownerCredentialVersion, verifyOwnerPassword } from "./ownerPassword";
 
 const SESSION_COOKIE = "__Host-fh_session";
 const STATE_COOKIE = "__Host-fh_oidc_state";
@@ -53,6 +54,19 @@ function emptyCookie(name: string) {
 
 function configIssues() {
   const configuredOwner = getConfiguredPrimaryOwner();
+  if (isOwnerPasswordRuntime()) {
+    let https = false;
+    try { https = new URL(process.env.APP_BASE_URL ?? "").protocol === "https:"; } catch {}
+    return [
+      !https ? "APP_BASE_URL (HTTPS)" : null,
+      !process.env.SESSION_SECRET || process.env.SESSION_SECRET.trim().length < 32 ? "SESSION_SECRET (at least 32 characters)" : null,
+      !process.env.CRON_SECRET || process.env.CRON_SECRET.trim().length < 8 ? "CRON_SECRET (at least 8 characters)" : null,
+      !configuredOwner.email || !/^[^@\s,]+@[^@\s,]+\.[^@\s,]+$/.test(configuredOwner.email) ? "PRIMARY_OWNER_EMAIL (one address)" : null,
+      !configuredOwner.openId ? "PRIMARY_OWNER_OPEN_ID" : null,
+      !isOwnerPasswordHash(process.env.OWNER_PASSWORD_HASH) ? "OWNER_PASSWORD_HASH (salted scrypt hash)" : null,
+      process.env.OWNER_ONLY_MODE !== "true" ? "OWNER_ONLY_MODE=true" : null,
+    ].filter((value): value is string => Boolean(value));
+  }
   const values = {
     authMode: process.env.AUTH_MODE === "oidc",
     issuer: process.env.OIDC_ISSUER_URL?.trim(),
@@ -64,7 +78,7 @@ function configIssues() {
     primaryOwner: configuredOwner.openId || configuredOwner.email,
   };
   const missing = [
-    !values.authMode ? "AUTH_MODE=oidc" : null,
+    !values.authMode ? "AUTH_MODE=owner_password or oidc" : null,
     !values.issuer ? "OIDC_ISSUER_URL" : null,
     !values.clientId ? "OIDC_CLIENT_ID" : null,
     !values.clientSecret ? "OIDC_CLIENT_SECRET" : null,
@@ -77,6 +91,7 @@ function configIssues() {
 }
 
 function getOidcConfig(): OidcConfig {
+  if (!isOidcRuntime()) throw new Error("OIDC is not the selected authentication mode.");
   const missing = configIssues();
   if (missing.length) throw new Error(`OIDC configuration is incomplete: ${missing.join(", ")}.`);
   const issuerUrl = process.env.OIDC_ISSUER_URL!.replace(/\/+$/, "");
@@ -105,8 +120,8 @@ function stableOpenId(issuer: string, subject: string) {
   return `oidc_${createHash("sha256").update(`${issuer}|${subject}`).digest("hex").slice(0, 52)}`;
 }
 
-async function signSession(openId: string, secret: string) {
-  return new SignJWT({})
+async function signSession(openId: string, secret: string, claims: Record<string, string> = {}) {
+  return new SignJWT(claims)
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(openId)
     .setIssuedAt()
@@ -118,20 +133,24 @@ export function isOidcRuntime() {
   return process.env.AUTH_MODE === "oidc";
 }
 
+export function isOwnerPasswordRuntime() {
+  return process.env.AUTH_MODE === "owner_password";
+}
+
 export function getRuntimeLogoutCookie() {
-  return isOidcRuntime() ? emptyCookie(SESSION_COOKIE) : null;
+  return isOidcRuntime() || isOwnerPasswordRuntime() ? emptyCookie(SESSION_COOKIE) : null;
 }
 
 export function getProductionRuntimeStatus() {
   const storage = getPrivateStorageStatus();
-  const oidcMissing = configIssues();
-  return { oidcConfigured: oidcMissing.length === 0, oidcMissing, privateStorage: storage, configured: oidcMissing.length === 0 && storage.configured };
+  const authMissing = configIssues();
+  return { authMode: process.env.AUTH_MODE ?? "preview", authConfigured: authMissing.length === 0, authMissing, oidcConfigured: isOidcRuntime() && authMissing.length === 0, oidcMissing: isOidcRuntime() ? authMissing : [], privateStorage: storage, configured: authMissing.length === 0 && storage.configured };
 }
 
 export function assertProductionRuntimeConfiguration() {
   if (process.env.NODE_ENV !== "production") return;
   const status = getProductionRuntimeStatus();
-  const missing = [...status.oidcMissing, ...status.privateStorage.missing.map(value => `private storage ${value}`)];
+  const missing = [...status.authMissing, ...status.privateStorage.missing.map(value => `private storage ${value}`)];
   if (missing.length || !status.privateStorage.configured) {
     throw new Error(`production startup blocked: ${missing.join(", ")}.`);
   }
@@ -208,7 +227,7 @@ export async function completeOidcLogin(input: { code?: string; state?: string; 
 }
 
 export async function authenticateRuntimeRequest(request: { headers?: { cookie?: string } }) : Promise<User | null> {
-  if (!isOidcRuntime()) {
+  if (!isOidcRuntime() && !isOwnerPasswordRuntime()) {
     try {
       const user = await sdk.authenticateRequest(request as Parameters<typeof sdk.authenticateRequest>[0]);
       return canUseApplication(user) ? user : null;
@@ -216,17 +235,50 @@ export async function authenticateRuntimeRequest(request: { headers?: { cookie?:
     catch { return null; }
   }
   try {
-    const config = getOidcConfig();
+    const secret = isOwnerPasswordRuntime() ? (configIssues().length ? null : process.env.SESSION_SECRET) : getOidcConfig().sessionSecret;
+    if (!secret) return null;
     const token = parseCookies(request.headers?.cookie)[SESSION_COOKIE];
     if (!token) return null;
-    const verified = await jwtVerify(token, new TextEncoder().encode(config.sessionSecret), { algorithms: ["HS256"] });
+    const verified = await jwtVerify(token, new TextEncoder().encode(secret), { algorithms: ["HS256"] });
     if (typeof verified.payload.sub !== "string") return null;
+    if (isOwnerPasswordRuntime() && (verified.payload.sub !== getConfiguredPrimaryOwner().openId || verified.payload.authMode !== "owner_password" || verified.payload.credentialVersion !== ownerCredentialVersion())) return null;
     const user = await getUserByOpenId(verified.payload.sub);
     return user && canUseApplication(user) ? user : null;
   } catch { return null; }
 }
 
+export function createOwnerPasswordLoginHandler() {
+  const allowAttempt = createOwnerLoginLimiter();
+  return async (input: { body: unknown; origin?: string }) => {
+    if (!isOwnerPasswordRuntime() || configIssues().length) return { status: 503, error: "Owner sign-in is not configured." };
+    if (input.origin !== new URL(process.env.APP_BASE_URL!).origin) return { status: 403, error: "Sign-in request could not be verified." };
+    if (!allowAttempt()) return { status: 429, error: "Too many sign-in attempts. Try again in one minute." };
+    const body = input.body as { email?: unknown; password?: unknown } | null;
+    if (!body || typeof body.email !== "string" || body.email.length > 320 || typeof body.password !== "string" || body.password.length > 256) return { status: 401, error: "Email or password is incorrect." };
+    const owner = getConfiguredPrimaryOwner();
+    const passwordValid = await verifyOwnerPassword(body.password);
+    if (!passwordValid || body.email.trim().toLowerCase() !== owner.email) return { status: 401, error: "Email or password is incorrect." };
+    await upsertUser({ openId: owner.openId!, email: owner.email!, name: "Owner", loginMethod: "owner_password", lastSignedIn: new Date() });
+    const user = await getUserByOpenId(owner.openId!);
+    if (!user || !canUseApplication(user)) throw new Error("Owner account could not be loaded.");
+    await recordAudit({ ownerId: user.id, actorType: "user", actorId: String(user.id), action: "auth.login", resourceType: "session", resourceId: user.openId, metadata: { loginMethod: "owner_password" } });
+    return { status: 200, cookie: sessionCookie(await signSession(user.openId, process.env.SESSION_SECRET!, { authMode: "owner_password", credentialVersion: ownerCredentialVersion() }), SESSION_DURATION_SECONDS) };
+  };
+}
+
 export function registerRuntimeAuthRoutes(app: Express) {
+  if (isOwnerPasswordRuntime()) {
+    const login = createOwnerPasswordLoginHandler();
+    app.post("/api/auth/owner/login", async (req, res) => {
+      res.setHeader("Cache-Control", "no-store");
+      try {
+        const result = await login({ body: req.body, origin: req.headers.origin });
+        if (result.cookie) res.setHeader("Set-Cookie", result.cookie);
+        res.status(result.status).json(result.error ? { error: result.error } : { ok: true });
+      } catch { res.status(503).json({ error: "Sign-in is temporarily unavailable." }); }
+    });
+    return;
+  }
   if (!isOidcRuntime()) {
     return import("../_core/oauth").then(({ registerOAuthRoutes }) => registerOAuthRoutes(app));
   }

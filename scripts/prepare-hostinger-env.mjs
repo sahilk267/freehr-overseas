@@ -51,8 +51,10 @@ async function prepare() {
       for (const data of [existing, supplied]) if (Object.hasOwn(data, key) && !isPlaceholder(data[key])) values[key] = data[key];
       if (isPlaceholder(values[key])) values[key] = "";
     }
-    // This helper prepares the initial private production pilot, not preview auth.
-    Object.assign(values, { NODE_ENV: "production", AUTH_MODE: "oidc", VITE_AUTH_MODE: "oidc", OWNER_ONLY_MODE: "true" });
+    // Keep the explicitly selected standalone mode; preview auth is never deployed.
+    const authMode = values.AUTH_MODE === "owner_password" ? "owner_password" : "oidc";
+    Object.assign(values, { NODE_ENV: "production", AUTH_MODE: authMode, VITE_AUTH_MODE: authMode, OWNER_ONLY_MODE: "true" });
+    if (authMode === "owner_password" && values.OWNER_PASSWORD_HASH && !/^scrypt:[a-f0-9]{32}:[a-f0-9]{128}$/.test(values.OWNER_PASSWORD_HASH)) throw new Error("OWNER_PASSWORD_HASH must contain a salted scrypt hash, never a plaintext password.");
     const generated = [];
     for (const key of ["SESSION_SECRET", "CRON_SECRET", "HOSTINGER_MAIL_WEBHOOK_SECRET"]) {
       if (!values[key]) { values[key] = randomBytes(32).toString("hex"); generated.push(key); }
@@ -75,7 +77,7 @@ async function prepare() {
     const handle = await open(temporary, "wx", 0o600);
     try { await handle.writeFile(rendered); } finally { await handle.close(); }
     await rename(temporary, output);
-    const required = ["DATABASE_URL", "OIDC_ISSUER_URL", "OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET", "APP_BASE_URL"];
+    const required = ["DATABASE_URL", "APP_BASE_URL", ...(authMode === "owner_password" ? ["PRIMARY_OWNER_EMAIL", "PRIMARY_OWNER_OPEN_ID", "OWNER_PASSWORD_HASH"] : ["OIDC_ISSUER_URL", "OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET"])];
     if (!values.PRIMARY_OWNER_EMAIL && !values.PRIMARY_OWNER_OPEN_ID) required.push("PRIMARY_OWNER_EMAIL");
     if (values.PRIVATE_STORAGE_MODE === "local") required.push("PRIVATE_LOCAL_STORAGE_PATH");
     if (values.PRIVATE_STORAGE_MODE === "s3") required.push("STORAGE_BUCKET", "STORAGE_REGION", "STORAGE_ACCESS_KEY_ID", "STORAGE_SECRET_ACCESS_KEY");

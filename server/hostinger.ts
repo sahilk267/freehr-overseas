@@ -22,6 +22,8 @@ import {
   beginOidcLogin,
   completeOidcLogin,
   isOidcRuntime,
+  isOwnerPasswordRuntime,
+  createOwnerPasswordLoginHandler,
 } from "./services/runtimeAuth";
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -84,6 +86,18 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
       } catch {
         return reply.status(403).send({ error: "OIDC sign-in could not be completed." });
       }
+    });
+  }
+
+  if (isOwnerPasswordRuntime()) {
+    const login = createOwnerPasswordLoginHandler();
+    app.post("/api/auth/owner/login", { bodyLimit: 4096 }, async (request, reply) => {
+      reply.header("Cache-Control", "no-store");
+      try {
+        const result = await login({ body: request.body, origin: request.headers.origin });
+        if (result.cookie) reply.header("Set-Cookie", result.cookie);
+        return reply.status(result.status).send(result.error ? { error: result.error } : { ok: true });
+      } catch { return reply.status(503).send({ error: "Sign-in is temporarily unavailable." }); }
     });
   }
 

@@ -8,7 +8,7 @@ The managed development template includes platform-specific authentication and s
 
 | Concern | Required production choice | Do not do this |
 | --- | --- | --- |
-| Authentication | OIDC provider, such as Google Workspace/Auth0/Clerk, with server-side session cookies | Do not deploy platform-specific preview OAuth credentials to Hostinger |
+| Authentication | Personal owner email/password, or an optional OIDC provider, with server-side session cookies | Do not deploy platform-specific preview OAuth credentials to Hostinger |
 | Database | Hostinger MySQL or a managed MySQL-compatible database with TLS | Do not expose database credentials in the React application |
 | Candidate documents | Private Hostinger filesystem path outside the public web root; S3-compatible storage remains an optional backup mode | Do not retain CVs in public web directories or database BLOBs, and do not expose the local storage directory through static hosting |
 | AI | `OPENROUTER_API_KEY` held only in Node environment variables | Do not use `VITE_OPENROUTER_API_KEY` or call OpenRouter directly from browser code |
@@ -33,12 +33,13 @@ For the current hPanel settings and the observed entry-file failure, follow [the
 
 ## Production startup guard
 
-Root `server.js` defaults to production mode. The production server requires a real database connection and complete OIDC configuration; it does not fall back to a process-local mock database. Explicit S3 storage requires its own credentials. Set `AUTH_MODE=oidc` and `VITE_AUTH_MODE=oidc`; the production frontend build defaults to OIDC. Configure the following values in hPanel before starting `npm start`. [deploy/hostinger.env.example](deploy/hostinger.env.example) carries the non-secret production defaults from the general example. Run `npm run env:hostinger` to generate a private Git-ignored import file with independent session/cron/webhook secrets. Complete actual provider/server fields before importing it; see [the owner instructions](OWNER_HOSTINGER_DEPLOYMENT_STEPS.md#3-add-production-environment-variables).
+Root `server.js` defaults to production mode. The production server requires a real database connection and complete configuration for the selected authentication mode; it does not fall back to a process-local mock database. The current personal deployment uses `AUTH_MODE=owner_password`, `VITE_AUTH_MODE=owner_password`, one configured owner email/OpenID, a salted `OWNER_PASSWORD_HASH` and `OWNER_ONLY_MODE=true`. Google login is optional and is not required in this mode. Explicit S3 storage requires its own credentials. The build uses the selected runtime mode when no frontend override is supplied. [deploy/hostinger.env.example](deploy/hostinger.env.example) retains the optional OIDC template. Run `npm run env:hostinger` to prepare a private import file; it preserves the selected mode and existing secrets. See [the owner instructions](OWNER_HOSTINGER_DEPLOYMENT_STEPS.md#3-add-production-environment-variables).
 
 The launcher supports LiteSpeed's CommonJS loader without top-level `await`. An explicit `RUN_DB_MIGRATIONS=true` applies journaled migrations on the runtime host before server startup, failing closed on migration errors. Use this only for a new database or a reviewed upgrade; it is disabled by default and never runs inside the build container.
 
 | Configuration group | Required values | Runtime behavior when absent |
 | --- | --- | --- |
+| Personal owner login | `AUTH_MODE=owner_password`, `VITE_AUTH_MODE=owner_password`, `PRIMARY_OWNER_EMAIL`, `PRIMARY_OWNER_OPEN_ID`, `OWNER_PASSWORD_HASH`, `OWNER_ONLY_MODE=true`, HTTPS `APP_BASE_URL`, `SESSION_SECRET`, `CRON_SECRET` | Startup rejects incomplete configuration. Only the configured owner can sign in; no Google client is needed. |
 | OIDC login | `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `APP_BASE_URL`, `SESSION_SECRET`, `CRON_SECRET`, and either `PRIMARY_OWNER_OPEN_ID` or `PRIMARY_OWNER_EMAIL` | Startup is blocked without exposing the missing secret value. |
 | OIDC callback | `OIDC_REDIRECT_URI=https://freelancehr.overseasjob.in/api/auth/oidc/callback` registered exactly with the provider | Sign-in is rejected if state, nonce, PKCE, issuer, audience, or signature validation fails. |
 | Private documents | `PRIVATE_STORAGE_MODE=local` and optional `PRIVATE_LOCAL_STORAGE_PATH` outside the public web root; use `PRIVATE_STORAGE_MODE=s3` plus S3 credentials only when backup/provider storage is activated | Local mode keeps documents behind the authenticated `/api/private-storage/*` route. Explicit S3 mode remains fail-closed until its credentials are configured. |
@@ -47,7 +48,7 @@ In local mode, the document table stores a non-public `local/...` reference outs
 
 ## Initial owner-only testing mode
 
-For the first private test, set `OWNER_ONLY_MODE=true`. This blocks protected routes for every authenticated account except the configured primary owner and does not create a public signup path. Keep team invitations and external access disabled. Standalone production requires the selected OIDC provider even for this owner-only pilot.
+For personal use, keep `OWNER_ONLY_MODE=true`. Owner-password authentication accepts only the configured owner, uses a salted scrypt hash and an eight-hour secure cookie, and provides no public signup. Keep team invitations and external access disabled. OIDC remains an optional alternative.
 
 ## Environment inventory
 

@@ -183,13 +183,19 @@ describe("invoice aging, promises and central collection enrollment", () => {
     await configure(f); expect((await evaluateInvoiceCollection(f.ownerId, f.invoiceId)).status).toBe("enrolled"); expect(send).not.toHaveBeenCalled();
   });
   it("keeps unknown dispatches blocked across a changed collection configuration", async () => {
-    const f = await fixture(); await configure(f); const first = await evaluateInvoiceCollection(f.ownerId, f.invoiceId), d = await f.prepare(first.planId!);
-    await f.caller.recruitment.approvals.decide({ id: d.approvalId!, decision: "approved" });
-    send.mockRejectedValueOnce(new Error("Unknown synthetic transport outcome"));
-    await expect(deliverApprovedEmail(f.ownerId, { dispatchId: d.dispatchId })).rejects.toThrow(/reconciliation/);
-    await configure(f, { maxNudges: 1 });
-    expect(await evaluateInvoiceCollection(f.ownerId, f.invoiceId)).toMatchObject({ status: "held", reason: expect.stringContaining("reconciliation") });
-    expect(send).toHaveBeenCalledTimes(1);
+    // Exercise a transport outcome on a business day; weekend deferral never
+    // calls the transport and cannot test reconciliation after an unknown send.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-26T12:00:00Z"));
+    try {
+      const f = await fixture(); await configure(f); const first = await evaluateInvoiceCollection(f.ownerId, f.invoiceId), d = await f.prepare(first.planId!);
+      await f.caller.recruitment.approvals.decide({ id: d.approvalId!, decision: "approved" });
+      send.mockRejectedValueOnce(new Error("Unknown synthetic transport outcome"));
+      await expect(deliverApprovedEmail(f.ownerId, { dispatchId: d.dispatchId })).rejects.toThrow(/reconciliation/);
+      await configure(f, { maxNudges: 1 });
+      expect(await evaluateInvoiceCollection(f.ownerId, f.invoiceId)).toMatchObject({ status: "held", reason: expect.stringContaining("reconciliation") });
+      expect(send).toHaveBeenCalledTimes(1);
+    } finally { vi.useRealTimers(); }
   });
   it("preserves JPY and KWD minor units and isolates other owners' control", async () => {
     const f = await fixture(), other = await fixture(); await configure(f);

@@ -85,3 +85,18 @@ test("rejects invalid connection URLs without exposing them or rotating existing
   assert.notEqual(result.status, 0); assert.match(result.stderr, /DATABASE_URL must be a valid MySQL/);
   assert.ok(!result.stderr.includes("synthetic-sensitive")); assert.deepEqual(await readFile(output), before);
 }));
+
+test("preserves personal owner mode and requires its password hash instead of Google credentials", () => fixture(async (folder, output) => {
+  const source = path.join(folder, ".env.owner");
+  const hash = `scrypt:${"ab".repeat(16)}:${"cd".repeat(64)}`;
+  await writeFile(source, `AUTH_MODE=owner_password\nPRIMARY_OWNER_OPEN_ID=personal_owner\nOWNER_PASSWORD_HASH=${hash}\nDATABASE_URL=mysql://synthetic:synthetic@127.0.0.1:3306/freelancehr\nPRIVATE_LOCAL_STORAGE_PATH=/private/freelancehr\n`);
+  let result = run("--output", output, "--from", source);
+  assert.equal(result.status, 0, result.stderr);
+  const env = parse(await readFile(output));
+  assert.equal(env.AUTH_MODE, "owner_password"); assert.equal(env.VITE_AUTH_MODE, "owner_password");
+  assert.equal(env.OWNER_PASSWORD_HASH, hash);
+  assert.equal(JSON.parse(result.stdout).all_required_values_present, true);
+  result = run("--output", output);
+  assert.equal(parse(await readFile(output)).AUTH_MODE, "owner_password");
+  assert.ok(!result.stdout.includes(hash));
+}));

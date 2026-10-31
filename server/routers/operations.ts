@@ -70,7 +70,7 @@ export const operationsRouter = router({
       const runtime = getProductionRuntimeStatus();
       const mail = getHostingerMailApiStatus();
       return {
-        runtime: { configured: runtime.configured, oidcConfigured: runtime.oidcConfigured, oidcMissing: runtime.oidcMissing, privateStorage: runtime.privateStorage },
+        runtime: { configured: runtime.configured, authMode: runtime.authMode, authConfigured: runtime.authConfigured, authMissing: runtime.authMissing, oidcConfigured: runtime.oidcConfigured, oidcMissing: runtime.oidcMissing, privateStorage: runtime.privateStorage },
         mail: { configured: mail.configured, tokenConfigured: mail.tokenConfigured, webhookSecretConfigured: mail.webhookSecretConfigured, configuredMailboxCount: mail.configuredMailboxCount, configuredSenderAddressCount: mail.configuredSenderAddressCount },
         calendar: { provider: "ics", timezoneSafe: true, remindersOwnerApproved: true },
         ai: { structuredValidation: true, ownerReviewOnLowConfidence: true, openRouterFallback: true, autonomousFinalRejection: false },

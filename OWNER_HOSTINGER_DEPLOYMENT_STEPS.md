@@ -36,6 +36,16 @@ For a new dedicated database without an application terminal, explicitly set `RU
 
 ## 3. Add production environment variables
 
+### Personal owner access (current deployment)
+
+The personal deployment uses `AUTH_MODE=owner_password` and `VITE_AUTH_MODE=owner_password`. Google and other OIDC credentials are not needed in this mode. Set one `PRIMARY_OWNER_EMAIL`, a stable `PRIMARY_OWNER_OPEN_ID`, `OWNER_ONLY_MODE=true`, and `OWNER_PASSWORD_HASH` in addition to the database, HTTPS application URL, session/cron secrets and private storage configuration. The hash format is `scrypt:<32 lowercase hex salt characters>:<128 lowercase hex digest characters>`, using Node's default scrypt parameters and a 64-byte derived key; never put a plaintext password in this field.
+
+The owner signs in at `/login`; there is no public signup or account creation endpoint. Password verification, origin checks and a process-wide limit of ten attempts per minute protect the login endpoint. Successful sign-in provisions only the configured owner and issues an eight-hour HttpOnly, Secure, SameSite=Lax cookie. Changing the password hash invalidates existing owner sessions. Keep the generated login details in a private password manager; rotate a lost password by replacing the hash through trusted hosting administration.
+
+`npm run env:hostinger` preserves the selected owner-password mode and its existing hash. It never prints the hash or password, and never changes to preview authentication. Its default OIDC template remains available for deployments that explicitly choose an identity provider.
+
+### Optional OIDC access
+
 The [production template](deploy/hostinger.env.example) includes the public settings from `.env.example`: application URLs, owner email, Google issuer/callback, six intended mailbox addresses and optional storage/AI settings. These addresses and identifiers are configuration intentions, not proof that the external accounts exist.
 
 Prepare a private import file from the project root:
@@ -46,7 +56,7 @@ npm run env:hostinger
 npm run env:hostinger -- --from /private/path/to/.env.provider
 ```
 
-The command writes Git-ignored `.env.hostinger` with owner-only file permissions, generates separate 32-byte session/cron/webhook secrets, and reports only key names that still need setup. Re-running preserves existing real values and secrets. A supplied nonblank value can explicitly update its matching key; blanks and example placeholders do not clear an existing value. It never copies Hostinger's managed `PORT` or development/preview credentials, and enforces production OIDC with the initial owner-only pilot setting. It does not change the development `.env`.
+The command writes Git-ignored `.env.hostinger` with owner-only file permissions, generates separate 32-byte session/cron/webhook secrets, and reports only key names that still need setup. Re-running preserves existing real values and secrets. A supplied nonblank value can explicitly update its matching key; blanks and example placeholders do not clear an existing value. It never copies Hostinger's managed `PORT` or development/preview credentials, and preserves the selected standalone authentication mode with the initial owner-only pilot setting. It does not change the development `.env`.
 
 Fill the remaining actual database/OIDC/private-storage values privately, then import **`.env.hostinger`** in hPanel or add its variables individually. The committed `.example` deliberately has no real secrets; it is not the completed import file. Do not upload the private file to GitHub or overwrite an already configured Hostinger environment with an incomplete file. Optional Mail API/OpenRouter credentials and mailbox resource IDs must come from their providers; generated webhook keys do not activate those integrations.
 
@@ -63,7 +73,7 @@ Fill the remaining actual database/OIDC/private-storage values privately, then i
 
 The preparation command generates the three local secrets without printing their values. It validates URLs and rejects multiline values before writing. It does not rotate existing secrets automatically. `npm run test:hostinger-env` checks preservation, file permissions, placeholder filtering, quoting and failure handling. Do not send generated values in chat or commit the private file.
 
-Standalone production requires OIDC even for an owner-only pilot. Select a provider supporting authorization-code flow, PKCE and verified email, and register this exact callback:
+If choosing OIDC rather than personal owner-password access, select a provider supporting authorization-code flow, PKCE and verified email, and register this exact callback:
 
 ```text
 https://freelancehr.overseasjob.in/api/auth/oidc/callback
@@ -75,7 +85,7 @@ The configured owner must match the intended verified provider identity. Develop
 
 After database import and environment setup, redeploy the latest `main` commit. A passed build does not prove startup succeeded. Inspect Runtime logs, then verify HTTPS `/api/health`, the built page, actual owner OIDC login and authenticated dashboard/database access. Check that documents are stored privately and persist across deployments. Keep the initial pilot restricted to the owner.
 
-If startup reports `DATABASE_URL` or OIDC configuration missing, correct those variables in hPanel rather than switching production to development mode. Build warnings about deprecated dependencies, audit findings or frontend chunk size do not explain the supplied **Entry file not found** error; review them separately.
+If startup reports missing database or authentication configuration, complete the requirements of the selected mode rather than switching production to development mode. Owner-password mode does not require OIDC settings. Build warnings about deprecated dependencies, audit findings or frontend chunk size do not explain the supplied **Entry file not found** error; review them separately.
 
 ## 5. Background execution and external integrations
 
