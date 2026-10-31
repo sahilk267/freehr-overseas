@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const sandbox = await mkdtemp(path.join(os.tmpdir(), "freehr-entry-"));
 function launch(entry, extraEnv = {}) {
-  const child = spawn(process.execPath, [entry], { cwd: sandbox, env: { PATH: process.env.PATH, ...extraEnv }, stdio: ["ignore", "pipe", "pipe"] });
+  const child = spawn(process.execPath, Array.isArray(entry) ? entry : [entry], { cwd: sandbox, env: { PATH: process.env.PATH, ...extraEnv }, stdio: ["ignore", "pipe", "pipe"] });
   let output = "";
   child.stdout.on("data", data => { output += data; });
   child.stderr.on("data", data => { output += data; });
@@ -63,6 +63,8 @@ try {
   } finally { await stop(unconfigured); }
   await verifyListening(path.join(sandbox, "server.mjs"));
   console.log("PASS: Hostinger root entry binds PORT, serves the built UI and protects the dashboard.");
+  await verifyListening(["--input-type=commonjs", "--eval", `require(${JSON.stringify(path.join(root, "server.js"))})`]);
+  console.log("PASS: LiteSpeed-style CommonJS require loads the root entry and starts the protected server.");
   await verifyListening(path.join(root, "dist/hostinger.js"));
   console.log("PASS: direct dist/hostinger.js entry remains supported.");
 } finally { await rm(sandbox, { recursive: true, force: true }); }

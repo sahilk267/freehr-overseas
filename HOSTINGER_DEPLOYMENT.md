@@ -35,6 +35,8 @@ For the current hPanel settings and the observed entry-file failure, follow [the
 
 Root `server.js` defaults to production mode. The production server requires a real database connection and complete OIDC configuration; it does not fall back to a process-local mock database. Explicit S3 storage requires its own credentials. Set `AUTH_MODE=oidc` and `VITE_AUTH_MODE=oidc`; the production frontend build defaults to OIDC. Configure the following values in hPanel before starting `npm start`. [deploy/hostinger.env.example](deploy/hostinger.env.example) carries the non-secret production defaults from the general example. Run `npm run env:hostinger` to generate a private Git-ignored import file with independent session/cron/webhook secrets. Complete actual provider/server fields before importing it; see [the owner instructions](OWNER_HOSTINGER_DEPLOYMENT_STEPS.md#3-add-production-environment-variables).
 
+The launcher supports LiteSpeed's CommonJS loader without top-level `await`. An explicit `RUN_DB_MIGRATIONS=true` applies journaled migrations on the runtime host before server startup, failing closed on migration errors. Use this only for a new database or a reviewed upgrade; it is disabled by default and never runs inside the build container.
+
 | Configuration group | Required values | Runtime behavior when absent |
 | --- | --- | --- |
 | OIDC login | `OIDC_ISSUER_URL`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `APP_BASE_URL`, `SESSION_SECRET`, `CRON_SECRET`, and either `PRIMARY_OWNER_OPEN_ID` or `PRIMARY_OWNER_EMAIL` | Startup is blocked without exposing the missing secret value. |

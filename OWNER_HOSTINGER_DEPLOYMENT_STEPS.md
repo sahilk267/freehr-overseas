@@ -24,11 +24,15 @@ Keep these settings for the observed Node application:
 
 A build can succeed with no `.env` file. Environment variables in hPanel are sufficient; no completed `.env` belongs in GitHub. Root `server.js` defaults to production mode and refuses a missing production database configuration.
 
+LiteSpeed's Node loader uses CommonJS `require()` for this entry. The launcher therefore has no top-level `await`; it starts the compiled ESM application through a dynamic import. `npm run test:hostinger-entry` also exercises that loader path.
+
 ## 2. Initialize the empty database
 
 Use [DATABASE_IMPORT_GUIDE.md](DATABASE_IMPORT_GUIDE.md). For phpMyAdmin, select the empty database and import [deploy/hostinger-empty-database.sql](deploy/hostinger-empty-database.sql) once. It contains migrations 0000–0014 and the matching Drizzle journal records, with no customer data. Expect 15 applied migrations.
 
 If an application terminal is available, `npm run db:migrate` with the correct private `DATABASE_URL` is the alternative. Do not import the generated fresh-install SQL into an existing database.
+
+For a new dedicated database without an application terminal, explicitly set `RUN_DB_MIGRATIONS=true` in the Node runtime environment. Root `server.js` applies the journaled migrations before starting the server and stops on migration failure. The build never runs migrations. Repeated startups skip applied migrations; remove the flag after initialization if future schema upgrades require a separate maintenance window. Do not enable this flag against an existing database until its schema and migration history have been checked.
 
 ## 3. Add production environment variables
 
