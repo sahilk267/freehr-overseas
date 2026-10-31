@@ -535,12 +535,12 @@ export function ControlPlanePage() {
         <div className="mt-4 space-y-2">{policies.length === 0 ? <p className="text-xs text-slate-500">No policy version saved yet. Create a controlled baseline before leaving safe mode.</p> : policies.slice(0, 5).map(policy => {
           const ruleCount = Array.isArray((policy.content as any)?.autoApprovalRules) ? (policy.content as any).autoApprovalRules.length : 0;
           return <div key={policy.id} className="rounded-xl bg-[#f7f5f0] px-3 py-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-[#10213d]">v{policy.version} · {policy.name}</span>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="break-words text-xs font-medium text-[#10213d]">v{policy.version} · {policy.name}</span>
                 {ruleCount > 0 && <span className="rounded bg-[#e0ecff] px-1.5 py-0.5 text-[10px] font-medium text-[#1c3d73]">{ruleCount} auto-rule{ruleCount === 1 ? "" : "s"}</span>}
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <StateBadge value={policy.status} />
                 <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setInspectedPolicyId(inspectedPolicyId === policy.id ? null : policy.id)}>{inspectedPolicyId === policy.id ? "Hide rules" : "View rules"}</Button>
                 {policy.status !== "active" && <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => activatePolicy.mutate({ id: policy.id })}>Activate</Button>}
