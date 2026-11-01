@@ -1,0 +1,10 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { resolveMailboxIds } from './resolve-hostinger-mailboxes.mjs';
+const purposes=['owner','clients','talent','interviews','finance','privacy'];
+const values=Object.fromEntries(purposes.map(p=>[p.toUpperCase()+'_MAILBOX',p+'@overseasjob.in']));
+const mailboxes=purposes.map(p=>({address:p+'@overseasjob.in',resourceId:'synthetic-'+p}));
+test('matches exact addresses independent of provider order',()=>assert.equal(resolveMailboxIds(values,[...mailboxes].reverse()).HOSTINGER_MAILBOX_OWNER_ID,'synthetic-owner'));
+test('rejects missing and ambiguous provider mailboxes',()=>{assert.throws(()=>resolveMailboxIds(values,mailboxes.slice(1)));assert.throws(()=>resolveMailboxIds(values,[...mailboxes,mailboxes[0]]));});
+test('preserves real IDs and refuses conflicting replacements',()=>{assert.equal(resolveMailboxIds({...values,HOSTINGER_MAILBOX_OWNER_ID:'synthetic-owner'},mailboxes).HOSTINGER_MAILBOX_OWNER_ID,'synthetic-owner');assert.throws(()=>resolveMailboxIds({...values,HOSTINGER_MAILBOX_OWNER_ID:'other'},mailboxes));});
+test('rejects malformed provider IDs and foreign configured addresses',()=>{assert.throws(()=>resolveMailboxIds(values,[{...mailboxes[0],resourceId:'bad\nvalue'},...mailboxes.slice(1)]));assert.throws(()=>resolveMailboxIds({...values,OWNER_MAILBOX:'owner@foreign.test'},mailboxes));});

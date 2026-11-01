@@ -26,7 +26,8 @@
     "test:hostinger-env": "node --test scripts/prepare-hostinger-env.test.mjs",
     "seed:demo": "node scripts/seed-demo.mjs",
     "worker": "tsx server/worker.ts",
-    "start:worker": "node dist/worker.js"
+    "start:worker": "node dist/worker.js",
+    "env:mailboxes": "node scripts/resolve-hostinger-mailboxes.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.750.0",

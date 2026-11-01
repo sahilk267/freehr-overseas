@@ -232,3 +232,13 @@ The W0, W1, W2 and W3 increments remain partial implementations of their advance
 2. Add lifecycle event adapters to M06 with domain evidence/stop conditions, rather than interpreting scenario labels as complete modules.
 3. Deliver the first complete owner/client/candidate recruitment journey across intake, permission, screening, submission, interview, offer, joining and actual invoice collection.
 4. Expand advanced packages only when their complete acceptance gates are demonstrated; keep the registry/backlog synchronized.
+
+## Mail configuration follow-up — 1 November 2026
+
+The private, ignored `.env.hostinger` now contains an explicit `REPLACE_WITH_REAL_HOSTINGER_MAIL_API_TOKEN` entry for the owner to replace. Public templates show the same nonsecret marker. Real credentials belong only in the private file or hosting secret settings. Saved mailbox addresses remain intact; all six parsed resource-ID fields were empty, so no IDs were guessed from email addresses.
+
+`npm run env:mailboxes` reads the real token from that private file and retrieves the token's authorized mailboxes through the official SDK. It matches each configured address exactly, requires all six unique mappings, preserves matching existing IDs and refuses conflicts, missing/ambiguous mailboxes or changed files. A lock and atomic private-file replacement protect the update; other secrets remain intact. It neither sends email nor imports/replaces the live hosting environment. The dummy-token dry run refused lookup without changing the file; actual provider lookup awaits the owner's real token.
+
+Mail readiness and dispatch now reject template token/resource-ID values. Sender activation/verification checks that the token authorizes the exact configured resource ID and sender address; a successful account-level connection alone cannot activate another mailbox. Four offline mailbox-mapping tests cover order-independent matching, missing/ambiguous mappings, conflicting saved IDs and malformed/foreign values. Two additional mail regressions cover dummy credentials and exact mailbox verification. Broader W4/agency limitations remain as recorded above.
+
+Validation for this follow-up: 421 Vitest passes, 16 skips, four standalone mapping tests passed, TypeScript and production build passed. No live Mail API request or hosting environment replacement was made with the placeholder.

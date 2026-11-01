@@ -12,6 +12,12 @@ import {
 export const EMAIL_PURPOSES = ["owner", "clients", "talent", "interviews", "finance", "privacy"] as const;
 export type EmailPurpose = (typeof EMAIL_PURPOSES)[number];
 
+// Public template values must never count as credentials or reach the provider.
+function configuredValue(value?: string) {
+  const trimmed = value?.trim();
+  return trimmed && !/^(?:replace[_ -]|your[_ -]|dummy(?:[_ -]|$)|<)/i.test(trimmed) ? trimmed : undefined;
+}
+
 const approvedDomain = (process.env.HOSTINGER_MAIL_FROM_DOMAIN || "overseasjob.in").trim().toLowerCase();
 export const CANONICAL_MAILBOX_ENV_KEYS: Record<EmailPurpose, string> = {
   owner: "OWNER_MAILBOX",
@@ -51,7 +57,7 @@ export function getSenderAddress(purpose: EmailPurpose) {
 }
 
 export function isSenderPurposeConfigured(purpose: EmailPurpose) {
-  return Boolean(process.env.HOSTINGER_MAIL_API_TOKEN?.trim() && process.env[mailboxResourceEnvKey[purpose]]?.trim());
+  return Boolean(configuredValue(process.env.HOSTINGER_MAIL_API_TOKEN) && configuredValue(process.env[mailboxResourceEnvKey[purpose]]));
 }
 
 export function isSenderIdentityConfigured(identity: { purpose: EmailPurpose; email: string }) {
@@ -74,26 +80,32 @@ export function chooseThreadReference(input: { inReplyTo?: string; references: s
 }
 
 export function getHostingerMailApiStatus() {
-  const token = process.env.HOSTINGER_MAIL_API_TOKEN?.trim();
+  const token = configuredValue(process.env.HOSTINGER_MAIL_API_TOKEN);
   return {
     configured: Boolean(token),
     tokenConfigured: Boolean(token),
     webhookSecretConfigured: Boolean(process.env.HOSTINGER_MAIL_WEBHOOK_SECRET?.trim()),
-    configuredMailboxCount: Object.values(mailboxResourceEnvKey).filter(key => Boolean(process.env[key]?.trim())).length,
+    configuredMailboxCount: Object.values(mailboxResourceEnvKey).filter(key => Boolean(configuredValue(process.env[key]))).length,
     configuredSenderAddressCount: EMAIL_PURPOSES.filter(purpose => isApprovedSenderAddress(getSenderAddress(purpose))).length,
   };
 }
 
 function getClient() {
-  const token = process.env.HOSTINGER_MAIL_API_TOKEN?.trim();
+  const token = configuredValue(process.env.HOSTINGER_MAIL_API_TOKEN);
   if (!token) throw new Error("Hostinger Mail API token is not configured.");
   return new Configuration({ accessToken: token });
 }
 
-export async function verifyHostingerMailApi() {
+export async function verifyHostingerMailApi(identity?: { purpose: EmailPurpose; email: string }) {
   if (!getHostingerMailApiStatus().configured) return { ok: false, status: "credentials_missing" as const };
+  if (identity && !isSenderIdentityConfigured(identity)) return { ok: false, status: "mailbox_configuration_missing" as const };
   try {
-    await new AccountApi(getClient()).getCurrentAccount();
+    const account = await new AccountApi(getClient()).getCurrentAccount();
+    if (identity) {
+      const id = configuredValue(process.env[mailboxResourceEnvKey[identity.purpose]]);
+      const matching = account.data?.data?.mailboxes?.filter(mailbox => mailbox.resourceId === id && mailbox.address.trim().toLowerCase() === identity.email.trim().toLowerCase());
+      if (matching?.length !== 1) return { ok: false, status: "mailbox_not_authorized" as const };
+    }
     return { ok: true, status: "verified" as const };
   } catch {
     return { ok: false, status: "connection_failed" as const };
@@ -241,7 +253,7 @@ export async function sendViaHostingerMailApi(
   if (!isApprovedSenderAddress(senderAddress)) {
     throw new Error("Selected sender is not in the approved domain allowlist.");
   }
-  const mailboxResourceId = process.env[mailboxResourceEnvKey[input.purpose]]?.trim();
+  const mailboxResourceId = configuredValue(process.env[mailboxResourceEnvKey[input.purpose]]);
   if (!mailboxResourceId) {
     throw new Error(`Hostinger mailbox resource ID is not configured for ${input.purpose}.`);
   }

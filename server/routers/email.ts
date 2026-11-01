@@ -29,6 +29,7 @@ export const emailRouter = router({
       const db = await requireDb(); const identity = (await db.select().from(emailIdentities).where(and(eq(emailIdentities.id, input.id), eq(emailIdentities.ownerId, ctx.user.id))).limit(1))[0];
       if (!identity) throw new TRPCError({ code: "NOT_FOUND", message: "Email identity was not found." });
       if (input.status === "active" && !getHostingerMailApiStatus().configured) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Add Hostinger Mail API credentials before activating a sender." });
+      if (input.status === "active" && !(await verifyHostingerMailApi(identity)).ok) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Verify this sender's actual mailbox resource ID and address before activation." });
       await db.update(emailIdentities).set({ status: input.status, lastHealthCheckAt: new Date(), lastHealthStatus: input.status === "active" ? "api_configured" : "disabled" }).where(eq(emailIdentities.id, identity.id));
       await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "email.identity_status_changed", resourceType: "email_identity", resourceId: identity.id, previousState: identity.status, nextState: input.status });
       return { success: true };
@@ -36,7 +37,7 @@ export const emailRouter = router({
     verify: protectedProcedure.input(z.object({ id: z.string().min(4) })).mutation(async ({ ctx, input }) => {
       const db = await requireDb(); const identity = (await db.select().from(emailIdentities).where(and(eq(emailIdentities.id, input.id), eq(emailIdentities.ownerId, ctx.user.id))).limit(1))[0];
       if (!identity) throw new TRPCError({ code: "NOT_FOUND", message: "Email identity was not found." });
-      const result = await verifyHostingerMailApi();
+      const result = await verifyHostingerMailApi(identity);
       await db.update(emailIdentities).set({ lastHealthCheckAt: new Date(), lastHealthStatus: result.status, status: result.ok ? "active" : "unverified" }).where(eq(emailIdentities.id, identity.id));
       await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "email.hostinger_api_verified", resourceType: "email_identity", resourceId: identity.id, previousState: identity.status, nextState: result.ok ? "active" : "unverified", metadata: { result: result.status } });
       return result;
