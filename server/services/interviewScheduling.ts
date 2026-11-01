@@ -1,3 +1,4 @@
+import { enqueueCalendarSync } from "./calendarAutomation";
 import { isValidTimezone } from "../../shared/dateTime";
 import { appendWorkflowEvent, workflowHash } from "./workflowStore";
 import { and, desc, eq, gt, inArray } from "drizzle-orm";
@@ -67,6 +68,7 @@ async function scheduleInterviewInTransaction(tx: any, ownerId: number, actorId:
     const id = createId("int_");
     await tx.insert(interviews).values({ ...definition, scheduledAt, id, ownerId, status: "scheduled", meetingUrl: input.meetingUrl ?? null, calendarProvider: "ics", calendarEventId: createInterviewEventUid(id), calendarStatus: "tentative", calendarSequence: 0, reminderAt: new Date(scheduledAt.getTime() - 86400000) });
     await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "interview.scheduled", resourceType: "interview", resourceId: id, nextState: "scheduled" }, tx);
+    await enqueueCalendarSync(tx, ownerId, id);
     await remember(id);
     return { id, alreadyExists: false };
 }
@@ -82,6 +84,7 @@ export async function rescheduleInterview(ownerId: number, actorId: number, inpu
     await stopRelatedFollowUps(tx, ownerId, { resourceType: "interview", resourceId: row.id }, "Interview rescheduled; old reminders are invalid.");
     await tx.update(interviews).set({ status: "scheduled", scheduledAt, timezone: input.timezone, durationMinutes: input.durationMinutes, meetingUrl, calendarSequence: row.calendarSequence + 1, calendarStatus: "tentative", rescheduleCount: row.rescheduleCount + 1, reminderAt: new Date(scheduledAt.getTime() - 86400000), reminderSentAt: null }).where(eq(interviews.id, row.id));
     await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "interview.rescheduled", resourceType: "interview", resourceId: row.id, previousState: row.status, nextState: "scheduled", metadata: { calendarSequence: row.calendarSequence + 1 } }, tx);
+    await enqueueCalendarSync(tx, ownerId, row.id);
     return { success: true, alreadyCurrent: false, calendarSequence: row.calendarSequence + 1 };
   });
   return result;
@@ -100,6 +103,7 @@ export async function changeInterviewState(ownerId: number, actorId: number, id:
     if (ended) await stopRelatedFollowUps(tx, ownerId, { resourceType: "interview", resourceId: id }, `Interview state changed to ${state}.`, state === "completed" ? "completed" : "cancelled");
     await tx.update(interviews).set({ status: state, completedAt: state === "completed" ? new Date() : row.completedAt, ...(ended ? { reminderAt: null } : {}), calendarStatus: state === "confirmed" ? "confirmed" : state === "cancelled" ? "cancelled" : row.calendarStatus, calendarSequence: row.calendarSequence + (state === "cancelled" ? 1 : 0) }).where(eq(interviews.id, id));
     await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: state === "cancelled" ? "interview.cancelled" : "interview.state_changed", resourceType: "interview", resourceId: id, previousState: row.status, nextState: state }, tx);
+    await enqueueCalendarSync(tx, ownerId, row.id);
     return { success: true, alreadyCurrent: false };
   });
   return result;
@@ -114,6 +118,7 @@ export async function configureInterviewReminder(ownerId: number, actorId: numbe
     await stopRelatedFollowUps(tx, ownerId, { resourceType: "interview", resourceId: id }, "Interview reminder configuration changed.");
     await tx.update(interviews).set({ reminderAt: next, reminderSentAt: null, calendarSequence: row.calendarSequence + 1 }).where(eq(interviews.id, id));
     await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "interview.reminder_configured", resourceType: "interview", resourceId: id, metadata: { reminderAt: next?.toISOString() ?? null, calendarSequence: row.calendarSequence + 1 } }, tx);
+    await enqueueCalendarSync(tx, ownerId, row.id);
     return { success: true, alreadyCurrent: false };
   });
 }

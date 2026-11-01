@@ -936,8 +936,8 @@
           "id": "M18-F02",
           "description": "Google/Microsoft free-busy/event sync, meeting creation, ICS fallback, scoped subscription tokens and revocation.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-01-google-calendar.md",
-          "implementation_note": "Owner-only Google OAuth, private free/busy and reviewed deterministic event mirroring implemented; live Google authorization requires owner OAuth credentials and consent. Background/bidirectional sync, Microsoft, Meet, invitations/RSVP and target reconciliation remain pending."
+          "evidence_ref": "qa/2026-11-02-calendar-automation.md",
+          "implementation_note": "Optional prospective Google event automation now uses canonical scheduling transactions and the shared durable queue/managed worker, with pause/revision fencing, bounded retries, deterministic IDs and external ETag protection. Two-sided negotiation, RSVP/bidirectional ingestion, Microsoft/Meet and conflict-resolution UI remain pending."
         },
         {
           "id": "M18-F03",

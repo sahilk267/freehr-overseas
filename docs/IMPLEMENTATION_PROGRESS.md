@@ -312,3 +312,7 @@ Create request identities now persist in the shared workflow ledger, so an old r
 ## W5 internal slot holds — 2 November 2026
 
 [Scope and validation](qa/2026-11-02-interview-slot-holds.md): owner-managed expiring candidate holds share the workspace lock and canonical interview scheduler. Direct booking/reschedule/reactivation respect active holds; hold booking creates the interview and consumes the hold atomically. Retries preserve expiry and cannot recreate cancelled bookings. No new reminder engine, provider writes or external invitations are introduced. Migration 0020 adds only hold storage. M18 remains partial; participant negotiation, provider synchronization and stale-client edit control are still pending. Google OAuth fields are now configured live; account consent remains pending.
+
+## W5 prospective Google automation — 2 November 2026
+
+[Scope and verification](qa/2026-11-02-calendar-automation.md): future saved interview changes can mirror through the existing queue and managed worker under an owner-controlled, versioned policy. No backfill or invitations; calendar/reconnect changes require re-enabling. Stale tasks cancel and provider failures retry within a bounded budget; external edits remain protected. No new schema or external scheduler is introduced. The M18 advanced module remains partial.

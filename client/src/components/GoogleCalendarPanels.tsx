@@ -23,7 +23,8 @@ export function GoogleCalendarConnectionPanel() {
       {data.lastErrorCode && <p role="alert" className="text-sm">Last calendar error: {data.lastErrorCode.replaceAll("_", " ")}</p>}
       <div className="flex flex-wrap gap-3"><Button disabled={!data.configured || begin.isPending} onClick={() => begin.mutate()}>{data.connected ? "Reconnect Google Calendar" : "Connect Google Calendar"}</Button>{data.revision > 0 && <Button variant="outline" disabled={disconnect.isPending} onClick={() => { if (window.confirm("Disconnect calendar permission? Existing Google events will remain.")) disconnect.mutate(); }}>Disconnect calendar</Button>}</div>
       {data.connected && <form onSubmit={e => { e.preventDefault(); save.mutate({ calendarId: calendarId || data.calendarId, expectedRevision: data.revision }); }} className="space-y-2"><label className="block text-sm">Calendar ID<input required maxLength={320} value={calendarId || data.calendarId} onChange={e => setCalendarId(e.target.value)} className={field} /></label><Button type="submit" variant="outline" disabled={save.isPending}>Save calendar target</Button><p className="text-xs text-slate-500">Use primary or the calendar ID from Google Calendar settings. Changing the target leaves previous event copies in their original calendar.</p></form>}
-      <p className="text-xs text-slate-500">Access and refresh credentials are encrypted on the server. Session-secret rotation requires reconnection. Event sync is reviewed per interview and sends no guest invitations.</p>
+      <CalendarAutomationPanel />
+      <p className="text-xs text-slate-500">Access and refresh credentials are encrypted on the server. Session-secret rotation requires reconnection. Manual event sync is reviewed per interview. Optional automatic sync sends no guest invitations.</p>
     </>}
   </section>;
 }
@@ -52,4 +53,18 @@ export function GoogleCalendarInterviewPanel() {
     {sync.error && <p role="alert" className="break-words text-sm text-red-700">{sync.error.message}</p>}
     {error && <p role="alert" className="break-words text-sm text-red-700">{error}</p>}
   </section>;
+}
+
+function CalendarAutomationPanel() {
+  const utils=trpc.useUtils(),status=trpc.googleCalendar.automationStatus.useQuery(undefined,{refetchInterval:15000});
+  const save=trpc.googleCalendar.configureAutomation.useMutation({onSuccess:()=>utils.googleCalendar.automationStatus.invalidate()});
+  const data=status.data;
+  return <div className="space-y-2 rounded-lg border p-3"><h3 className="font-semibold">Automatic Google event sync</h3><p className="text-sm">When enabled, future saved interview changes create, update or cancel a Google event through the managed worker. Existing records are not backfilled. Generic interview reference, time and meeting URL are shared; no attendees or invitations are sent. Google edits block sync for review.</p>
+    {data && <><p role="status" className="text-sm">{data.enabled ? "Automatic sync enabled" : "Automatic sync paused"}{data.needsReenable ? " — reconnect or calendar changes require enabling again" : ""}</p>
+      {!data.workerEnabled && <p className="text-sm">Enable the managed background worker before enabling calendar automation.</p>}
+      {data.emergencyStop && <p className="text-sm">Emergency stop is active; provider writes are stopped.</p>}
+      <Button variant="outline" disabled={save.isPending || (!data.enabled && (!data.workerEnabled || data.emergencyStop))} onClick={()=>{if(data.enabled || window.confirm("Enable Google event sync for future saved interview changes? Existing records are not backfilled. No invitations will be sent."))save.mutate({enabled:!data.enabled,expectedRevision:data.revision});}}>{data.enabled ? "Pause automatic calendar sync" : "Enable automatic calendar sync"}</Button>
+      <div className="space-y-1 text-xs">{data.jobs.slice(0,10).map(job=><p className="break-words" key={job.id}>Task …{job.id.slice(-6)} · {job.outcome ?? job.status} · Attempts {job.attempts}{job.lastError ? ` · ${job.lastError}` : ""}</p>)}</div></>}
+    {[status.error,save.error].filter(Boolean).map((error,i)=><p key={i} role="alert" className="break-words text-sm text-red-700">{error?.message}</p>)}
+  </div>;
 }

@@ -1,3 +1,5 @@
+import { TRPCError } from "@trpc/server";
+import { executeCalendarSync } from "./calendarAutomation";
 import { evaluateInvoiceCollection } from "./invoiceCollections";
 import { processDueCampaigns } from "./campaigns";
 import { blockFollowUpFailure } from "./followupEvents";
@@ -18,7 +20,7 @@ import { readPrivateDocument } from "./privateStorage";
 export class NonRetryableJobError extends Error {}
 export class RetryableJobError extends Error {}
 
-const DETERMINISTIC_JOB_TYPES = new Set(["scan_document", "execute_policy_decision", "follow_up", "deliver_email", "send_reminder", "invoice_collection_source"]);
+const DETERMINISTIC_JOB_TYPES = new Set(["google_calendar_sync", "scan_document", "execute_policy_decision", "follow_up", "deliver_email", "send_reminder", "invoice_collection_source"]);
 const AI_JOB_TYPES = new Set<AiTaskType>(["classify_reply", "draft_outreach", "parse_cv", "score_match", "send_reminder", "reconcile_invoice"]);
 const calculateBackoff = (attempts: number) => Math.min(60 * 60 * 1000, 30_000 * 2 ** Math.max(0, attempts - 1));
 export const withinDailyAiBudget = (used: number, limit: number) => used < limit;
@@ -309,7 +311,7 @@ export async function processOneQueuedJob(ownerId: number) {
     .where(and(eq(automationQueue.ownerId, ownerId), inArray(automationQueue.status, ["queued", "retryable_failed"]), lte(automationQueue.scheduledAt, now)))
     .orderBy(asc(automationQueue.priority), asc(automationQueue.scheduledAt))
     .limit(25);
-  let job = readyJobs[0];
+  let job = readyJobs.find(task => workspace?.backgroundEnabled || task.jobType !== "google_calendar_sync");
   if (!job) return { status: "empty" as const };
 
   // AI daily budget applies only to AI inference job types, not deterministic security scans or policy executions
@@ -324,9 +326,25 @@ export async function processOneQueuedJob(ownerId: number) {
   }
   job = { ...job, attempts: job.attempts ?? 0, maxAttempts: job.maxAttempts ?? 3 };
 
+  if (job.jobType === "google_calendar_sync" && !workspace?.backgroundEnabled) return { status: "skipped" as const, reason: "Managed worker is paused; calendar task remains queued." };
   const lockToken = createId("lock_");
   const claimed = await db.update(automationQueue).set({ status: "running", lockToken, lockedAt: now, attempts: job.attempts + 1 }).where(and(eq(automationQueue.id, job.id), inArray(automationQueue.status, ["queued", "retryable_failed"])));
   if (!claimed[0]?.affectedRows) return { status: "contended" as const };
+
+  if (job.jobType === "google_calendar_sync") {
+    try {
+      const result = await executeCalendarSync(ownerId,job.payload);
+      await db.update(automationQueue).set({status:"completed",result,completedAt:new Date(),lockToken:null,lockedAt:null,lastError:null}).where(and(eq(automationQueue.id,job.id),eq(automationQueue.lockToken,lockToken)));
+      return {status:"completed" as const,jobId:job.id};
+    } catch(error) {
+      const code = error instanceof TRPCError ? error.code : "BAD_GATEWAY";
+      const reason = error instanceof TRPCError ? error.message : "Google Calendar request failed.";
+      const retry = (["BAD_GATEWAY","TOO_MANY_REQUESTS"].includes(code) || reason.includes("request in progress")) && job.attempts+1<job.maxAttempts;
+      const status = retry ? "retryable_failed" : "blocked";
+      await db.update(automationQueue).set({status,lastError:reason.slice(0,500),scheduledAt:new Date(Date.now()+calculateBackoff(job.attempts+1)),lockToken:null,lockedAt:null}).where(and(eq(automationQueue.id,job.id),eq(automationQueue.lockToken,lockToken)));
+      return {status,jobId:job.id,reason};
+    }
+  }
 
   if (["follow_up", "deliver_email", "send_reminder", "invoice_collection_source"].includes(job.jobType)) {
     try {
