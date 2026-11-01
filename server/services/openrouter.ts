@@ -158,6 +158,7 @@ export async function runOpenRouterTask<T extends AiTaskType>(input: {
             model: modelCandidate,
             temperature: 0.1,
             response_format: { type: "json_object" },
+            reasoning: { enabled: false },
             max_tokens: input.maxOutputTokens ?? 1200,
             messages: [
               { role: "system", content: `${systemPrompts[input.taskType]}\nRequired JSON schema: ${JSON.stringify(z.toJSONSchema(taskSchemas[input.taskType]))}` },
@@ -177,9 +178,12 @@ export async function runOpenRouterTask<T extends AiTaskType>(input: {
         if (!response.ok) {
           throw new OpenRouterValidationError(`OpenRouter returned HTTP ${response.status}.`);
         }
-        const payload = await response.json() as { model?: string; choices?: Array<{ message?: { content?: string } }> };
+        const payload = await response.json() as { model?: string; choices?: Array<{ finish_reason?: string; message?: { content?: string } }> };
         const content = payload.choices?.[0]?.message?.content;
-        if (!content) throw new OpenRouterValidationError("OpenRouter returned no assistant content.");
+        if (!content) {
+          const reason = payload.choices?.[0]?.finish_reason;
+          throw new OpenRouterValidationError(`OpenRouter returned no assistant content (finish: ${reason && /^[a-z_]{1,40}$/.test(reason) ? reason : "unknown"}).`);
+        }
         return { result: parseStructuredAiResult(input.taskType, content), selectedModel: payload.model ?? modelCandidate, latencyMs: Date.now() - startedAt };
       } catch (error) {
         if (error instanceof OpenRouterConfigurationError || error instanceof OpenRouterRateLimitError) {

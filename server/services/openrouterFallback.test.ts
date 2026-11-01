@@ -15,6 +15,10 @@ describe("bounded free model and credential failover",()=>{
   const f=vi.spyOn(globalThis,'fetch').mockResolvedValueOnce(new Response('',{status:503})).mockResolvedValueOnce(success());await runOpenRouterTask(task);
   expect(JSON.parse(f.mock.calls[1][1]!.body as string).model).toBe('nvidia/nemotron-3.5-super-vl:free');expect((f.mock.calls[1][1]!.headers as any).Authorization).toBe('Bearer synthetic-primary');
  });
+ it("rejects empty assistant output and requests structured output without reasoning on fallback",async()=>{
+  const f=vi.spyOn(globalThis,'fetch').mockResolvedValueOnce(new Response(JSON.stringify({choices:[{finish_reason:'length',message:{content:null}}]}),{status:200})).mockResolvedValueOnce(success());
+  expect((await runOpenRouterTask(task)).result).toEqual(output);expect(f).toHaveBeenCalledTimes(2);expect(JSON.parse(f.mock.calls[0][1]!.body as string).reasoning).toEqual({enabled:false});
+ });
  it("does not rotate keys or models to evade a rate limit",async()=>{
   const f=vi.spyOn(globalThis,'fetch').mockResolvedValue(new Response('',{status:429}));await expect(runOpenRouterTask(task)).rejects.toBeInstanceOf(OpenRouterRateLimitError);expect(f).toHaveBeenCalledTimes(1);
  });
