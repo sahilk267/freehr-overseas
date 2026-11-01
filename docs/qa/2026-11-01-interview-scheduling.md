@@ -1,0 +1,15 @@
+# Recorded interview scheduling controls — 1 November 2026
+
+This increment hardens recorded candidate scheduling. It does not establish external calendar availability, participant acceptance or complete the advanced M18 module.
+
+- The canonical scheduling service serializes creation, rescheduling, state/cancellation and reminder edits through the existing workspace transaction. Audit writes can use that same transaction. Candidate/company/job ownership and the actual company/job relationship are checked; withdrawn/erased/DNC candidates cannot receive new schedules.
+- An exact duplicate create returns the existing appointment. Overlapping reserved interviews for the same owned candidate are rejected across jobs. Intervals are half-open, so adjacent slots are allowed. Existing legacy duplicates are held rather than merged. The check uses recorded candidate interviews, not inferred owner, room or interviewer availability.
+- Reschedule failure preserves the old schedule, calendar version, reminder and follow-up authority. A successful change increments the sequence and invalidates old central follow-ups in the same transaction. An identical reschedule retry leaves the version unchanged; omitted meeting URLs are preserved, explicit null clears them.
+- Cancellation through either route and completion-related state changes invalidate obsolete reminders. Concurrent cancellation/reschedule cannot lose calendar sequence updates. Reminder edits increment the source/calendar sequence and revoke previous authority. Dispatch independently stops legacy FU18 plans if reminders were disabled without a version change.
+- The Interviews page can preview a proposed candidate slot. Input changes clear stale preview results; scheduling rechecks under lock. Preview is not a reservation or participant confirmation. Read-only access uses the same workspace role registry.
+
+No schema migration, parallel queue, timer or mail gateway was introduced. Three M18 feature records remain partially implemented; JSON/CSV status tracking is synchronized. Outstanding work includes two-sided availability, external free/busy/calendar events, interviewer/room resources, buffers/holds, stale-client revision checks, meeting provisioning and RSVP reconciliation. Runtime/restore and load guarantees are not established by these checks.
+
+Local validation: 447 tests passed, 19 skipped; 161 real-MySQL regressions passed across ten files, including simultaneous overlaps, duplicate creates and cancellation/reschedule races. TypeScript, production build and four Hostinger entry smokes passed. Counts overlap and are not unique feature totals. SQL/provider-dependent skips are not silently counted as passes.
+
+Detailed local logs: `/workspace/freehr-wave4-validation/interview-mysql.log` and `/tmp/interview-*`. Provider calls in regression fixtures are mocked. Real appointment/mail/calendar outcomes are not inferred from them. Live observations are appended after deployment. The latest independent credential check verified both primary and backup OpenRouter keys; the older rejected-backup checkpoint is historical.

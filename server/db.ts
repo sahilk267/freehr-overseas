@@ -132,8 +132,8 @@ export async function recordAudit(input: {
   previousState?: string | null;
   nextState?: string | null;
   metadata?: Record<string, unknown>;
-}) {
-  const db = await requireDb();
+}, executor?: { insert: (table: any) => any }) {
+  const db = executor ?? await requireDb();
   const id = createId("aud_");
   const requestActor = getAuditActor();
   const actorId = input.actorType === "user" && requestActor ? String(requestActor.userId) : input.actorId ?? null;

@@ -1,3 +1,4 @@
+import { configureInterviewReminder, changeInterviewState, previewInterviewSlot, rescheduleInterview, scheduleInterview } from "../services/interviewScheduling";
 import { withWorkspaceTransaction } from "../services/database";
 import { configureBackgroundWorker } from "../services/backgroundWorker";
 import { intakeCandidateInTransaction, intakeProspectInTransaction, intakeContactInTransaction } from "../services/canonicalIntake";
@@ -782,23 +783,10 @@ export const interviewsRouter = router({
     const db = await requireDb();
     return db.select().from(interviews).where(eq(interviews.ownerId, ctx.user.id)).orderBy(desc(interviews.scheduledAt)).limit(input.limit);
   }),
+  checkSlot: protectedProcedure.input(z.object({ candidateId: z.string().min(4), scheduledAt: z.date(), durationMinutes: z.number().int().min(15).max(240), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone), excludeInterviewId: z.string().min(4).optional() })).query(({ ctx, input }) => previewInterviewSlot(ctx.user.id, input)),
   enableReminderSchedule: protectedProcedure.mutation(({ ctx }) => configureBackgroundWorker(ctx.user.id, ctx.actor.id, true)),
-  create: protectedProcedure.input(z.object({ companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone.").default("Asia/Kolkata"), durationMinutes: z.number().int().min(15).max(240).default(45), meetingUrl: z.string().url().optional() })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
-    await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
-    const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
-    const company = await requireOwned(companyRows[0], ctx.user.id, "Client");
-    const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
-    const job = await requireOwned(jobRows[0], ctx.user.id, "Job");
-    if (job.companyId !== company.id) {
-      throw new TRPCError({ code: "BAD_REQUEST", message: "The specified job does not belong to the specified client." });
-    }
-    const id = createId("int_");
-    await db.insert(interviews).values({ id, ownerId: ctx.user.id, companyId: input.companyId, candidateId: input.candidateId, jobId: input.jobId, status: "scheduled", scheduledAt: input.scheduledAt, timezone: input.timezone, durationMinutes: input.durationMinutes, meetingUrl: input.meetingUrl ?? null, calendarProvider: "ics", calendarEventId: createInterviewEventUid(id), calendarStatus: "tentative", calendarSequence: 0, reminderAt: new Date(input.scheduledAt.getTime() - 24 * 60 * 60 * 1000) });
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.scheduled", resourceType: "interview", resourceId: id, nextState: "scheduled" });
-    return { id };
-  }),
+  create: protectedProcedure.input(z.object({ companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone.").default("Asia/Kolkata"), durationMinutes: z.number().int().min(15).max(240).default(45), meetingUrl: z.string().url().optional() })).mutation(({ ctx, input }) => scheduleInterview(ctx.user.id, ctx.actor.id, input)),
+
   exportIcs: protectedProcedure.input(idInput).query(async ({ ctx, input }) => {
     const db = await requireDb();
     const interview = await requireOwned((await db.select().from(interviews).where(eq(interviews.id, input.id)).limit(1))[0], ctx.user.id, "Interview");
@@ -806,41 +794,12 @@ export const interviewsRouter = router({
     const content = createInterviewIcs({ uid: interview.calendarEventId ?? createInterviewEventUid(interview.id), sequence: interview.calendarSequence, start: interview.scheduledAt, end: new Date(interview.scheduledAt.getTime() + interview.durationMinutes * 60_000), summary: `FreelanceHR interview ${interview.id.slice(-6)}`, description: `Interview status: ${interview.status}. Timezone: ${interview.timezone}.`, location: interview.meetingUrl, status: interview.calendarStatus === "cancelled" ? "CANCELLED" : interview.calendarStatus === "confirmed" ? "CONFIRMED" : "TENTATIVE" });
     return { content, filename: `freelancehr-interview-${interview.id}.ics`, calendarStatus: interview.calendarStatus, sequence: interview.calendarSequence };
   }),
-  setReminder: protectedProcedure.input(z.object({ id: z.string().min(4), reminderAt: z.date().nullable() })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const interview = await requireOwned((await db.select().from(interviews).where(eq(interviews.id, input.id)).limit(1))[0], ctx.user.id, "Interview");
-    if (interview.calendarStatus === "cancelled") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Cancelled interviews cannot receive reminders." });
-    await db.update(interviews).set({ reminderAt: input.reminderAt, reminderSentAt: null }).where(eq(interviews.id, interview.id));
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.reminder_configured", resourceType: "interview", resourceId: interview.id, metadata: { reminderAt: input.reminderAt?.toISOString() ?? null } });
-    return { success: true };
-  }),
-  reschedule: protectedProcedure.input(z.object({ id: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone."), durationMinutes: z.number().int().min(15).max(240), meetingUrl: z.string().url().nullable().optional() })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const interview = await requireOwned((await db.select().from(interviews).where(eq(interviews.id, input.id)).limit(1))[0], ctx.user.id, "Interview");
-    assertTransition("interview", interview.status, "reschedule_requested");
-    await db.update(interviews).set({ status: "scheduled", scheduledAt: input.scheduledAt, timezone: input.timezone, durationMinutes: input.durationMinutes, meetingUrl: input.meetingUrl ?? null, calendarSequence: interview.calendarSequence + 1, calendarStatus: "tentative", rescheduleCount: interview.rescheduleCount + 1, reminderAt: new Date(input.scheduledAt.getTime() - 24 * 60 * 60 * 1000), reminderSentAt: null }).where(eq(interviews.id, interview.id));
-    await stopOwnerFollowUps(ctx.user.id, { resourceType: "interview", resourceId: interview.id }, "cancelled", "Interview rescheduled; old reminders are invalid.");
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.rescheduled", resourceType: "interview", resourceId: interview.id, previousState: interview.status, nextState: "scheduled", metadata: { calendarSequence: interview.calendarSequence + 1 } });
-    return { success: true };
-  }),
-  cancel: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const interview = await requireOwned((await db.select().from(interviews).where(eq(interviews.id, input.id)).limit(1))[0], ctx.user.id, "Interview");
-    assertTransition("interview", interview.status, "cancelled");
-    await db.update(interviews).set({ status: "cancelled", calendarStatus: "cancelled", calendarSequence: interview.calendarSequence + 1, reminderAt: null }).where(eq(interviews.id, interview.id));
-    await stopOwnerFollowUps(ctx.user.id, { resourceType: "interview", resourceId: interview.id }, "cancelled", "Interview cancelled.");
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.cancelled", resourceType: "interview", resourceId: interview.id, previousState: interview.status, nextState: "cancelled", metadata: { calendarSequence: interview.calendarSequence + 1 } });
-    return { success: true };
-  }),
-  transition: protectedProcedure.input(z.object({ id: z.string().min(4), state: z.string().min(2).max(48) })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const rows = await db.select().from(interviews).where(eq(interviews.id, input.id)).limit(1);
-    const interview = await requireOwned(rows[0], ctx.user.id, "Interview");
-    assertTransition("interview", interview.status, input.state);
-    await db.update(interviews).set({ status: input.state, completedAt: input.state === "completed" ? new Date() : interview.completedAt, calendarStatus: input.state === "confirmed" ? "confirmed" : input.state === "cancelled" ? "cancelled" : interview.calendarStatus }).where(eq(interviews.id, input.id));
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.state_changed", resourceType: "interview", resourceId: input.id, previousState: interview.status, nextState: input.state });
-    return { success: true };
-  }),
+  setReminder: protectedProcedure.input(z.object({ id: z.string().min(4), reminderAt: z.date().nullable() })).mutation(({ ctx, input }) => configureInterviewReminder(ctx.user.id, ctx.actor.id, input.id, input.reminderAt)),
+
+  reschedule: protectedProcedure.input(z.object({ id: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone."), durationMinutes: z.number().int().min(15).max(240), meetingUrl: z.string().url().nullable().optional() })).mutation(({ ctx, input }) => rescheduleInterview(ctx.user.id, ctx.actor.id, input)),
+  cancel: protectedProcedure.input(idInput).mutation(({ ctx, input }) => changeInterviewState(ctx.user.id, ctx.actor.id, input.id, "cancelled")),
+  transition: protectedProcedure.input(z.object({ id: z.string().min(4), state: z.string().min(2).max(48) })).mutation(({ ctx, input }) => changeInterviewState(ctx.user.id, ctx.actor.id, input.id, input.state)),
+
   calendarFeed: protectedProcedure.query(async ({ ctx }) => {
     const db = await requireDb();
     const rows = await db.select().from(interviews).where(eq(interviews.ownerId, ctx.user.id)).orderBy(desc(interviews.scheduledAt)).limit(200);

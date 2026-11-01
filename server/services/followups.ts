@@ -56,6 +56,7 @@ export async function followUpEligibility(tx: any, plan: FollowUpPlan, now = new
     if (!interview || interview.candidateId !== conversation.candidateId || interview.jobId !== conversation.jobId) return { state: "cancelled", reason: "Interview relationship is invalid." };
     if (!interview.scheduledAt || interview.scheduledAt <= now || ["cancelled", "closed", "completed", "feedback_pending", "feedback_received", "no_show", "reminder_sent"].includes(interview.status)) return { state: "completed", reason: "Interview reminder is no longer applicable." };
     if (interview.status !== "confirmed" || interview.calendarStatus !== "confirmed") return { state: "paused", reason: "Interview is not confirmed." };
+    if (plan.scenarioId === "FU18" && !interview.reminderAt) return { state: "cancelled", reason: "Interview reminders are disabled." };
     fingerprint = workflowHash(["interview", interview.id, interview.scheduledAt.toISOString(), interview.calendarSequence ?? 0]);
   } else if (plan.resourceType === "invoice") {
     const invoice = (await lockedSelect(tx.select().from(invoices).where(and(eq(invoices.id, plan.resourceId), eq(invoices.ownerId, plan.ownerId))).limit(1)))[0];

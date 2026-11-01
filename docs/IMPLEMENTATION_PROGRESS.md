@@ -290,3 +290,9 @@ Five new regressions cover two distinct keys without metadata leakage, duplicate
 Live credential check: two distinct configured values were observed. The primary authenticated successfully; the backup was rejected by the provider. This supersedes key-presence-only readiness: backup failover is not declared healthy until a valid replacement is supplied. The owner was informed to replace the hPanel value without posting a key in chat.
 
 The first synthetic text-only CV probe failed closed on empty assistant content; it did not produce a parsed candidate or modify a business record. The request now explicitly disables optional reasoning for these bounded structured tasks, and empty-response errors retain a sanitized finish reason without logging provider reasoning/account data. A regression checks empty-output fallback. A corrected pilot retest is recorded separately rather than treating that initial result as success.
+
+## W5 recorded interview scheduling controls — 1 November 2026
+
+[Implementation scope and validation](qa/2026-11-01-interview-scheduling.md): same-candidate overlaps are blocked under the shared workspace lock; exact create/reschedule retries do not duplicate calendar events or sequence updates. Rescheduling, cancellation/state and reminder edits use atomic audit/follow-up invalidation. Legacy disabled reminders are independently stopped at dispatch. A candidate schedule-check panel exposes recorded conflicts without claiming actual participant/calendar availability. Three M18 feature records remain partial; the advanced module and roadmap are not complete.
+
+Validation: 447 tests pass with 19 skips, 161 real-MySQL regressions pass, TypeScript/build and four entry smokes pass. No new migration/provider credentials are required. Primary and backup OpenRouter keys both authenticated in the latest separate live check; earlier rejection records remain historical evidence.

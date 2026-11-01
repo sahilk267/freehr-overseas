@@ -928,7 +928,9 @@
         {
           "id": "M18-F01",
           "description": "Two-sided availability collection, timezone/DST/business-hour handling, interviewer panels, buffers and conflict-aware slot proposals.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-01-interview-scheduling.md",
+          "implementation_note": "Recorded candidate conflict preview and serialized overlap prevention added. External calendar free/busy, two-sided availability, panels and buffers remain pending."
         },
         {
           "id": "M18-F02",
@@ -939,7 +941,9 @@
         {
           "id": "M18-F03",
           "description": "Versioned schedule/RSVP lifecycle, temporary slot holds, reschedule/cancel reconciliation, no-show and alternative-slot recovery.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-01-interview-scheduling.md",
+          "implementation_note": "Create retries reuse exact appointments; reschedules, cancellation/state and reminder changes share workspace transactions and calendar sequence updates. Negotiated slot holds, stale-client revision checks and external RSVP reconciliation remain pending."
         },
         {
           "id": "M18-F04",
@@ -956,7 +960,8 @@
           "id": "M18-F06",
           "description": "All timer/reminder delivery goes through M06/M05/M07; old schedule version invalidates old reminder attempts.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-01-interview-scheduling.md",
+          "implementation_note": "Scheduling/reminder changes atomically invalidate central follow-up authority. Dispatch also blocks legacy FU18 plans when reminderAt is disabled. No parallel timer/delivery engine added."
         }
       ],
       "events": "interview.confirmed, interview.rescheduled, interview.completed, feedback.received, interview.no_show",
@@ -2216,11 +2221,11 @@
     }
   ],
   "implementation_tracking": {
-    "wave": "W0/W1/W2/W3/W4",
+    "wave": "W0/W1/W2/W3/W4/W5",
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "W4 adds scoped source intake, canonical identity reuse, governed campaigns and observed managed background processing using the existing follow-up/outbox/queue. Real provider execution and the full advanced 25-module roadmap remain incomplete.",
+    "note": "W5 adds recorded candidate scheduling conflicts and consistent calendar/reminder lifecycle using shared transactions and follow-ups. No complete advanced module or autonomous agency is certified.",
     "updated_at": "2026-11-01"
   }
 }

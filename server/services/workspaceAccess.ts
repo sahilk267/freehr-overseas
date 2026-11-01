@@ -34,12 +34,12 @@ export const rolePaths: Record<Exclude<TeamRole, "owner">, readonly string[]> = 
     "recruitment.matching.listForJob", "recruitment.matching.createEvidenceMatch",
     "recruitment.candidateWorkflows.screenings.list", "recruitment.candidateWorkflows.screenings.create", "recruitment.candidateWorkflows.screenings.updateState",
     "recruitment.candidateWorkflows.shortlists.list", "recruitment.candidateWorkflows.shortlists.updateNote",
-    "recruitment.interviews.list", "recruitment.feedback.list",
+    "recruitment.interviews.list", "recruitment.interviews.checkSlot", "recruitment.feedback.list",
   ],
   coordinator: [
     "operations.dashboard",
     "recruitment.candidates.list", "recruitment.candidates.search", "recruitment.jobs.list",
-    "recruitment.interviews.list", "recruitment.interviews.create", "recruitment.interviews.transition",
+    "recruitment.interviews.list", "recruitment.interviews.checkSlot", "recruitment.interviews.create", "recruitment.interviews.transition",
     "recruitment.feedback.list", "recruitment.feedback.record",
     "recruitment.outreach.draftSequence",
   ],
@@ -57,7 +57,7 @@ export const rolePaths: Record<Exclude<TeamRole, "owner">, readonly string[]> = 
     "operations.dashboard",
     "recruitment.prospects.list", "recruitment.jobs.list", "recruitment.candidates.list", "recruitment.candidates.search",
     "recruitment.matching.listForJob", "recruitment.candidateWorkflows.screenings.list", "recruitment.candidateWorkflows.shortlists.list",
-    "recruitment.interviews.list", "recruitment.feedback.list", "recruitment.placements.list", "recruitment.invoices.list",
+    "recruitment.interviews.list", "recruitment.interviews.checkSlot", "recruitment.feedback.list", "recruitment.placements.list", "recruitment.invoices.list",
   ],
 };
 
