@@ -785,7 +785,7 @@ export const interviewsRouter = router({
   }),
   checkSlot: protectedProcedure.input(z.object({ candidateId: z.string().min(4), scheduledAt: z.date(), durationMinutes: z.number().int().min(15).max(240), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone), excludeInterviewId: z.string().min(4).optional() })).query(({ ctx, input }) => previewInterviewSlot(ctx.user.id, input)),
   enableReminderSchedule: protectedProcedure.mutation(({ ctx }) => configureBackgroundWorker(ctx.user.id, ctx.actor.id, true)),
-  create: protectedProcedure.input(z.object({ companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone.").default("Asia/Kolkata"), durationMinutes: z.number().int().min(15).max(240).default(45), meetingUrl: z.string().url().optional() })).mutation(({ ctx, input }) => scheduleInterview(ctx.user.id, ctx.actor.id, input)),
+  create: protectedProcedure.input(z.object({ requestKey: z.string().trim().min(8).max(100).optional(), companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone.").default("Asia/Kolkata"), durationMinutes: z.number().int().min(15).max(240).default(45), meetingUrl: z.string().url().optional() })).mutation(({ ctx, input }) => scheduleInterview(ctx.user.id, ctx.actor.id, input)),
 
   exportIcs: protectedProcedure.input(idInput).query(async ({ ctx, input }) => {
     const db = await requireDb();

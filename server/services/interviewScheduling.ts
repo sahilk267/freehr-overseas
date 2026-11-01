@@ -1,6 +1,7 @@
+import { appendWorkflowEvent, workflowHash } from "./workflowStore";
 import { and, eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { candidates, companies, interviews, jobs } from "../../drizzle/schema";
+import { candidates, companies, interviews, jobs, workflowEvents } from "../../drizzle/schema";
 import { createId, recordAudit } from "../db";
 import { assertTransition } from "../workflow";
 import { withWorkspaceTransaction, lockedSelect } from "./database";
@@ -35,20 +36,32 @@ export async function previewInterviewSlot(ownerId: number, input: Slot & { cand
     return { hasConflict: rows.length > 0, scope: "recorded_candidate_interviews" as const, conflicts: rows.map(row => ({ id: row.id, scheduledAt: row.scheduledAt!, durationMinutes: row.durationMinutes, timezone: row.timezone, status: row.status })) };
   });
 }
-export async function scheduleInterview(ownerId: number, actorId: number, input: Slot & { candidateId: string; companyId: string; jobId: string }) {
+export async function scheduleInterview(ownerId: number, actorId: number, input: Slot & { candidateId: string; companyId: string; jobId: string; requestKey?: string }) {
   const result = await withWorkspaceTransaction(ownerId, async tx => {
     await candidate(tx, ownerId, input.candidateId);
     const company = (await tx.select().from(companies).where(and(eq(companies.ownerId, ownerId), eq(companies.id, input.companyId))).limit(1))[0];
     const job = (await tx.select().from(jobs).where(and(eq(jobs.ownerId, ownerId), eq(jobs.id, input.jobId))).limit(1))[0];
     if (!company || !job) throw missing("Client or job");
     if (job.companyId !== company.id) throw new TRPCError({ code: "BAD_REQUEST", message: "The specified job does not belong to the specified client." });
-    const scheduledAt = instant(input.scheduledAt), rows = await overlaps(tx, ownerId, input.candidateId, input);
+    const { requestKey: suppliedKey, ...definition } = input;
+    const scheduledAt = instant(input.scheduledAt);
+    const requestHash = workflowHash([input.candidateId, input.companyId, input.jobId, scheduledAt.toISOString(), input.timezone, input.durationMinutes, input.meetingUrl ?? null]);
+    const requestKey = workflowHash(suppliedKey ?? requestHash), aggregateId = `interview-requests:${ownerId}`;
+    const eventKey = workflowHash(["interview.create_requested", aggregateId, 1, requestKey]);
+    const prior = (await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId, ownerId), eq(workflowEvents.eventKey, eventKey))).limit(1))[0];
+    if (prior) {
+      if (prior.metadata?.requestHash !== requestHash) throw new TRPCError({ code: "CONFLICT", message: "This scheduling request was already recorded with different content. Review the saved interview before starting a new request." });
+      return { id: String(prior.metadata.interviewId), alreadyExists: true };
+    }
+    const remember = async (id: string) => appendWorkflowEvent(tx, ownerId, "interview.create_requested", aggregateId, 1, { requestHash, interviewId: id }, requestKey);
+    const rows = await overlaps(tx, ownerId, input.candidateId, input);
     const exact = rows.find(row => row.companyId === input.companyId && row.jobId === input.jobId && row.scheduledAt!.getTime() === scheduledAt.getTime() && row.durationMinutes === input.durationMinutes && row.timezone === input.timezone && row.meetingUrl === (input.meetingUrl ?? null));
-    if (exact && rows.length === 1) return { id: exact.id, alreadyExists: true };
+    if (exact && rows.length === 1) { await remember(exact.id); return { id: exact.id, alreadyExists: true }; }
     if (rows.length) rejectConflict();
     const id = createId("int_");
-    await tx.insert(interviews).values({ ...input, scheduledAt, id, ownerId, status: "scheduled", meetingUrl: input.meetingUrl ?? null, calendarProvider: "ics", calendarEventId: createInterviewEventUid(id), calendarStatus: "tentative", calendarSequence: 0, reminderAt: new Date(scheduledAt.getTime() - 86400000) });
+    await tx.insert(interviews).values({ ...definition, scheduledAt, id, ownerId, status: "scheduled", meetingUrl: input.meetingUrl ?? null, calendarProvider: "ics", calendarEventId: createInterviewEventUid(id), calendarStatus: "tentative", calendarSequence: 0, reminderAt: new Date(scheduledAt.getTime() - 86400000) });
     await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "interview.scheduled", resourceType: "interview", resourceId: id, nextState: "scheduled" }, tx);
+    await remember(id);
     return { id, alreadyExists: false };
   });
   return result;
