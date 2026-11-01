@@ -61,6 +61,10 @@ export class OpenRouterConfigurationError extends Error {}
 export class OpenRouterTransientError extends Error {}
 export class OpenRouterValidationError extends Error {}
 
+export function isFreeOpenRouterModel(model: string) {
+  return model === "openrouter/free" || /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:+-]*:free$/i.test(model);
+}
+
 export function parseStructuredAiResult<T extends AiTaskType>(taskType: T, rawContent: string): AiTaskResult<T> {
   const normalized = rawContent.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   let parsed: unknown;
@@ -84,6 +88,7 @@ export async function runOpenRouterTask<T extends AiTaskType>(input: {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new OpenRouterConfigurationError("OPENROUTER_API_KEY is not configured.");
   const primary = input.primaryModel || "openrouter/free";
+  if (!isFreeOpenRouterModel(primary) || (input.fallbackModels ?? []).some(model => !isFreeOpenRouterModel(model))) throw new OpenRouterConfigurationError("Only openrouter/free or explicit :free models are permitted. Paid fallback is disabled.");
   const fallbackModels = (input.fallbackModels ?? []).filter(model => model && model !== primary).slice(0, 3);
   const candidateModels = [primary, ...fallbackModels];
   const userPayload = JSON.stringify(input.input).slice(0, MAX_AI_INPUT_CHARS);
@@ -105,9 +110,10 @@ export async function runOpenRouterTask<T extends AiTaskType>(input: {
         body: JSON.stringify({
           model: modelCandidate,
           temperature: 0.1,
+          response_format: { type: "json_object" },
           max_tokens: input.maxOutputTokens ?? 1200,
           messages: [
-            { role: "system", content: systemPrompts[input.taskType] },
+            { role: "system", content: `${systemPrompts[input.taskType]}\nRequired JSON schema: ${JSON.stringify(z.toJSONSchema(taskSchemas[input.taskType]))}` },
             { role: "user", content: `Task: ${input.taskType}\nInput JSON:\n${userPayload}\nReturn JSON only.` },
           ],
         }),
