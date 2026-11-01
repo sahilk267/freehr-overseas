@@ -842,3 +842,26 @@ export const intakeBatches = mysqlTable("intakeBatches", {
   sourceId: id("sourceId").notNull().references(() => intakeSources.id), batchKey: varchar("batchKey", { length: 80 }).notNull(), payloadHash: varchar("payloadHash", { length: 64 }).notNull(),
   results: json("results").$type<import("../shared/intake").IntakeOutcome[]>().notNull(), createdAt, updatedAt,
 }, table => [uniqueIndex("intake_batch_key_unique").on(table.ownerId, table.sourceId, table.batchKey), index("intake_batch_source_time_idx").on(table.sourceId, table.createdAt)]);
+
+export const googleCalendarConnections = mysqlTable("googleCalendarConnections", {
+  id: id("id").primaryKey(), ownerId: int("ownerId").notNull().references(() => users.id),
+  status: state("status").notNull().default("disconnected"), revision: int("revision").notNull().default(1),
+  calendarId: varchar("calendarId", { length: 320 }).notNull().default("primary"),
+  accountHash: varchar("accountHash", { length: 64 }), accountEmail: varchar("accountEmail", { length: 320 }),
+  tokensCipher: text("tokensCipher"), scopes: json("scopes").$type<string[]>(),
+  leaseToken: varchar("leaseToken", { length: 36 }), leaseUntil: timestamp("leaseUntil", { fsp: 3 }),
+  lastErrorCode: varchar("lastErrorCode", { length: 64 }), createdAt, updatedAt,
+}, t => [uniqueIndex("google_calendar_owner_unique").on(t.ownerId)]);
+export const googleCalendarOAuthStates = mysqlTable("googleCalendarOAuthStates", {
+  id: varchar("id", { length: 64 }).primaryKey(), ownerId: int("ownerId").notNull().references(() => users.id),
+  connectionId: id("connectionId").notNull().references(() => googleCalendarConnections.id),
+  revision: int("revision").notNull(), sessionHash: varchar("sessionHash", { length: 64 }).notNull(),
+  verifierCipher: text("verifierCipher"), expiresAt: timestamp("expiresAt", { fsp: 3 }).notNull(), consumedAt: timestamp("consumedAt", { fsp: 3 }), createdAt,
+}, t => [index("google_calendar_state_owner_idx").on(t.ownerId)]);
+export const googleCalendarEventBindings = mysqlTable("googleCalendarEventBindings", {
+  id: varchar("id", { length: 64 }).primaryKey(), ownerId: int("ownerId").notNull().references(() => users.id),
+  connectionId: id("connectionId").notNull().references(() => googleCalendarConnections.id),
+  interviewId: id("interviewId").notNull().references(() => interviews.id),
+  eventId: varchar("eventId", { length: 128 }).notNull(), syncedFingerprint: varchar("syncedFingerprint", { length: 64 }),
+  providerEtag: varchar("providerEtag", { length: 512 }), lastSyncedAt: timestamp("lastSyncedAt", { fsp: 3 }), lastErrorCode: varchar("lastErrorCode", { length: 64 }), createdAt, updatedAt,
+}, t => [index("google_calendar_binding_owner_idx").on(t.ownerId)]);

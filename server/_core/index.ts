@@ -1,3 +1,4 @@
+import { completeGoogleCalendar, GOOGLE_CALENDAR_CALLBACK } from "../services/googleCalendar";
 import "dotenv/config";
 import { readAuthorizedCalendarFeed, calendarErrorStatus } from "../services/calendarFeed";
 import express from "express";
@@ -65,6 +66,12 @@ async function startServer() {
   // API health route FIRST
   app.get("/api/health", (_req, res) => {
     res.json({ status: "ok" });
+  });
+
+  app.get(GOOGLE_CALENDAR_CALLBACK, async (req, res) => {
+    res.setHeader("Cache-Control", "no-store"); res.setHeader("Referrer-Policy", "no-referrer");
+    try { const user = await authenticateRuntimeRequest(req); if (!user) { res.status(401).json({ error: "Sign in to FreelanceHR and restart calendar connection." }); return; } await completeGoogleCalendar(user.id, req.headers.cookie, typeof req.query.state === "string" ? req.query.state : "", typeof req.query.code === "string" ? req.query.code : ""); res.redirect("/control?googleCalendar=connected"); }
+    catch { res.redirect("/control?googleCalendar=connection_failed"); }
   });
 
   registerStorageProxy(app);

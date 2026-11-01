@@ -1,0 +1,79 @@
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
+import { eq } from "drizzle-orm";
+import { followupFixture } from "../testSupport/followupFixture";
+import { googleCalendarConnections as connections, googleCalendarOAuthStates as states, interviews } from "../../drizzle/schema";
+import { beginGoogleCalendar, completeGoogleCalendar, configureGoogleCalendar, decryptCalendarSecret, disconnectGoogleCalendar, encryptCalendarSecret, googleCalendarStatus, googleFreeBusy, GOOGLE_CALENDAR_SCOPES, previewGoogleInterview, syncGoogleInterview } from "./googleCalendar";
+import { buildFastifyServer } from "../hostinger";
+const cookie = "app_session_id=synthetic-calendar-owner-session";
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+const token = () => ({ access_token: "synthetic-access", refresh_token: "synthetic-refresh", token_type: "Bearer", expires_in: 3600, scope: GOOGLE_CALENDAR_SCOPES.join(" ") });
+const identity = { sub: "synthetic-google-subject", email: "calendar-owner@example.test", email_verified: true };
+let env: Record<string, string | undefined>;
+beforeEach(() => { const keys = ["APP_BASE_URL", "SESSION_SECRET", "GOOGLE_CALENDAR_CLIENT_ID", "GOOGLE_CALENDAR_CLIENT_SECRET", "GOOGLE_CALENDAR_REDIRECT_URI"]; env = Object.fromEntries(keys.map(k => [k, process.env[k]])); Object.assign(process.env, { APP_BASE_URL: "https://example.test", SESSION_SECRET: "synthetic-google-encryption-key-at-least-32-characters", GOOGLE_CALENDAR_CLIENT_ID: "synthetic.apps.googleusercontent.com", GOOGLE_CALENDAR_CLIENT_SECRET: "synthetic-client-secret" }); delete process.env.GOOGLE_CALENDAR_REDIRECT_URI; });
+afterEach(() => { vi.restoreAllMocks(); for (const [k,v] of Object.entries(env)) if (v === undefined) delete process.env[k]; else process.env[k] = v; });
+async function fixture() {
+ const f = await followupFixture();
+ const events = new Map<string, any>(), writes: Array<{ method: string; url: URL; body: any }> = [];
+ const fetcher = vi.spyOn(globalThis, "fetch").mockImplementation(async (raw, init) => {
+  const url = new URL(String(raw));
+  if (url.hostname === "oauth2.googleapis.com") return url.pathname === "/revoke" ? json({}) : json(token());
+  if (url.hostname === "openidconnect.googleapis.com") return json(identity);
+  if (url.pathname.endsWith("/freeBusy")) return json({ calendars: { primary: { busy: [] } } });
+  if (url.pathname.includes("/events")) {
+   const method = init?.method || "GET";
+   if (method === "GET") { const id = url.pathname.split("/").at(-1)!; return events.has(id) ? json(events.get(id)) : json({},404); }
+   const body = JSON.parse(String(init?.body)); writes.push({ method, url, body });
+   const id = method === "POST" ? body.id : url.pathname.split("/").at(-1)!;
+   if (method === "POST" && events.has(id)) return json({},409);
+   if (method === "PATCH" && (init?.headers as any)["If-Match"] !== events.get(id)?.etag) return json({},412);
+   const value = { ...events.get(id), ...body, id, etag: `"synthetic-${writes.length}"` }; events.set(id,value); return json(value);
+  }
+  throw Error("Unexpected provider endpoint");
+ });
+ const begin = () => beginGoogleCalendar(f.ownerId, cookie);
+ const finish = async () => { const started = await begin(); const state = new URL(started.authorizationUrl).searchParams.get("state")!; await completeGoogleCalendar(f.ownerId, cookie, state, "synthetic-code"); };
+ const row = async () => (await f.db.select().from(connections).where(eq(connections.ownerId,f.ownerId)))[0];
+ return { ...f, events, writes, fetcher, begin, finish, row };
+}
+describe("Google Calendar authorization and reviewed event adapter", () => {
+ it("keeps API-key-only configuration blocked and does not contact Google", async () => { const f=await fixture();delete process.env.GOOGLE_CALENDAR_CLIENT_SECRET;expect((await googleCalendarStatus(f.ownerId)).configured).toBe(false);await expect(f.begin()).rejects.toMatchObject({code:"PRECONDITION_FAILED"});expect(f.fetcher).not.toHaveBeenCalled(); });
+ it("uses one-use session-bound PKCE state and never stores plaintext refresh credentials",async()=>{const f=await fixture(),start=await f.begin(),url=new URL(start.authorizationUrl);expect(url.searchParams.get('code_challenge_method')).toBe('S256');const state=url.searchParams.get('state')!;await expect(completeGoogleCalendar(f.ownerId,'app_session_id=another-session',state,'code')).rejects.toThrow();await completeGoogleCalendar(f.ownerId,cookie,state,'code');await expect(completeGoogleCalendar(f.ownerId,cookie,state,'code')).rejects.toThrow();const row=await f.row();expect(row.tokensCipher).not.toContain('synthetic-refresh');expect(JSON.stringify(await googleCalendarStatus(f.ownerId))).not.toContain('synthetic-access');expect(decryptCalendarSecret<any>(row.tokensCipher!,`tokens:${f.ownerId}:${row.id}:${row.accountHash}`)).toMatchObject({refresh:'synthetic-refresh'});});
+ it("rejects expired and cross-owner state before token exchange",async()=>{const f=await fixture(),other=await followupFixture(),start=await f.begin(),state=new URL(start.authorizationUrl).searchParams.get('state')!;await expect(completeGoogleCalendar(other.ownerId,cookie,state,'code')).rejects.toThrow();await f.db.update(states).set({expiresAt:new Date(Date.now()-1000)}).where(eq(states.ownerId,f.ownerId));await expect(completeGoogleCalendar(f.ownerId,cookie,state,'code')).rejects.toThrow();expect(f.fetcher).not.toHaveBeenCalled();});
+ it("requires the actual calendar scopes and verified Google identity",async()=>{const f=await fixture(),start=await f.begin(),state=new URL(start.authorizationUrl).searchParams.get('state')!;f.fetcher.mockResolvedValueOnce(json({...token(),scope:'openid email'}));await expect(completeGoogleCalendar(f.ownerId,cookie,state,'code')).rejects.toThrow(/scopes/);expect((await googleCalendarStatus(f.ownerId)).connected).toBe(false);});
+ it("authenticates encryption and fails closed after signing-key rotation",()=>{const cipher=encryptCalendarSecret({refresh:'private-fixture'});expect(cipher).not.toBe(encryptCalendarSecret({refresh:'private-fixture'}));process.env.SESSION_SECRET='different-signing-secret-more-than-32-characters';expect(()=>decryptCalendarSecret(cipher)).toThrow(/reauthorization/);});
+ it("returns busy intervals without treating provider errors as free availability",async()=>{const f=await fixture();await f.finish();const start=new Date(),end=new Date(Date.now()+3600000);expect((await googleFreeBusy(f.ownerId,start,end)).busy).toEqual([]);f.fetcher.mockResolvedValueOnce(json({calendars:{primary:{errors:[{reason:'notFound'}]}}}));await expect(googleFreeBusy(f.ownerId,start,end)).rejects.toThrow(/calendar unavailable/);});
+ it("refreshes expired access tokens and keeps credentials out of status",async()=>{const f=await fixture();await f.finish();const existing=await f.row();await f.db.update(connections).set({tokensCipher:encryptCalendarSecret({access:'expired',refresh:'synthetic-refresh',expiresAt:0},`tokens:${f.ownerId}:${existing.id}:${existing.accountHash}`)}).where(eq(connections.ownerId,f.ownerId));f.fetcher.mockClear();await googleFreeBusy(f.ownerId,new Date(),new Date(Date.now()+3600000));expect(f.fetcher.mock.calls.some(([url,init])=>String(url).endsWith('/token')&&String(init?.body).includes('refresh_token'))).toBe(true);expect(JSON.stringify(await googleCalendarStatus(f.ownerId))).not.toContain('synthetic-refresh');});
+ it("rejects a stale event preview without a provider event write",async()=>{const f=await fixture();await f.finish();const preview=await previewGoogleInterview(f.ownerId,f.interviewId);await f.db.update(interviews).set({durationMinutes:90}).where(eq(interviews.id,f.interviewId));await expect(syncGoogleInterview(f.ownerId,f.interviewId,preview.previewHash)).rejects.toMatchObject({code:'CONFLICT'});expect(f.writes).toHaveLength(0);});
+ it("creates one deterministic event and mirrors reschedule/cancellation without invitations",async()=>{const f=await fixture();await f.finish();let p=await previewGoogleInterview(f.ownerId,f.interviewId);await syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash);await syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash);expect(f.events.size).toBe(1);await f.caller.recruitment.interviews.reschedule({id:f.interviewId,scheduledAt:new Date(Date.now()+86400000),timezone:'UTC',durationMinutes:30});p=await previewGoogleInterview(f.ownerId,f.interviewId);await syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash);expect(f.events.size).toBe(1);await f.caller.recruitment.interviews.cancel({id:f.interviewId});p=await previewGoogleInterview(f.ownerId,f.interviewId);await syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash);expect([...f.events.values()][0].status).toBe('cancelled');for(const w of f.writes){expect(w.url.searchParams.get('sendUpdates')).toBe('none');expect(w.body).not.toHaveProperty('attendees');expect(w.body.summary).not.toContain('Synthetic candidate');}});
+ it("does not patch an unrelated external event at the expected ID",async()=>{const f=await fixture();await f.finish();const p=await previewGoogleInterview(f.ownerId,f.interviewId);f.events.set('fh'+p.event.extendedProperties.private.freehrBinding,{id:'other',etag:'"other"',extendedProperties:{private:{freehrBinding:'other'}}});await expect(syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash)).rejects.toThrow(/identity conflict/);expect(f.writes).toHaveLength(0);});
+ it("retains credentials on quota errors and distinguishes reconnect failures",async()=>{const f=await fixture();await f.finish();f.fetcher.mockResolvedValueOnce(json({error:{errors:[{reason:'userRateLimitExceeded'}]}},403));await expect(googleFreeBusy(f.ownerId,new Date(),new Date(Date.now()+60000))).rejects.toMatchObject({code:'TOO_MANY_REQUESTS'});expect((await f.row()).tokensCipher).toBeTruthy();f.fetcher.mockResolvedValueOnce(json({},401));await expect(googleFreeBusy(f.ownerId,new Date(),new Date(Date.now()+60000))).rejects.toThrow();expect((await f.row()).status).toBe('needs_reconnect');expect((await f.row()).tokensCipher).toBeNull();});
+ it("disconnects locally even when provider revocation is unavailable",async()=>{const f=await fixture();await f.finish();f.fetcher.mockRejectedValueOnce(new Error('synthetic network outage'));expect(await disconnectGoogleCalendar(f.ownerId)).toMatchObject({disconnected:true,revocationConfirmed:false,eventsDeleted:false});expect((await f.row()).tokensCipher).toBeNull();});
+ it("rejects changed calendar settings revisions and unauthenticated HTTP callbacks",async()=>{const f=await fixture();await f.finish();await expect(configureGoogleCalendar(f.ownerId,'primary',1)).rejects.toMatchObject({code:'CONFLICT'});const app=await buildFastifyServer({logger:false});try{expect((await app.inject({url:'/api/integrations/google-calendar/callback?code=private&state=private'})).statusCode).toBe(401);}finally{await app.close();}});
+ it.runIf(process.env.FREEHR_TEST_MYSQL==='1')("consumes a callback once under simultaneous real SQL requests",async()=>{const f=await fixture(),start=await f.begin(),state=new URL(start.authorizationUrl).searchParams.get('state')!;const results=await Promise.allSettled([completeGoogleCalendar(f.ownerId,cookie,state,'code'),completeGoogleCalendar(f.ownerId,cookie,state,'code')]);expect(results.filter(r=>r.status==='fulfilled')).toHaveLength(1);expect(f.fetcher.mock.calls.filter(([url])=>String(url).endsWith('/token'))).toHaveLength(1);});
+ it("binds encrypted credentials to the owner and connection",()=>{const cipher=encryptCalendarSecret({refresh:'synthetic'},'tokens:1:connection:account');expect(()=>decryptCalendarSecret(cipher,'tokens:2:connection:account')).toThrow();});
+ it("fences a late OAuth callback after a newer connection attempt",async()=>{
+  const f=await fixture(),start=await f.begin(),state=new URL(start.authorizationUrl).searchParams.get('state')!;
+  let release!:()=>void,entered!:()=>void;const started=new Promise<void>(r=>entered=r),wait=new Promise<void>(r=>release=r);
+  f.fetcher.mockImplementationOnce(async()=>{entered();await wait;return json(token());});
+  const old=completeGoogleCalendar(f.ownerId,cookie,state,'code');const rejected=expect(old).rejects.toThrow(/superseded/);await started;await f.begin();release();await rejected;expect((await googleCalendarStatus(f.ownerId)).connected).toBe(false);
+ });
+ it("fences availability results when the owner disconnects in flight",async()=>{
+  const f=await fixture();await f.finish();let release!:()=>void,entered!:()=>void;const started=new Promise<void>(r=>entered=r),wait=new Promise<void>(r=>release=r);
+  f.fetcher.mockImplementationOnce(async()=>{entered();await wait;return json({calendars:{primary:{busy:[]}}});});
+  const pending=googleFreeBusy(f.ownerId,new Date(),new Date(Date.now()+60000));const rejected=expect(pending).rejects.toThrow(/connection changed/);await started;await disconnectGoogleCalendar(f.ownerId);release();await rejected;expect((await f.row()).tokensCipher).toBeNull();
+ });
+ it("recovers an unknown create outcome using the same event identity",async()=>{
+  const f=await fixture();await f.finish();const p=await previewGoogleInterview(f.ownerId,f.interviewId),normal=f.fetcher.getMockImplementation()!;let dropped=false;
+  f.fetcher.mockImplementation(async(raw,init)=>{const response=await normal(raw,init);if(init?.method==='POST'&&String(raw).includes('/events?')&&!dropped){dropped=true;throw Error('synthetic connection lost after acceptance');}return response;});
+  await expect(syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash)).rejects.toThrow();await syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash);expect(f.events.size).toBe(1);expect(f.writes.filter(w=>w.method==='POST')).toHaveLength(1);
+ });
+ it("rejects a changed external ETag without overwriting it",async()=>{
+  const f=await fixture();await f.finish();const p=await previewGoogleInterview(f.ownerId,f.interviewId);await syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash);const normal=f.fetcher.getMockImplementation()!;
+  f.fetcher.mockImplementation(async(raw,init)=>{if(init?.method==='PATCH')return json({},412);return normal(raw,init);});await expect(syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash)).rejects.toThrow(/external event changed/);expect(f.events.size).toBe(1);
+ });
+ it.runIf(process.env.FREEHR_TEST_MYSQL==='1')("serializes provider requests with a durable connection lease",async()=>{
+  const f=await fixture();await f.finish();let release!:()=>void,entered!:()=>void;const started=new Promise<void>(r=>entered=r),wait=new Promise<void>(r=>release=r);
+  f.fetcher.mockImplementationOnce(async()=>{entered();await wait;return json({calendars:{primary:{busy:[]}}});});const first=googleFreeBusy(f.ownerId,new Date(),new Date(Date.now()+60000));await started;await expect(googleFreeBusy(f.ownerId,new Date(),new Date(Date.now()+60000))).rejects.toThrow(/in progress/);release();await first;
+ });
+
+});

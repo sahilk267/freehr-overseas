@@ -2,7 +2,7 @@
   "version": 1,
   "targetDomain": "freelancehr.overseasjob.in",
   "baseline": "0014_promise_baseline_precision",
-  "through": "0018_normalize_phone_identities",
+  "through": "0019_google_calendar",
   "migrations": [
     {
       "tag": "0015_outreach_campaigns",
@@ -19,6 +19,10 @@
     {
       "tag": "0018_normalize_phone_identities",
       "sha256": "c8f8b1ff304393aad239a4b2d67fe62749a551143b9eee9000a26d2bd3cb3331"
+    },
+    {
+      "tag": "0019_google_calendar",
+      "sha256": "39b3bb163341588872ca46ee128242d7b7cc2986904bf96d09a0779fffb247a0"
     }
   ]
 }

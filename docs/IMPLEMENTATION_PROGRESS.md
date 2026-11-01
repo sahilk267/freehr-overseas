@@ -304,3 +304,7 @@ The first synthetic text-only CV probe failed closed on empty assistant content;
 Validation: 450 tests pass with 19 skips, 164 real-MySQL regressions pass, TypeScript/build and four entry smokes pass. No new migration/provider credentials are required. Primary and backup OpenRouter keys both authenticated in the latest separate live check; earlier rejection records remain historical evidence.
 
 Create request identities now persist in the shared workflow ledger, so an old retry cannot recreate a cancelled appointment. Each new UI scheduling intent gets a fresh key; key/content conflicts are rejected. Reminder re-enablement is separately tested to create a fresh source version without restoring old sending grants.
+
+## W5 Google Calendar connection foundation — 1 November 2026
+
+[Scope, setup and validation](qa/2026-11-01-google-calendar.md): owner-only OAuth, encrypted credentials, private free/busy and reviewed create/reschedule/cancel mirroring now reuse canonical interview records and workspace locking. Deterministic provider identities prevent duplicate creates on uncertain transport outcomes; ETags and generation/lease guards reject stale operations. No background sync or guest invitations are enabled. Google login for the platform remains unnecessary. Migration 0019 adds only connection/state/event-binding storage; no active connection is seeded. All advanced M18 completion gates remain open.

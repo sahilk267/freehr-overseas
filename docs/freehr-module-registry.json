@@ -930,13 +930,14 @@
           "description": "Two-sided availability collection, timezone/DST/business-hour handling, interviewer panels, buffers and conflict-aware slot proposals.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-01-interview-scheduling.md",
-          "implementation_note": "Recorded candidate conflict preview and serialized overlap prevention added. External calendar free/busy, two-sided availability, panels and buffers remain pending."
+          "implementation_note": "Recorded candidate conflicts and Google private free/busy adapter implemented. Actual Google connection requires owner OAuth setup. Two-sided availability, panels, buffers and reservations remain pending."
         },
         {
           "id": "M18-F02",
           "description": "Google/Microsoft free-busy/event sync, meeting creation, ICS fallback, scoped subscription tokens and revocation.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-01-google-calendar.md",
+          "implementation_note": "Owner-only Google OAuth, private free/busy and reviewed deterministic event mirroring implemented; live Google authorization requires owner OAuth credentials and consent. Background/bidirectional sync, Microsoft, Meet, invitations/RSVP and target reconciliation remain pending."
         },
         {
           "id": "M18-F03",

@@ -1003,3 +1003,23 @@ UPDATE `companies`
 SET `domain`=TRIM(TRAILING '.' FROM REGEXP_REPLACE(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(TRIM(`domain`)), '^[a-z][a-z0-9+.-]*://', ''), '[/#?].*$', ''), '^www[.]', ''))
 WHERE TRIM(TRAILING '.' FROM REGEXP_REPLACE(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(TRIM(`domain`)), '^[a-z][a-z0-9+.-]*://', ''), '[/#?].*$', ''), '^www[.]', '')) REGEXP '^[a-z0-9][a-z0-9.-]*[.][a-z]{2,63}$';
 INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('c8f8b1ff304393aad239a4b2d67fe62749a551143b9eee9000a26d2bd3cb3331', 1787882200000);
+
+-- 0019_google_calendar
+CREATE TABLE `googleCalendarConnections` (
+ `id` varchar(36) NOT NULL PRIMARY KEY, `ownerId` int NOT NULL, `status` varchar(48) NOT NULL DEFAULT 'disconnected', `revision` int NOT NULL DEFAULT 1,
+ `calendarId` varchar(320) NOT NULL DEFAULT 'primary', `accountHash` varchar(64), `accountEmail` varchar(320), `tokensCipher` text, `scopes` json,
+ `leaseToken` varchar(36), `leaseUntil` timestamp(3) NULL, `lastErrorCode` varchar(64), `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY `google_calendar_owner_unique` (`ownerId`), FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`)
+);
+CREATE TABLE `googleCalendarOAuthStates` (
+ `id` varchar(64) NOT NULL PRIMARY KEY, `ownerId` int NOT NULL, `connectionId` varchar(36) NOT NULL, `revision` int NOT NULL,
+ `sessionHash` varchar(64) NOT NULL, `verifierCipher` text, `expiresAt` timestamp(3) NOT NULL, `consumedAt` timestamp(3) NULL, `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ KEY `google_calendar_state_owner_idx` (`ownerId`), FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`), FOREIGN KEY (`connectionId`) REFERENCES `googleCalendarConnections` (`id`)
+);
+CREATE TABLE `googleCalendarEventBindings` (
+ `id` varchar(64) NOT NULL PRIMARY KEY, `ownerId` int NOT NULL, `connectionId` varchar(36) NOT NULL, `interviewId` varchar(36) NOT NULL,
+ `eventId` varchar(128) NOT NULL, `syncedFingerprint` varchar(64), `providerEtag` varchar(512), `lastSyncedAt` timestamp(3) NULL, `lastErrorCode` varchar(64),
+ `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ KEY `google_calendar_binding_owner_idx` (`ownerId`), FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`), FOREIGN KEY (`connectionId`) REFERENCES `googleCalendarConnections` (`id`), FOREIGN KEY (`interviewId`) REFERENCES `interviews` (`id`)
+);
+INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('39b3bb163341588872ca46ee128242d7b7cc2986904bf96d09a0779fffb247a0', 1787882300000);

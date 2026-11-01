@@ -1,3 +1,4 @@
+import { completeGoogleCalendar, GOOGLE_CALENDAR_CALLBACK } from "./services/googleCalendar";
 import "dotenv/config";
 import { readAuthorizedCalendarFeed, calendarErrorStatus } from "./services/calendarFeed";
 import cors from "@fastify/cors";
@@ -68,6 +69,17 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
   await app.register(fastifyTRPCPlugin, {
     prefix: "/api/trpc",
     trpcOptions: { router: appRouter, createContext: createFastifyContext },
+  });
+
+  app.get(GOOGLE_CALENDAR_CALLBACK, { logLevel: "silent" }, async (request, reply) => {
+    reply.header("Cache-Control", "no-store"); reply.header("Referrer-Policy", "no-referrer");
+    try {
+      const user = await authenticateRuntimeRequest(request.raw);
+      if (!user) return reply.status(401).send({ error: "Sign in to FreelanceHR and restart calendar connection." });
+      const query = request.query as { state?: string; code?: string };
+      await completeGoogleCalendar(user.id, request.headers.cookie, query.state || "", query.code || "");
+      return reply.redirect("/control?googleCalendar=connected");
+    } catch { return reply.redirect("/control?googleCalendar=connection_failed"); }
   });
 
   if (isOidcRuntime()) {

@@ -1,3 +1,4 @@
+import { googleCalendarRouter } from "./routers/googleCalendar";
 import { collectionsRouter } from "./routers/collections";
 import { campaignsRouter } from "./routers/campaigns";
 import { intakeRouter } from "./routers/intake";
@@ -14,6 +15,7 @@ import { getRuntimeLogoutCookie } from "./services/runtimeAuth";
 import { recordAudit } from "./db";
 
 export const appRouter = router({
+  googleCalendar: googleCalendarRouter,
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
   system: systemRouter,
   auth: router({
