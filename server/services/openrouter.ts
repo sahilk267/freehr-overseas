@@ -59,6 +59,18 @@ const systemPrompts: Record<AiTaskType, string> = {
 
 export class OpenRouterConfigurationError extends Error {}
 export class OpenRouterTransientError extends Error {}
+export class OpenRouterRateLimitError extends OpenRouterTransientError {}
+
+function configuredKey(value?: string) {
+  const key = value?.trim();
+  return key && !/^(?:replace[_ -]|your[_ -]|dummy(?:[_ -]|$)|<)/i.test(key) ? key : undefined;
+}
+
+function credentials() { return [...new Set([configuredKey(process.env.OPENROUTER_API_KEY), configuredKey(process.env.OPENROUTER_FALLBACK_API_KEY)].filter((key): key is string => Boolean(key)))]; }
+
+export function getOpenRouterKeyStatus() { return { configured: credentials().length > 0, fallbackKeyConfigured: Boolean(configuredKey(process.env.OPENROUTER_FALLBACK_API_KEY)) }; }
+
+export const DEFAULT_FREE_FALLBACK_MODELS = ["nvidia/nemotron-3.5-super-vl:free"];
 export class OpenRouterValidationError extends Error {}
 
 export function isFreeOpenRouterModel(model: string) {
@@ -85,65 +97,75 @@ export async function runOpenRouterTask<T extends AiTaskType>(input: {
   fallbackModels?: string[];
   maxOutputTokens?: number;
 }) {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  if (!apiKey) throw new OpenRouterConfigurationError("OPENROUTER_API_KEY is not configured.");
+  const keys = credentials();
+  if (!keys.length) throw new OpenRouterConfigurationError("OPENROUTER_API_KEY is not configured.");
   const primary = input.primaryModel || "openrouter/free";
-  if (!isFreeOpenRouterModel(primary) || (input.fallbackModels ?? []).some(model => !isFreeOpenRouterModel(model))) throw new OpenRouterConfigurationError("Only openrouter/free or explicit :free models are permitted. Paid fallback is disabled.");
-  const fallbackModels = (input.fallbackModels ?? []).filter(model => model && model !== primary).slice(0, 3);
-  const candidateModels = [primary, ...fallbackModels];
+  const configuredFallbacks = process.env.OPENROUTER_FREE_FALLBACK_MODELS?.split(",").map(model => model.trim()).filter(Boolean) ?? DEFAULT_FREE_FALLBACK_MODELS;
+  const requestedFallbacks = [...(input.fallbackModels ?? []), ...configuredFallbacks, "openrouter/free"];
+  if (!isFreeOpenRouterModel(primary) || requestedFallbacks.some(model => !isFreeOpenRouterModel(model))) throw new OpenRouterConfigurationError("Only openrouter/free or explicit :free models are permitted. Paid fallback is disabled.");
+  const candidateModels = [...new Set([primary, ...requestedFallbacks])].slice(0, 4);
+  let keyIndex = 0, attempts = 0;
   const userPayload = JSON.stringify(input.input).slice(0, MAX_AI_INPUT_CHARS);
   const startedAt = Date.now();
   let lastError: Error | null = null;
 
   for (const modelCandidate of candidateModels) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 25_000);
-    try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-          "X-Title": "FreelanceHR Controlled Operations",
-        },
-        body: JSON.stringify({
-          model: modelCandidate,
-          temperature: 0.1,
-          response_format: { type: "json_object" },
-          max_tokens: input.maxOutputTokens ?? 1200,
-          messages: [
-            { role: "system", content: `${systemPrompts[input.taskType]}\nRequired JSON schema: ${JSON.stringify(z.toJSONSchema(taskSchemas[input.taskType]))}` },
-            { role: "user", content: `Task: ${input.taskType}\nInput JSON:\n${userPayload}\nReturn JSON only.` },
-          ],
-        }),
-      });
-      if (response.status === 401 || response.status === 403) {
-        throw new OpenRouterConfigurationError(`OpenRouter rejected the credential with HTTP ${response.status}.`);
+    let retryCredential = true;
+    while (retryCredential && attempts < 4) {
+      retryCredential = false;
+      attempts++;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 25_000);
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          signal: controller.signal,
+          headers: {
+            Authorization: `Bearer ${keys[keyIndex]}`,
+            "Content-Type": "application/json",
+            "X-Title": "FreelanceHR Controlled Operations",
+          },
+          body: JSON.stringify({
+            model: modelCandidate,
+            temperature: 0.1,
+            response_format: { type: "json_object" },
+            max_tokens: input.maxOutputTokens ?? 1200,
+            messages: [
+              { role: "system", content: `${systemPrompts[input.taskType]}\nRequired JSON schema: ${JSON.stringify(z.toJSONSchema(taskSchemas[input.taskType]))}` },
+              { role: "user", content: `Task: ${input.taskType}\nInput JSON:\n${userPayload}\nReturn JSON only.` },
+            ],
+          }),
+        });
+        if (response.status === 401 || response.status === 403) {
+          if (keyIndex + 1 < keys.length && attempts < 4) { keyIndex++; retryCredential = true; continue; }
+          throw new OpenRouterConfigurationError(`OpenRouter rejected the configured credentials (HTTP ${response.status}).`);
+        }
+        if (response.status === 429) throw new OpenRouterRateLimitError("OpenRouter rate limit reached; defer through the queue without rotating keys.");
+        if (response.status === 402) throw new OpenRouterConfigurationError("OpenRouter account quota or credit restriction; no key rotation or paid fallback attempted.");
+        if (response.status >= 500) {
+          throw new OpenRouterTransientError(`OpenRouter model ${modelCandidate} is temporarily unavailable (HTTP ${response.status}).`);
+        }
+        if (!response.ok) {
+          throw new OpenRouterValidationError(`OpenRouter returned HTTP ${response.status}.`);
+        }
+        const payload = await response.json() as { model?: string; choices?: Array<{ message?: { content?: string } }> };
+        const content = payload.choices?.[0]?.message?.content;
+        if (!content) throw new OpenRouterValidationError("OpenRouter returned no assistant content.");
+        return { result: parseStructuredAiResult(input.taskType, content), selectedModel: payload.model ?? modelCandidate, latencyMs: Date.now() - startedAt };
+      } catch (error) {
+        if (error instanceof OpenRouterConfigurationError || error instanceof OpenRouterRateLimitError) {
+          throw error;
+        }
+        const wrapped = error instanceof OpenRouterTransientError || error instanceof OpenRouterValidationError
+          ? error
+          : error instanceof Error && error.name === "AbortError"
+            ? new OpenRouterTransientError(`OpenRouter request for ${modelCandidate} timed out.`)
+            : new OpenRouterTransientError(error instanceof Error ? error.message : "OpenRouter request failed.");
+        lastError = wrapped;
+        continue;
+      } finally {
+        clearTimeout(timeout);
       }
-      if (response.status === 429 || response.status >= 500) {
-        throw new OpenRouterTransientError(`OpenRouter model ${modelCandidate} is temporarily unavailable (HTTP ${response.status}).`);
-      }
-      if (!response.ok) {
-        throw new OpenRouterValidationError(`OpenRouter returned HTTP ${response.status}.`);
-      }
-      const payload = await response.json() as { model?: string; choices?: Array<{ message?: { content?: string } }> };
-      const content = payload.choices?.[0]?.message?.content;
-      if (!content) throw new OpenRouterValidationError("OpenRouter returned no assistant content.");
-      return { result: parseStructuredAiResult(input.taskType, content), selectedModel: payload.model ?? modelCandidate, latencyMs: Date.now() - startedAt };
-    } catch (error) {
-      if (error instanceof OpenRouterConfigurationError) {
-        throw error;
-      }
-      const wrapped = error instanceof OpenRouterTransientError || error instanceof OpenRouterValidationError
-        ? error
-        : error instanceof Error && error.name === "AbortError"
-          ? new OpenRouterTransientError(`OpenRouter request for ${modelCandidate} timed out.`)
-          : new OpenRouterTransientError(error instanceof Error ? error.message : "OpenRouter request failed.");
-      lastError = wrapped;
-      continue;
-    } finally {
-      clearTimeout(timeout);
     }
   }
 

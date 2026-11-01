@@ -1,3 +1,4 @@
+import { getOpenRouterKeyStatus } from "../services/openrouter";
 import { backgroundWorkerStatus, configureBackgroundWorker } from "../services/backgroundWorker";
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -73,7 +74,7 @@ export const operationsRouter = router({
         runtime: { configured: runtime.configured, authMode: runtime.authMode, authConfigured: runtime.authConfigured, authMissing: runtime.authMissing, oidcConfigured: runtime.oidcConfigured, oidcMissing: runtime.oidcMissing, privateStorage: runtime.privateStorage },
         mail: { configured: mail.configured, tokenConfigured: mail.tokenConfigured, webhookSecretConfigured: mail.webhookSecretConfigured, configuredMailboxCount: mail.configuredMailboxCount, configuredSenderAddressCount: mail.configuredSenderAddressCount },
         calendar: { provider: "ics", timezoneSafe: true, remindersOwnerApproved: true },
-        ai: { configured: Boolean(process.env.OPENROUTER_API_KEY?.trim()), freeOnly: true, defaultModel: "openrouter/free", paidFallbackAllowed: false, structuredValidation: true, ownerReviewOnLowConfidence: true, openRouterFallback: true, autonomousFinalRejection: false },
+        ai: { ...getOpenRouterKeyStatus(), freeOnly: true, defaultModel: "openrouter/free", paidFallbackAllowed: false, structuredValidation: true, ownerReviewOnLowConfidence: true, openRouterFallback: true, autonomousFinalRejection: false },
       };
     }),
     update: protectedProcedure.input(z.object({ automationMode: z.enum(["safe", "controlled", "autopilot"]).optional(), dailyOutboundLimit: z.number().int().min(1).max(500).optional(), quietHoursStart: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "Use a valid 24-hour time (HH:mm).").optional(), quietHoursEnd: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "Use a valid 24-hour time (HH:mm).").optional(), businessTimezone: z.string().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone.").optional() })).mutation(async ({ ctx, input }) => {
