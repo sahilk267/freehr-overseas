@@ -231,7 +231,7 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
     return reply.status(result.statusCode).send(result.body);
   });
 
-  app.get("/api/health", async () => ({ status: "ok", service: "freelancehr", now: new Date().toISOString() }));
+  app.get("/api/health", async () => ({ status: "ok", service: "freelancehr", now: new Date().toISOString(), buildCommit: process.env.FREEHR_BUILD_COMMIT ?? "unknown" }));
 
   app.get<{ Params: { userId: string } }>("/api/calendar/feed/:userId", async (request, reply) => {
     try {
