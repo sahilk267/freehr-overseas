@@ -1,0 +1,74 @@
+{
+  "validation": {
+    "vitestPassed": 480,
+    "vitestSkipped": 25,
+    "mysqlPassed": 200,
+    "mysqlFiles": 12,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "hostingEntrySmokes": 4
+  },
+  "migration": {
+    "baselineEntries": 20,
+    "finalEntries": 21,
+    "concurrentAndRepeatedUpgrade": "PASS",
+    "existingPhoneHashesAndSuppressionsPreserved": "PASS",
+    "existingContactsAndPermissionsPreserved": "PASS",
+    "existingCompaniesPreserved": "PASS",
+    "noActiveCalendarCreated": "PASS",
+    "noHoldSeeded": "PASS",
+    "defaultBackgroundDisabled": "PASS",
+    "changedManifestRejected": "PASS"
+  },
+  "live": {
+    "at": "2026-11-01T19:42:51.991Z",
+    "buildCommit": "ceb0222e75a2ef0b5e887cfacd004c8bda2ff2fb",
+    "results": [
+      "Hold retry preserves identity and original expiry",
+      "Recorded schedule preview includes active holds",
+      "Direct booking and overlapping hold are rejected",
+      "Held slot uses canonical interview and deduplicates booking retries",
+      "Old booking replay does not recreate a cancelled interview",
+      "Released holds cannot be booked",
+      "All 169 protected procedures reject anonymous requests"
+    ],
+    "protectedProceduresChecked": 169,
+    "google": {
+      "configured": true,
+      "connected": false,
+      "missing": []
+    },
+    "runtime": {
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "lastError": null
+    },
+    "mailSent": 0,
+    "scope": "Real owner login and synthetic internal holds/bookings only; no external calendar writes, emails or funds."
+  },
+  "browser": {
+    "at": "2026-11-01T19:43:14.330Z",
+    "checks": [
+      "Server hold appears with active countdown and booking/release controls",
+      "Hold UI remains usable without horizontal overflow at 1440px",
+      "Hold UI remains usable without horizontal overflow at 390px",
+      "UI release updates durable state and removes booking controls",
+      "Browser form creates and books a hold into one canonical interview; synthetic appointment cancelled",
+      "Configured Google OAuth shows enabled Connect with account still disconnected"
+    ],
+    "runtimeErrors": [],
+    "transportErrors": []
+  },
+  "expiryAndCleanup": {
+    "at": "2026-11-01T19:43:45.123Z",
+    "actualOneMinuteServerClockExpiry": "PASS",
+    "expiredBookingRejected": "PASS",
+    "expiredHoldNoLongerBlocks": "PASS",
+    "activeFixtureHoldsRemaining": 0,
+    "fixtureInterviewsCancelled": 2,
+    "fixtureRemindersDisabled": true,
+    "mailSent": 0,
+    "googleProviderWrites": 0,
+    "scope": "Synthetic company/job/candidate and terminal audit records retained for traceability."
+  }
+}
