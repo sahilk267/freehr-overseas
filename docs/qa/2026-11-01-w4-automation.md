@@ -52,6 +52,27 @@ The browser positive-send prerequisites used a clearly synthetic sender state in
 
 Detailed local logs/screenshots: `/workspace/freehr-wave4-validation/`. Private owner credentials, cookies, machine keys and environment values are excluded from committed evidence. Earlier failed selector assumptions and stale-build test-server routes were corrected before the final browser run; these are not counted as successful product assertions.
 
+## Actual deployment and live verification
+
+Code commit [`9a53318`](https://github.com/sahilk267/freehr-overseas/commit/9a53318) was pushed to `main` and the existing Hostinger Git auto-deployment served the new code at **https://freelancehr.overseasjob.in** on 1 November 2026. Personal owner-password login succeeded; Google login remains unnecessary. New source/campaign/worker tables and columns were usable through authenticated live reads. The exact 19-entry SQL ledger was validated on disposable SQL; a direct Hostinger production ledger query was not available in this session.
+
+| Live check | Observed result |
+|---|---|
+| Anonymous guards | All 155 protected procedures rejected access: 154 returned 401, the administrative notification route returned 403 |
+| Owner reads and public health | All 39 default session/owner reads passed, plus HTTP and tRPC public health |
+| Intake | Preview wrote nothing; two source records created one consent-pending identity; exact replay reused its receipt; manual creation reused that identity |
+| Source access | Missing key rejected; valid machine replay accepted; rotation revoked the old key; disabling revoked the new key; one durable receipt remained |
+| Campaigns | Draft/preview/detail worked; missing sender/permission blocked launch; draft pause/resume bypass rejected; synthetic draft cancelled; empty due evaluation passed |
+| Managed runtime | Enabled after inspecting the complete small queue as terminal and all six senders as disabled; fresh heartbeats advanced after all test browsers were closed |
+| Existing operating controls | Safe mode, emergency-stop value, daily limit, timezone and quiet hours preserved; no real send authority enabled |
+| Live browser | Eight assertions passed: owner login, three new/updated pages at 1440/390 px and no recorded runtime/transport errors |
+
+Live readiness explicitly reports **no Mail API token, zero configured mailbox resource IDs and no OpenRouter key**. All six sender identities remain disabled. Successful campaign launch/actual message delivery and AI outcomes are therefore not claimed. Background processing remains enabled with an observed heartbeat; it is still subject to the existing review, permission and delivery controls.
+
+The synthetic source is disabled, its campaign cancelled and its candidate remains consent-pending. Labelled QA records/audit history are retained; no production records were deleted. The disposable local UI database and its synthetic credential file were removed. No real email, provider AI request or funds were sent. Development health/UI/demo-session/protected-dashboard startup was also revalidated in explicitly selected in-memory local mode. Reusable cloud setup instructions were saved as a configuration draft; saving does not publish a cloud snapshot.
+
+See the [158-row current API matrix](2026-11-01-api-coverage.csv) and [sanitized local/live evidence](2026-11-01-w4-evidence.json). Each matrix row separates current live coverage from the 31 October historical result. Anonymous guards, empty-source evaluation and mocked/local positive paths are not represented as exhaustive live business outcomes. Initial browser heading assumptions and an overly strict 401-only guard assertion were corrected and rerun successfully against the actual contracts.
+
 ## Remaining business and operational scope
 
 Actual automatic client discovery/hiring signals, enrichment, reply-based qualification/bookings, negotiation/e-sign, conversation-driven requirement sign-off, external candidate sourcing, OCR lifecycle, complete ranked matching and evidence verification, candidate-facing adaptive screening, controlled client submission portal, calendar negotiation/meetings, authenticated offer acceptance, real payment checkout/webhook reconciliation and retention/replacement orchestration remain incomplete. This increment supplies reusable infrastructure for those modules; it does not claim autonomous agency operation or guaranteed income.

@@ -1,0 +1,159 @@
+procedure,type,anonymous_http_status,current_live_status,current_default_read_http_status,historical_2026_10_31_status,scope
+system.health,query,PUBLIC,CURRENT_LIVE_READ,,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+system.notifyOwner,mutation,403,CURRENT_LIVE_GUARD_ONLY,,LIVE_GUARD_ONLY,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+auth.me,query,PUBLIC,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+auth.logout,mutation,PUBLIC,HISTORICAL_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.prospects.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.prospects.create,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.prospects.transition,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.prospects.requestOnboardingApproval,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.prospects.addContact,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.prospects.attachKybDocument,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.prospects.verifyKyb,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.outreach.draftSequence,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.outreach.classifyInboundReply,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.outreach.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.agreements.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.agreements.draft,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.agreements.recordAcceptance,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.jobs.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.jobs.create,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.jobs.transition,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.candidates.search,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.searchSkills,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.create,mutation,401,CURRENT_LIVE_SYNTHETIC_FLOW,,LIVE_VERIFIED,Representative W4 synthetic flow passed; no real provider delivery or funds.
+recruitment.candidates.transition,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.grantConsent,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.withdraw,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.doNotContact,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.requestRights,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.documents.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.candidates.documents.access,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.documents.scan,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidates.documents.upload,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidateWorkflows.screenings.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.candidateWorkflows.screenings.create,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidateWorkflows.screenings.updateState,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidateWorkflows.shortlists.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.candidateWorkflows.shortlists.updateNote,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidateWorkflows.shortlists.updateState,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidateWorkflows.privacy.pendingRights,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.candidateWorkflows.privacy.fulfillCorrection,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.candidateWorkflows.privacy.fulfillDeletion,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.matching.listForJob,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.matching.createEvidenceMatch,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.matching.queueScoreMatch,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.matching.requestShareApproval,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.interviews.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.interviews.enableReminderSchedule,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.interviews.create,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.interviews.exportIcs,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.interviews.setReminder,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.interviews.reschedule,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.interviews.cancel,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.interviews.transition,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.interviews.calendarFeed,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.feedback.list,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.feedback.record,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.consequential.requestCandidateDecision,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.consequential.requestReplacement,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.consequential.requestInvoiceAction,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.consequential.requestAutomationStop,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.consequential.requestClientOnboarding,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.consequential.requestCandidateShare,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_GUARD_ONLY,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.consequential.requestPlacementConfirmation,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_GUARD_ONLY,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.consequential.requestInvoiceIssue,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_GUARD_ONLY,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.consequential.decide,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.placements.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.placements.getGuaranteeStatus,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.placements.create,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.placements.extendOffer,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.placements.recordOfferDecision,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.placements.transition,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.invoices.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.invoices.draft,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.invoices.requestIssueApproval,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.invoices.generateDocument,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.invoices.createPaymentLink,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.invoices.recordPayment,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.approvals.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+recruitment.approvals.decide,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+recruitment.workspace.bootstrap,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.dashboard,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+operations.settings.get,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+operations.settings.readiness,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+operations.settings.update,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.settings.setEmergencyStop,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.policies.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+operations.policies.create,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.policies.activate,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.approvals.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+operations.queue.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+operations.queue.enqueue,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.queue.retry,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.queue.cancel,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.queue.runNext,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.queue.workerStatus,query,401,CURRENT_LIVE_READ,200,NOT_IN_OLD_ROUTER,Current live owner read or public health passed; no exhaustive state/branch claim.
+operations.queue.configureWorker,mutation,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Representative W4 synthetic flow passed; no real provider delivery or funds.
+operations.queue.enableSchedule,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.exceptions.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+operations.exceptions.createIncident,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.exceptions.updateIncidentState,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+operations.audits.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+email.status,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+email.identities.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+email.identities.register,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.identities.setStatus,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.identities.verify,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.outbound.approvalDetail,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.outbound.requestApproval,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.outbound.deliverApproved,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.inbound.status,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+email.inbound.verify,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.inbound.record,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.inbound.recordByThread,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.inbound.messages,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+email.inbound.conversations,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+team.permissions,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+team.overview,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+team.invite,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+team.updateRole,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+team.revoke,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+team.accept,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_GUARD_ONLY,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+team.myAccess,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+team.activity,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+followups.catalog,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+followups.options,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+followups.list,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+followups.detail,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+followups.versions,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+followups.enroll,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+followups.control,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+followups.grantSending,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+followups.replan,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+followups.snooze,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+followups.reconcileDispatch,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+followups.recoveryQueue,query,401,CURRENT_LIVE_READ,200,LIVE_VERIFIED,Current live owner read or public health passed; no exhaustive state/branch claim.
+followups.processDue,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+followups.recordPermission,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+collections.ledger,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+collections.detail,query,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+collections.saveSettings,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_DEPENDENCY_BLOCKED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+collections.recordPromise,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+collections.cancelPromise,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+collections.processDue,mutation,401,CURRENT_LIVE_GUARD_ONLY,,LIVE_VERIFIED,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+campaigns.catalog,query,401,CURRENT_LIVE_READ,200,NOT_IN_OLD_ROUTER,Current live owner read or public health passed; no exhaustive state/branch claim.
+campaigns.list,query,401,CURRENT_LIVE_READ,200,NOT_IN_OLD_ROUTER,Current live owner read or public health passed; no exhaustive state/branch claim.
+campaigns.detail,query,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Representative W4 synthetic flow passed; no real provider delivery or funds.
+campaigns.draft,mutation,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Representative W4 synthetic flow passed; no real provider delivery or funds.
+campaigns.preview,query,401,CURRENT_LIVE_GUARD_ONLY,,NOT_IN_OLD_ROUTER,Anonymous rejection only in this increment; earlier representative outcomes are historical.
+campaigns.launch,mutation,401,CURRENT_LIVE_BLOCKED_POSITIVE,,NOT_IN_OLD_ROUTER,Live launch rejected missing verified sender/permission; positive launch exercised only in local synthetic tests.
+campaigns.control,mutation,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Draft pause/resume bypass rejected; QA draft cancellation passed. Active pause/resume tested locally.
+campaigns.processDue,mutation,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Empty due-campaign evaluation passed after cancelling QA campaign; actual live enrollment/delivery not claimed.
+intake.sources.list,query,401,CURRENT_LIVE_READ,200,NOT_IN_OLD_ROUTER,Current live owner read or public health passed; no exhaustive state/branch claim.
+intake.sources.create,mutation,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Representative W4 synthetic flow passed; no real provider delivery or funds.
+intake.sources.control,mutation,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Representative W4 synthetic flow passed; no real provider delivery or funds.
+intake.preview,mutation,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Representative W4 synthetic flow passed; no real provider delivery or funds.
+intake.importReviewed,mutation,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Representative W4 synthetic flow passed; no real provider delivery or funds.
+intake.batches,query,401,CURRENT_LIVE_SYNTHETIC_FLOW,,NOT_IN_OLD_ROUTER,Representative W4 synthetic flow passed; no real provider delivery or funds.

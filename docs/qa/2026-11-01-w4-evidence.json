@@ -147,5 +147,1293 @@
     "features": 163,
     "completedModules": 0,
     "statusesSynchronized": true
-  }
+  },
+  "live": {
+    "at": "2026-11-01T10:28:13.442Z",
+    "target": "https://freelancehr.overseasjob.in",
+    "results": [
+      {
+        "name": "Every current protected procedure rejects anonymous access",
+        "status": "PASS",
+        "detail": {
+          "passed": 155,
+          "unauthorized": 154,
+          "forbidden": 1
+        }
+      },
+      {
+        "name": "All current default owner reads succeed",
+        "status": "PASS",
+        "detail": {
+          "passed": 39
+        }
+      },
+      {
+        "name": "Real owner password authentication and persistent worker runtime",
+        "status": "PASS",
+        "detail": {
+          "authMode": "owner_password",
+          "runtimeLoopActive": true
+        }
+      },
+      {
+        "name": "Live source preview/import/manual creation share one candidate identity",
+        "status": "PASS",
+        "detail": {
+          "sourceDisabled": true,
+          "replay": true,
+          "rotation": true
+        }
+      },
+      {
+        "name": "Live campaign refuses unverified sending and draft pause/resume bypass",
+        "status": "PASS"
+      },
+      {
+        "name": "Managed production worker records an actual heartbeat without browser traffic",
+        "status": "PASS",
+        "detail": {
+          "enabled": true,
+          "lastHeartbeatAt": "2026-11-01T10:28:10.000Z",
+          "resultStatus": "polled",
+          "mode": "safe",
+          "sendersDisabled": true
+        }
+      },
+      {
+        "name": "Source receipt history and empty due-campaign route remain consistent",
+        "status": "PASS"
+      },
+      {
+        "name": "Fresh production heartbeat advances after every test browser is closed",
+        "status": "PASS",
+        "detail": {
+          "lastHeartbeatAt": "2026-11-01T10:31:58.000Z",
+          "queueTerminal": true,
+          "browserContextsClosed": true
+        }
+      },
+      {
+        "name": "Current public HTTP and tRPC health endpoints succeed",
+        "status": "PASS"
+      }
+    ],
+    "guards": [
+      {
+        "path": "recruitment.prospects.create",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.prospects.transition",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "system.notifyOwner",
+        "status": 403,
+        "code": "FORBIDDEN",
+        "passed": true
+      },
+      {
+        "path": "recruitment.prospects.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.prospects.requestOnboardingApproval",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.prospects.addContact",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.prospects.attachKybDocument",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.prospects.verifyKyb",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.outreach.draftSequence",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.outreach.classifyInboundReply",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.outreach.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.agreements.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.agreements.recordAcceptance",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.agreements.draft",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.jobs.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.jobs.create",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.jobs.transition",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.searchSkills",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.transition",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.search",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.create",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.grantConsent",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.withdraw",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.doNotContact",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.requestRights",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.documents.access",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.documents.scan",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.screenings.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.screenings.create",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.documents.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.shortlists.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.documents.upload",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.screenings.updateState",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.shortlists.updateNote",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.privacy.fulfillCorrection",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.shortlists.updateState",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.privacy.pendingRights",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.matching.createEvidenceMatch",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.privacy.fulfillDeletion",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.matching.listForJob",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.enableReminderSchedule",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.matching.queueScoreMatch",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.matching.requestShareApproval",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.exportIcs",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.create",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.setReminder",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.cancel",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.reschedule",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.transition",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.feedback.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.feedback.record",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.consequential.requestInvoiceAction",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.calendarFeed",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.consequential.requestAutomationStop",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.consequential.requestCandidateDecision",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.consequential.requestClientOnboarding",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.consequential.requestReplacement",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.consequential.requestCandidateShare",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.placements.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.consequential.requestInvoiceIssue",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.consequential.decide",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.consequential.requestPlacementConfirmation",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.placements.getGuaranteeStatus",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.placements.create",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.placements.extendOffer",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.placements.recordOfferDecision",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.invoices.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.invoices.draft",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.invoices.createPaymentLink",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.placements.transition",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.invoices.requestIssueApproval",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.invoices.recordPayment",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.invoices.generateDocument",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.workspace.bootstrap",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.dashboard",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.settings.get",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.approvals.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "recruitment.approvals.decide",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.settings.setEmergencyStop",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.policies.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.policies.create",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.settings.update",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.settings.readiness",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.approvals.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.queue.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.queue.enqueue",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.policies.activate",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.queue.runNext",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.queue.workerStatus",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.queue.retry",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.queue.enableSchedule",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.queue.cancel",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.queue.configureWorker",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.exceptions.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.exceptions.createIncident",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.exceptions.updateIncidentState",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.status",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.identities.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.identities.register",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "operations.audits.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.identities.setStatus",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.identities.verify",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.outbound.approvalDetail",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.outbound.deliverApproved",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.inbound.status",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.inbound.verify",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.inbound.recordByThread",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.outbound.requestApproval",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.inbound.conversations",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "team.permissions",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.inbound.record",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "email.inbound.messages",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "team.overview",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "team.invite",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "team.updateRole",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "team.accept",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "team.myAccess",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "team.revoke",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "team.activity",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.catalog",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.options",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.detail",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.enroll",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.grantSending",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.replan",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.snooze",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.versions",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.reconcileDispatch",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.control",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.processDue",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.recordPermission",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "collections.ledger",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "collections.detail",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "collections.saveSettings",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "collections.recordPromise",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "followups.recoveryQueue",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "collections.cancelPromise",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "collections.processDue",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "campaigns.catalog",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "campaigns.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "campaigns.detail",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "campaigns.draft",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "campaigns.preview",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "campaigns.launch",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "intake.sources.list",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "intake.sources.control",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "campaigns.control",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "campaigns.processDue",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "intake.sources.create",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "intake.importReviewed",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "intake.batches",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      },
+      {
+        "path": "intake.preview",
+        "status": 401,
+        "code": "UNAUTHORIZED",
+        "passed": true
+      }
+    ],
+    "reads": [
+      {
+        "path": "auth.me",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.prospects.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.outreach.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.agreements.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.jobs.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidates.documents.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.screenings.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.shortlists.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.candidateWorkflows.privacy.pendingRights",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.interviews.calendarFeed",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.placements.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.invoices.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "recruitment.approvals.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "operations.dashboard",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "operations.settings.get",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "operations.settings.readiness",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "operations.policies.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "operations.approvals.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "operations.queue.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "operations.queue.workerStatus",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "operations.exceptions.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "operations.audits.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "email.status",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "email.identities.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "email.inbound.status",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "email.inbound.conversations",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "team.permissions",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "team.overview",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "team.myAccess",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "team.activity",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "followups.catalog",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "followups.options",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "followups.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "followups.recoveryQueue",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "campaigns.catalog",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "campaigns.list",
+        "status": 200,
+        "passed": true
+      },
+      {
+        "path": "intake.sources.list",
+        "status": 200,
+        "passed": true
+      }
+    ],
+    "readiness": {
+      "runtime": {
+        "configured": true,
+        "authMode": "owner_password",
+        "authConfigured": true,
+        "authMissing": [],
+        "oidcConfigured": false,
+        "oidcMissing": [],
+        "privateStorage": {
+          "mode": "local",
+          "configured": true,
+          "missing": []
+        }
+      },
+      "mail": {
+        "configured": false,
+        "tokenConfigured": false,
+        "webhookSecretConfigured": true,
+        "configuredMailboxCount": 0,
+        "configuredSenderAddressCount": 6
+      },
+      "calendar": {
+        "provider": "ics",
+        "timezoneSafe": true,
+        "remindersOwnerApproved": true
+      },
+      "ai": {
+        "configured": false,
+        "structuredValidation": true,
+        "ownerReviewOnLowConfidence": true,
+        "openRouterFallback": true,
+        "autonomousFinalRejection": false
+      }
+    },
+    "scope": "Actual owner login, HTTPS, live DB workflows, synthetic no-send fixtures; no real email or funds",
+    "testCorrection": "Administrative notification route returns FORBIDDEN (403); guard accepts the actual 401/403 rejection contracts. No protected action was permitted."
+  },
+  "liveBrowser": {
+    "at": "2026-11-01T10:29:32.738Z",
+    "target": "https://freelancehr.overseasjob.in",
+    "results": [
+      {
+        "name": "Live personal owner login opens the authenticated dashboard",
+        "status": "PASS"
+      },
+      {
+        "name": "Live /intake renders the new controls at 1440px",
+        "status": "PASS"
+      },
+      {
+        "name": "Live /campaigns renders the new controls at 1440px",
+        "status": "PASS"
+      },
+      {
+        "name": "Live /control renders the new controls at 1440px",
+        "status": "PASS"
+      },
+      {
+        "name": "Live /intake renders the new controls at 390px",
+        "status": "PASS"
+      },
+      {
+        "name": "Live /campaigns renders the new controls at 390px",
+        "status": "PASS"
+      },
+      {
+        "name": "Live /control renders the new controls at 390px",
+        "status": "PASS"
+      },
+      {
+        "name": "Live HTTPS UI has no recorded runtime or transport errors",
+        "status": "PASS"
+      }
+    ],
+    "runtimeErrors": [],
+    "transportErrors": []
+  },
+  "codeCommit": "9a53318",
+  "cleanup": {
+    "liveIntakeSourceDisabled": true,
+    "liveCampaignCancelled": true,
+    "liveSyntheticCandidateConsentPending": true,
+    "allLiveSenderIdentitiesDisabled": true,
+    "managedWorkerEnabledWithFreshHeartbeat": true,
+    "localUiDatabaseAndCredentialsRemoved": true,
+    "realMessagesOrFundsSent": false
+  },
+  "coverageMatrixRows": 158,
+  "developmentStartup": "Health, UI, demo session and protected dashboard passed in explicitly selected local in-memory mode."
 }
