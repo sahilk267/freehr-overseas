@@ -1,0 +1,69 @@
+{
+  "validation": {
+    "vitestPassed": 468,
+    "vitestSkipped": 21,
+    "mysqlPassed": 184,
+    "mysqlFiles": 11,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "hostingEntrySmokes": 4,
+    "environmentPreparationTests": 7
+  },
+  "migration": {
+    "baselineEntries": 19,
+    "finalEntries": 20,
+    "concurrentAndRepeatedUpgrade": "PASS",
+    "existingPhoneHashesAndSuppressionsPreserved": "PASS",
+    "existingContactsAndPermissionsPreserved": "PASS",
+    "existingCompaniesPreserved": "PASS",
+    "noActiveCalendarCreated": "PASS",
+    "defaultBackgroundDisabled": "PASS",
+    "changedManifestRejected": "PASS"
+  },
+  "live": {
+    "at": "2026-11-01T16:23:27.787Z",
+    "buildCommit": "5b54001ad87ad5c37f6457291fd6c414563c3dbe",
+    "ownerPasswordLogin": "PASS",
+    "calendar": {
+      "configured": false,
+      "connected": false,
+      "missing": [
+        "GOOGLE_CALENDAR_CLIENT_ID",
+        "GOOGLE_CALENDAR_CLIENT_SECRET"
+      ],
+      "callbackUrl": "https://freelancehr.overseasjob.in/api/integrations/google-calendar/callback",
+      "missingConfigBeginStatus": 412
+    },
+    "anonymousGuards": [
+      "status",
+      "begin",
+      "disconnect",
+      "configure",
+      "freeBusy",
+      "preview",
+      "sync"
+    ],
+    "callbackUnauthenticated": "PASS",
+    "runtime": {
+      "authMode": "owner_password",
+      "persistentDatabase": true,
+      "runtimeLoopActive": true,
+      "heartbeatRecent": true,
+      "lastError": null
+    },
+    "googleProviderVerified": false,
+    "mailSent": 0
+  },
+  "browser": {
+    "at": "2026-11-01T16:23:34.742Z",
+    "checks": [
+      "Control Plane missing OAuth guidance and disabled Connect at 1440px",
+      "Interviews truthful disconnected state at 1440px",
+      "Control Plane missing OAuth guidance and disabled Connect at 390px",
+      "Interviews truthful disconnected state at 390px"
+    ],
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "scope": "Live owner login and disconnected-state UI only. No actual Google account consent or provider data."
+  }
+}
