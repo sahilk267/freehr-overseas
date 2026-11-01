@@ -68,7 +68,36 @@ function configuredKey(value?: string) {
 
 function credentials() { return [...new Set([configuredKey(process.env.OPENROUTER_API_KEY), configuredKey(process.env.OPENROUTER_FALLBACK_API_KEY)].filter((key): key is string => Boolean(key)))]; }
 
-export function getOpenRouterKeyStatus() { return { configured: credentials().length > 0, fallbackKeyConfigured: Boolean(configuredKey(process.env.OPENROUTER_FALLBACK_API_KEY)) }; }
+export function getOpenRouterKeyStatus() { return { configured: credentials().length > 0, fallbackKeyConfigured: Boolean(configuredKey(process.env.OPENROUTER_FALLBACK_API_KEY)), distinctCredentialCount: credentials().length }; }
+
+/** Read-only authentication probes. Never return key values or provider account data. */
+export async function verifyOpenRouterCredentials() {
+  const checked = new Map<string, { verified: boolean; status: string }>();
+  const results: Array<{ slot: string; configured: boolean; verified: boolean; status: string }> = [];
+  let limited = false;
+  for (const [slot, value] of [["primary", process.env.OPENROUTER_API_KEY], ["fallback", process.env.OPENROUTER_FALLBACK_API_KEY]]) {
+    const key = configuredKey(value);
+    if (!key) { results.push({ slot: slot!, configured: false, verified: false, status: "not_configured" }); continue; }
+    let outcome = checked.get(key);
+    if (!outcome && limited) outcome = { verified: false, status: "deferred_rate_limit" };
+    if (!outcome) {
+      const controller = new AbortController(), timeout = setTimeout(() => controller.abort(), 15000);
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/key", { headers: { Authorization: `Bearer ${key}` }, signal: controller.signal });
+        limited = response.status === 429;
+        if (response.ok) {
+          const payload = await response.json() as { data?: unknown };
+          const valid = Boolean(payload.data && typeof payload.data === "object" && !Array.isArray(payload.data));
+          outcome = { verified: valid, status: valid ? "verified" : "invalid_provider_response" };
+        } else outcome = { verified: false, status: [401, 403].includes(response.status) ? "credentials_rejected" : limited ? "rate_limited" : "provider_unavailable" };
+      } catch { outcome = { verified: false, status: "connection_failed" }; }
+      finally { clearTimeout(timeout); }
+      checked.set(key, outcome);
+    }
+    results.push({ slot: slot!, configured: true, ...outcome });
+  }
+  return { distinctCredentialCount: credentials().length, results };
+}
 
 export const DEFAULT_FREE_FALLBACK_MODELS = ["nvidia/nemotron-3.5-super-vl:free"];
 export class OpenRouterValidationError extends Error {}

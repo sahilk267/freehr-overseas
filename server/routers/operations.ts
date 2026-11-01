@@ -1,4 +1,4 @@
-import { getOpenRouterKeyStatus } from "../services/openrouter";
+import { getOpenRouterKeyStatus, verifyOpenRouterCredentials } from "../services/openrouter";
 import { backgroundWorkerStatus, configureBackgroundWorker } from "../services/backgroundWorker";
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -65,6 +65,7 @@ export const operationsRouter = router({
     };
   }),
   settings: router({
+    verifyAiCredentials: protectedProcedure.mutation(() => verifyOpenRouterCredentials()),
     get: protectedProcedure.query(async ({ ctx }) => ensureWorkspace(ctx.user.id)),
     readiness: protectedProcedure.query(async ({ ctx }) => {
       await ensureWorkspace(ctx.user.id);
