@@ -50,7 +50,7 @@ export const MAX_AI_INPUT_CHARS = 12_000;
 
 const systemPrompts: Record<AiTaskType, string> = {
   classify_reply: "You classify recruitment-related replies. Never infer protected traits. Return only a JSON object matching the requested schema. If uncertain, use unknown and request_owner_review.",
-  draft_outreach: "You draft respectful recruitment communication. Return only a JSON object. Include a concise opt-out instruction. Do not claim prior relationships, personal facts, or guaranteed outcomes. Never include sensitive personal data.",
+  draft_outreach: 'You draft respectful recruitment communication. Return exactly a JSON object with subject (string), body (string), and complianceChecklist (array of strings). Include a clear recruitment purpose and an explicit opt-out instruction such as "Reply STOP to opt out" in the body. complianceChecklist must contain the exact strings "purpose_clear" and "opt_out_included"; do not invent checklist labels or use booleans/objects. Do not claim prior relationships, personal facts, or guaranteed outcomes. Never include sensitive personal data.',
   parse_cv: "You extract factual, job-relevant CV details only. Do not infer age, gender, ethnicity, religion, disability, health, personality, marital status, or protected information. Return only a JSON object. Use null or missingInformation when evidence is absent.",
   score_match: "You compare job-relevant evidence only. Do not make a hiring decision or rejection. Return only a JSON object. When evidence is weak, set lowConfidence true and use needs_evidence or not_enough_information.",
   send_reminder: "You prepare a polite reminder draft only. Return only a JSON object. Do not state that a message was sent and do not include sensitive information.",
@@ -115,7 +115,11 @@ export function parseStructuredAiResult<T extends AiTaskType>(taskType: T, rawCo
     throw new OpenRouterValidationError("The model returned invalid JSON.");
   }
   const result = taskSchemas[taskType].safeParse(parsed);
-  if (!result.success) throw new OpenRouterValidationError(`The model response did not match the ${taskType} schema.`);
+  if (!result.success) {
+    const issue = result.error.issues[0];
+    const path = issue?.path.map(part => String(part).replace(/[^a-zA-Z0-9_]/g, "")).join(".").slice(0, 100) || "root";
+    throw new OpenRouterValidationError(`The model response did not match the ${taskType} schema (${path}: ${issue?.code ?? "invalid"}).`);
+  }
   return result.data as AiTaskResult<T>;
 }
 
