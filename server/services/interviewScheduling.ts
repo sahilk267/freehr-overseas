@@ -1,6 +1,6 @@
 import { isValidTimezone } from "../../shared/dateTime";
 import { appendWorkflowEvent, workflowHash } from "./workflowStore";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gt, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { candidates, companies, interviews, interviewSlotHolds as holds, jobs, workflowEvents } from "../../drizzle/schema";
 import { createId, recordAudit, requireDb } from "../db";
@@ -125,7 +125,7 @@ function publicHold(row: typeof holds.$inferSelect) {
 }
 async function holdConflicts(tx: any, ownerId: number, candidateId: string, slot: Slot, excludeId?: string) {
   const start = instant(slot.scheduledAt).getTime(), end = start + slot.durationMinutes * 60000;
-  const rows: Array<typeof holds.$inferSelect> = await tx.select().from(holds).where(and(eq(holds.ownerId, ownerId), eq(holds.candidateId, candidateId), eq(holds.status, "active")));
+  const rows: Array<typeof holds.$inferSelect> = await tx.select().from(holds).where(and(eq(holds.ownerId, ownerId), eq(holds.candidateId, candidateId), eq(holds.status, "active"), gt(holds.expiresAt, new Date())));
   return rows.filter(row => row.id !== excludeId && new Date(row.expiresAt).getTime() > Date.now() && new Date(row.scheduledAt).getTime() < end && new Date(row.scheduledAt).getTime() + row.durationMinutes * 60000 > start);
 }
 async function rejectHeldSlot(tx: any, ownerId: number, candidateId: string, slot: Slot, excludeId?: string) {
