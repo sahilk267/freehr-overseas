@@ -76,4 +76,10 @@ describe("Google Calendar authorization and reviewed event adapter", () => {
   f.fetcher.mockImplementationOnce(async()=>{entered();await wait;return json({calendars:{primary:{busy:[]}}});});const first=googleFreeBusy(f.ownerId,new Date(),new Date(Date.now()+60000));await started;await expect(googleFreeBusy(f.ownerId,new Date(),new Date(Date.now()+60000))).rejects.toThrow(/in progress/);release();await first;
  });
 
+ it("preserves Google edits made between separate sync requests",async()=>{
+  const f=await fixture();await f.finish();const p=await previewGoogleInterview(f.ownerId,f.interviewId);await syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash);
+  const [id,event]=[...f.events.entries()][0];f.events.set(id,{...event,summary:'Owner edited in Google',etag:'"external-edit"'});const before=f.writes.length;
+  await expect(syncGoogleInterview(f.ownerId,f.interviewId,p.previewHash)).rejects.toThrow(/external event changed/);expect(f.writes.length).toBe(before);expect(f.events.get(id).summary).toBe('Owner edited in Google');
+ });
+
 });

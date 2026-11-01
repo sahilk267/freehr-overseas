@@ -173,6 +173,9 @@ export async function syncGoogleInterview(ownerId: number, id: string, previewHa
     if (!data && s.event.status === "cancelled") return { synced: true, action: "no_external_event", invitationsSent: false };
     if (!data) { remote = await request(`${url}?sendUpdates=none`, { method: "POST", headers, body: JSON.stringify({ ...s.event, id: s.eventId }) }, [409]); if (remote.status === 409) data = await (await request(`${url}/${s.eventId}`, { headers })).json(); else data = await remote.json(); }
     if (data?.extendedProperties?.private?.freehrBinding !== s.binding || (typeof data?.etag !== "string" || !data.etag || data.etag.length > 512)) throw new CalendarFailure("event_identity_conflict");
+    const previousBinding = await withWorkspaceTransaction(ownerId, async tx =>
+      (await tx.select().from(bindings).where(and(eq(bindings.ownerId, ownerId), eq(bindings.id, s.binding))).limit(1))[0]);
+    if (previousBinding?.providerEtag && previousBinding.providerEtag !== data.etag) throw new CalendarFailure("external_event_changed");
     await stillCurrent();
     const patched = await request(`${url}/${s.eventId}?sendUpdates=none`, { method: "PATCH", headers: { ...headers, "If-Match": data.etag }, body: JSON.stringify(s.event) }, [412]);
     if (patched.status === 412) throw new CalendarFailure("external_event_changed");
