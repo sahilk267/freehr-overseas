@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-01T13:21:31.699Z",
+  "codeCommit": "e68f61f",
+  "ai": {
+    "configured": true,
+    "fallbackKeyConfigured": false,
+    "freeOnly": true,
+    "defaultModel": "openrouter/free",
+    "paidFallbackAllowed": false,
+    "structuredValidation": true,
+    "ownerReviewOnLowConfidence": true,
+    "openRouterFallback": true,
+    "autonomousFinalRejection": false
+  },
+  "validation": {
+    "vitestPassed": 430,
+    "vitestSkipped": 16,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "envPreparationTestsPassed": 7
+  },
+  "scope": "Live readiness confirms deployment and primary key presence. Alternate-key and forced model-failure branches were tested with mocked providers; no second real key is configured yet."
+}
