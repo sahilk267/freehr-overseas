@@ -15,6 +15,7 @@ import { processHostingerMailWebhook } from "./services/hostingerWebhook";
 import { processDueInterviewReminders } from "./services/interviewReminders";
 import { processIntakeWebhook } from "./services/sourceIntake";
 import { startManagedBackgroundWorker } from "./services/backgroundWorker";
+import { discoverHostingerMailboxes } from "./services/hostingerMail";
 import { processDueAutomationBatch } from "./services/queue";
 import { getPrivateStorageStatus, readPrivateDocument } from "./services/privateStorage";
 import {
@@ -253,6 +254,8 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
 }
 
 export async function startHostingerServer() {
+  // Real token stays on the host; missing mailbox IDs are resolved on every start.
+  await discoverHostingerMailboxes();
   const isStrictProduction = process.env.NODE_ENV === "production" && !process.env.VITEST;
   if (isStrictProduction) {
     const dbCheck = await verifyDatabaseConnectivity();

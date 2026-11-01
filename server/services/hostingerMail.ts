@@ -96,6 +96,28 @@ function getClient() {
   return new Configuration({ accessToken: token });
 }
 
+/** Resolve missing IDs from the token's authorized account, never from guesses.
+ * Runtime-only bindings are rediscovered after restart; hosting secrets stay private.
+ */
+export async function discoverHostingerMailboxes() {
+  if (!getHostingerMailApiStatus().configured) return { ok: false, status: "credentials_missing", mailboxes: [] };
+  try {
+    const account = await new AccountApi(getClient()).getCurrentAccount({ timeout: 15000 });
+    const available = account.data?.data?.mailboxes;
+    if (!Array.isArray(available)) throw new Error("Invalid mailbox response");
+    const mailboxes = EMAIL_PURPOSES.map(purpose => {
+      const address = getSenderAddress(purpose), key = mailboxResourceEnvKey[purpose];
+      const matches = available.filter(m => typeof m.address === "string" && m.address.trim().toLowerCase() === address && typeof m.resourceId === "string" && configuredValue(m.resourceId) && !/[\r\n@]/.test(m.resourceId));
+      const existing = configuredValue(process.env[key]);
+      const match = isApprovedSenderAddress(address) && matches.length === 1 ? matches[0] : null;
+      const status = !match ? "not_authorized_or_ambiguous" : existing && existing !== match.resourceId ? "configuration_conflict" : "verified";
+      if (status === "verified" && !existing) process.env[key] = match!.resourceId;
+      return { purpose, address, status, resourceId: status === "verified" ? match!.resourceId : null };
+    });
+    return { ok: mailboxes.every(m => m.status === "verified"), status: "account_checked", mailboxes };
+  } catch { return { ok: false, status: "connection_failed", mailboxes: [] }; }
+}
+
 export async function verifyHostingerMailApi(identity?: { purpose: EmailPurpose; email: string }) {
   if (!getHostingerMailApiStatus().configured) return { ok: false, status: "credentials_missing" as const };
   if (identity && !isSenderIdentityConfigured(identity)) return { ok: false, status: "mailbox_configuration_missing" as const };

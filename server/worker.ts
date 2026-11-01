@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { discoverHostingerMailboxes } from "./services/hostingerMail";
 import { invoiceCollectionSettings, invoicePaymentPromises, outreachCampaigns } from "../drizzle/schema";
 import { processDueInvoiceCollections } from "./services/invoiceCollections";
 import { pathToFileURL } from "node:url";
@@ -12,6 +13,7 @@ export async function runWorker(once = false) {
   if (!db.$client) throw new Error("The standalone worker refuses an in-memory database adapter.");
   const connection = await verifyDatabaseConnectivity();
   if (!connection.connected) throw new Error("Worker database connection failed.");
+  await discoverHostingerMailboxes();
   try {
     await db.select({ id: invoiceCollectionSettings.id }).from(invoiceCollectionSettings).limit(1);
     await db.select({ id: invoicePaymentPromises.id }).from(invoicePaymentPromises).limit(1);

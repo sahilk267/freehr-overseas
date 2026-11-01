@@ -18,6 +18,7 @@ import { processHostingerMailWebhook } from "../services/hostingerWebhook";
 import { processDueInterviewReminders } from "../services/interviewReminders";
 import { processIntakeWebhook } from "../services/sourceIntake";
 import { startManagedBackgroundWorker } from "../services/backgroundWorker";
+import { discoverHostingerMailboxes } from "../services/hostingerMail";
 import { processDueAutomationBatch } from "../services/queue";
 import { readPrivateDocument } from "../services/privateStorage";
 import { sdk } from "./sdk";
@@ -46,6 +47,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 
 async function startServer() {
   assertProductionRuntimeConfiguration();
+  if (process.env.NODE_ENV === "production") await discoverHostingerMailboxes();
   const app = express();
   app.post("/api/integrations/intake/:sourceId", express.json({ limit: "256kb" }), async (req, res) => {
     const result = await processIntakeWebhook({ sourceId: req.params.sourceId, authorization: req.headers.authorization, body: req.body });

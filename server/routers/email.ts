@@ -1,4 +1,5 @@
 import { stopOwnerFollowUps } from "../services/followupEvents";
+import { discoverHostingerMailboxes } from "../services/hostingerMail";
 import { deliverApprovedEmail } from "../services/emailDelivery";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
@@ -13,6 +14,7 @@ const identityInput = z.object({ email: z.string().email(), purpose: z.enum(EMAI
 
 export const emailRouter = router({
   status: protectedProcedure.query(() => getHostingerMailApiStatus()),
+  discoverMailboxes: protectedProcedure.mutation(() => discoverHostingerMailboxes()),
   identities: router({
     list: protectedProcedure.query(async ({ ctx }) => (await requireDb()).select().from(emailIdentities).where(eq(emailIdentities.ownerId, ctx.user.id)).orderBy(emailIdentities.purpose)),
     // Hosting filters can treat a URL ending in .save as a backup-file write.

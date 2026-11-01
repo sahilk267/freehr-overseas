@@ -8,6 +8,7 @@ import {
   resolveSentMessageInHostinger,
   sendViaHostingerMailApi,
   verifyHostingerMailApi,
+  discoverHostingerMailboxes,
 } from "./hostingerMail";
 
 describe("Hostinger Mail API safeguards", () => {
@@ -49,6 +50,25 @@ describe("Hostinger Mail API safeguards", () => {
     process.env.HOSTINGER_MAILBOX_OWNER_ID = "REPLACE_WITH_REAL_ID";
     expect(getHostingerMailApiStatus().configured).toBe(false);
     await expect(verifyHostingerMailApi()).resolves.toEqual({ ok: false, status: "credentials_missing" });
+  });
+
+  it("discovers exact authorized mailbox IDs without overwriting conflicts or guessing missing addresses", async () => {
+    process.env.HOSTINGER_MAIL_API_TOKEN = "test-token";
+    process.env.OWNER_MAILBOX = "owner.fl@overseasjob.in";
+    process.env.CLIENTS_MAILBOX = "clients.fl@overseasjob.in";
+    delete process.env.HOSTINGER_MAILBOX_OWNER_ID;
+    process.env.HOSTINGER_MAILBOX_CLIENTS_ID = "existing-other";
+    const { AccountApi } = await import("hostinger-mail-api-sdk");
+    vi.spyOn(AccountApi.prototype, "getCurrentAccount").mockResolvedValueOnce({ data: { data: { mailboxes: [
+      { resourceId: "synthetic-owner", address: "OWNER.FL@OVERSEASJOB.IN" },
+      { resourceId: "synthetic-clients", address: "clients.fl@overseasjob.in" },
+    ] } } } as any);
+    const result = await discoverHostingerMailboxes();
+    expect(result.ok).toBe(false);
+    expect(process.env.HOSTINGER_MAILBOX_OWNER_ID).toBe("synthetic-owner");
+    expect(process.env.HOSTINGER_MAILBOX_CLIENTS_ID).toBe("existing-other");
+    expect(result.mailboxes.find(m => m.purpose === "clients")?.status).toBe("configuration_conflict");
+    expect(result.mailboxes.find(m => m.purpose === "privacy")?.resourceId).toBeNull();
   });
 
   it("verifies the exact mailbox resource and address before activating an identity", async () => {

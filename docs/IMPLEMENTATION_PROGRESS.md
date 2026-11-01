@@ -242,3 +242,11 @@ The private, ignored `.env.hostinger` now contains an explicit `REPLACE_WITH_REA
 Mail readiness and dispatch now reject template token/resource-ID values. Sender activation/verification checks that the token authorizes the exact configured resource ID and sender address; a successful account-level connection alone cannot activate another mailbox. Four offline mailbox-mapping tests cover order-independent matching, missing/ambiguous mappings, conflicting saved IDs and malformed/foreign values. Two additional mail regressions cover dummy credentials and exact mailbox verification. Broader W4/agency limitations remain as recorded above.
 
 Validation for this follow-up: 421 Vitest passes, 16 skips, four standalone mapping tests passed, TypeScript and production build passed. No live Mail API request or hosting environment replacement was made with the placeholder.
+
+## Live-token mailbox discovery — 1 November 2026
+
+The owner saved the Mail API token in hPanel, confirmed by live readiness (`tokenConfigured=true`); the workspace's private env retains its dummy token. No live token was copied, printed or replaced. All six live resource-ID fields were still absent before this increment.
+
+Production entry points and the standalone worker now resolve missing resource IDs through the token's authorized mailbox inventory, matching exact configured addresses in the approved domain. Only unique matches are bound in that process. Existing conflicting IDs are retained and reported; missing or ambiguous mailboxes cannot activate a sender. Discovery repeats on restart and can be retried from the owner-only Control Plane action. This uses the token already held on the server and does not rewrite the hosting environment or send messages. A provider outage leaves the app available and mail configuration blocked. The new authenticated `email.discoverMailboxes` route returns only configured-address mapping outcomes, not the token or unrelated mailboxes.
+
+The control panel explains runtime-only bindings and provides visible discovery outcomes. A regression verifies exact matching, preserved conflicting IDs and refused missing mappings. Historical W4 API inventory predates this one added procedure.
