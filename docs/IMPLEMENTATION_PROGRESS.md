@@ -2,9 +2,13 @@
 
 Updated 1 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
+## Latest live AI checkpoint
+
+[Free-only OpenRouter verification](qa/2026-11-01-free-ai-setup.md) confirms the hPanel key works: a synthetic queue job completed using `nvidia/nemotron-3.5-super-vl:free`, with validated JSON and no linked candidate/conversation or outgoing message. Code `6ded24b` blocks paid/built-in fallback routes. 423 tests pass, 16 skip; typecheck/build pass. Earlier missing-OpenRouter-key statements below are historical. Other task pilots, shared provider-request budgeting and the broader agency modules remain open.
+
 ## Latest live Mail API checkpoint
 
-The owner saved the real token in hPanel. [Live setup verification](qa/2026-11-01-mail-setup.md) resolved all six authorized mailbox IDs, verified and activated the matching senders. No email was sent. The older missing-Mail-token finding below is historical; AI and the remaining business-module gaps remain open.
+The owner saved the real token in hPanel. [Live setup verification](qa/2026-11-01-mail-setup.md) resolved all six authorized mailbox IDs, verified and activated the matching senders. No email was sent. The older missing-Mail-token finding below is historical; Remaining business-module gaps remain open; see the newer AI checkpoint above.
 
 ## Latest increment: W4 source intake, campaigns and managed processing
 

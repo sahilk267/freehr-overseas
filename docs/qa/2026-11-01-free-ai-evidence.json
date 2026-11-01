@@ -1,0 +1,28 @@
+{
+  "at": "2026-11-01T13:14:56.357Z",
+  "codeCommit": "6ded24b",
+  "freeOnly": true,
+  "paidFallbackAllowed": false,
+  "jobId": "que_7AYuPfSc1wkHdRBrJJn_",
+  "status": "completed",
+  "result": {
+    "classification": "opt_out",
+    "confidence": 100,
+    "rationale": "The reply explicitly requests to unsubscribe and stop recruitment contact.",
+    "nextAction": "stop_contact"
+  },
+  "lastError": null,
+  "runner": {
+    "status": "completed",
+    "jobId": "que_7AYuPfSc1wkHdRBrJJn_",
+    "selectedModel": "nvidia/nemotron-3.5-super-vl:free"
+  },
+  "messagesSent": 0,
+  "linkedBusinessRecords": 0,
+  "validation": {
+    "vitestPassed": 423,
+    "vitestSkipped": 16,
+    "typecheck": "PASS",
+    "build": "PASS"
+  }
+}
