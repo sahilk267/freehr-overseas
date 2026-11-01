@@ -2,19 +2,25 @@
 
 Updated 1 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
-## Latest credential and quality checkpoint
+## Latest live checkpoint: scheduling controls and healthy AI credentials
+
+[Recorded interview scheduling report](qa/2026-11-01-interview-scheduling.md) covers candidate overlap rejection, durable create-request retries, consistent reschedule/cancel/reminder versions and atomic old-follow-up invalidation. The schedule preview is live at desktop/mobile sizes; external calendar/participant availability remains unverified. Initial API/UI checks and the durable replay follow-up passed on deployed builds `52dbcef` and `b33f514`. All tentative QA appointments were cancelled and the queue is terminal. No email was sent.
+
+Both distinct OpenRouter credentials authenticated successfully in the latest provider check, superseding the earlier rejected backup. Current validation: 450 tests pass, 19 skip; 164 real-MySQL regressions, TypeScript/build and four entry smokes pass. Three M18 feature records remain partial and no complete advanced module is claimed.
+
+## Earlier credential and quality checkpoint
 
 [Live AI health and pilot report](qa/2026-11-01-ai-credential-quality-checks.md): primary key verified, backup key rejected by the provider despite being configured. Owner correction in hPanel is still required. Synthetic CV text extraction, missing-evidence matching and the corrected outreach-draft retest passed; initial empty/schema-invalid outputs were rejected and retained in evidence. Control Plane now supports credential verification. No email or real business record was affected. Final validation: 436 passing tests, 16 skips, typecheck/build and four entry smokes passed.
 
-## Latest live AI checkpoint
+## Earlier live AI checkpoint
 
 [Free-only OpenRouter verification](qa/2026-11-01-free-ai-setup.md) confirms the hPanel key works: a synthetic queue job completed using `nvidia/nemotron-3.5-super-vl:free`, with validated JSON and no linked candidate/conversation or outgoing message. Code `6ded24b` blocks paid/built-in fallback routes. 423 tests pass, 16 skip; typecheck/build pass. Earlier missing-OpenRouter-key statements below are historical. Other task pilots, shared provider-request budgeting and the broader agency modules remain open.
 
-## Latest live Mail API checkpoint
+## Earlier live Mail API checkpoint
 
 The owner saved the real token in hPanel. [Live setup verification](qa/2026-11-01-mail-setup.md) resolved all six authorized mailbox IDs, verified and activated the matching senders. No email was sent. The older missing-Mail-token finding below is historical; Remaining business-module gaps remain open; see the newer AI checkpoint above.
 
-## Latest increment: W4 source intake, campaigns and managed processing
+## Earlier increment: W4 source intake, campaigns and managed processing
 
 The [W4 implementation and validation report](qa/2026-11-01-w4-automation.md) records scoped source keys, reviewed CSV/JSON imports, conservative canonical identity reuse, four governed campaign scenarios and an observable production Node background worker. Campaigns reuse the existing follow-up plans, scoped grants, outbox and physical queue. Existing manual creation shares the same identity commands. No second delivery engine or fictional provider success was introduced.
 

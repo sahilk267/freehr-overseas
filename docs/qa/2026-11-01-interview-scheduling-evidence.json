@@ -1,0 +1,77 @@
+{
+  "at": "2026-11-01T14:39:41.896Z",
+  "validation": {
+    "vitestPassed": 450,
+    "vitestSkipped": 19,
+    "mysqlPassed": 164,
+    "mysqlFiles": 10,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "entrySmokesPassed": 4
+  },
+  "initialLiveScheduling": {
+    "at": "2026-11-01T14:30:04.136Z",
+    "buildCommit": "52dbcef7a6e75688c0a335d8f4a02f3bd6dc4940",
+    "results": [
+      "Exact duplicate create reused its appointment",
+      "Overlapping candidate appointment rejected",
+      "Adjacent candidate appointment accepted",
+      "Rejected reschedule preserved version and reminder",
+      "Reschedule retry preserved sequence and existing meeting link",
+      "Reminder disable updated its source version",
+      "Anonymous schedule preview denied"
+    ],
+    "credentials": {
+      "distinctCredentialCount": 2,
+      "results": [
+        {
+          "slot": "primary",
+          "configured": true,
+          "verified": true,
+          "status": "verified"
+        },
+        {
+          "slot": "fallback",
+          "configured": true,
+          "verified": true,
+          "status": "verified"
+        }
+      ]
+    },
+    "messagesSent": 0,
+    "scope": "Synthetic tentative appointments only; external calendar/participant availability not tested"
+  },
+  "browser": {
+    "at": "2026-11-01T14:31:30.594Z",
+    "results": [
+      "UI shows an actual recorded candidate conflict",
+      "Changing the proposed slot clears the old preview",
+      "UI distinguishes a clear recorded slot from participant confirmation",
+      "No horizontal overflow at 1440px",
+      "No horizontal overflow at 390px",
+      "No browser runtime or transport errors"
+    ],
+    "cleanup": {
+      "bothAppointmentsCancelled": true,
+      "icsCancelled": true,
+      "slotReleased": true,
+      "messagesSent": 0
+    },
+    "runtimeErrors": [],
+    "transportErrors": []
+  },
+  "durableRetry": {
+    "at": "2026-11-01T14:37:24.143Z",
+    "buildCommit": "b33f514abb648b0a6d5a31d4a103977e397813ac",
+    "cancelledRequestReplayedWithoutRecreation": true,
+    "changedContentRejected": true,
+    "explicitNewIntentAllowed": true,
+    "messagesSent": 0
+  },
+  "cleanup": {
+    "allTentativeQaAppointmentsCancelled": true,
+    "queueTerminal": true,
+    "labelledQaEntitiesRetained": true,
+    "messagesSent": 0
+  }
+}

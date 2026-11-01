@@ -12,4 +12,14 @@ No schema migration, parallel queue, timer or mail gateway was introduced. Three
 
 Local validation: 450 tests passed, 19 skipped; 164 real-MySQL regressions passed across ten files, including simultaneous overlaps, duplicate creates and cancellation/reschedule races. TypeScript, production build and four Hostinger entry smokes passed. Counts overlap and are not unique feature totals. SQL/provider-dependent skips are not silently counted as passes.
 
-Detailed local logs: `/workspace/freehr-wave4-validation/interview-mysql.log` and `/tmp/interview-*`. Provider calls in regression fixtures are mocked. Real appointment/mail/calendar outcomes are not inferred from them. Live observations are appended after deployment. The latest independent credential check verified both primary and backup OpenRouter keys; the older rejected-backup checkpoint is historical.
+Detailed local logs: `/workspace/freehr-wave4-validation/interview-mysql.log` and `/tmp/interview-*`. Provider calls in regression fixtures are mocked. Real appointment/mail/calendar outcomes are not inferred from them. Live observations are recorded below. The latest independent credential check verified both primary and backup OpenRouter keys; the older rejected-backup checkpoint is historical.
+
+## Live deployment and cleanup
+
+Initial scheduling code `52dbcef` passed seven authenticated live checks: exact create retry, overlap rejection, adjacent slot acceptance, unchanged state after a rejected reschedule, stable reschedule replay with meeting-link preservation, reminder version change and anonymous preview denial. Six browser assertions passed: recorded conflict display, stale-preview clearing, clear recorded-slot display, desktop/mobile layout and no runtime/transport errors. Cancelled ICS status and released slots were verified.
+
+The durable request-identity follow-up was separately verified against deployed build `b33f514`: replaying a cancelled request did not recreate an event, changed content under that key conflicted, and an explicitly fresh request key permitted intentional rebooking. All four tentative QA appointments were cancelled and reminders cleared. The queue is terminal. Labelled synthetic company/job/candidate and audit/request-ledger records remain; no real client/candidate records were changed and no email was sent.
+
+The actual provider metadata check verified both distinct primary/backup OpenRouter credentials. This supersedes the earlier rejected-backup checkpoint; it does not prove independent quota or forced inference failover. Calendar changes revoke future sending authority; previously accepted or already in-flight provider messages cannot be recalled.
+
+[Sanitized local/live evidence](2026-11-01-interview-scheduling-evidence.json) separates the initial UI/API checks and final durable-command checks. Most external and negotiated-calendar capabilities remain incomplete as listed above.
