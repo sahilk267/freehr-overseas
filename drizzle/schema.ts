@@ -865,3 +865,14 @@ export const googleCalendarEventBindings = mysqlTable("googleCalendarEventBindin
   eventId: varchar("eventId", { length: 128 }).notNull(), syncedFingerprint: varchar("syncedFingerprint", { length: 64 }),
   providerEtag: varchar("providerEtag", { length: 512 }), lastSyncedAt: timestamp("lastSyncedAt", { fsp: 3 }), lastErrorCode: varchar("lastErrorCode", { length: 64 }), createdAt, updatedAt,
 }, t => [index("google_calendar_binding_owner_idx").on(t.ownerId)]);
+
+export const interviewSlotHolds = mysqlTable("interviewSlotHolds", {
+  id: id("id").primaryKey(), ownerId: int("ownerId").notNull().references(() => users.id),
+  candidateId: id("candidateId").notNull().references(() => candidates.id),
+  requestHash: varchar("requestHash", { length: 64 }).notNull(),
+  scheduledAt: timestamp("scheduledAt").notNull(), timezone: varchar("timezone", { length: 64 }).notNull(),
+  durationMinutes: int("durationMinutes").notNull(), expiresAt: timestamp("expiresAt", { fsp: 3 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("active"),
+  interviewId: id("interviewId").references(() => interviews.id), bookingHash: varchar("bookingHash", { length: 64 }),
+  createdAt, updatedAt,
+}, t => [index("interview_hold_candidate_idx").on(t.ownerId, t.candidateId, t.status), index("interview_hold_expiry_idx").on(t.ownerId, t.expiresAt)]);

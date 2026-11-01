@@ -943,8 +943,8 @@
           "id": "M18-F03",
           "description": "Versioned schedule/RSVP lifecycle, temporary slot holds, reschedule/cancel reconciliation, no-show and alternative-slot recovery.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-01-interview-scheduling.md",
-          "implementation_note": "Create retries reuse exact appointments; reschedules, cancellation/state and reminder changes share workspace transactions and calendar sequence updates. Negotiated slot holds, stale-client revision checks and external RSVP reconciliation remain pending."
+          "evidence_ref": "qa/2026-11-02-interview-slot-holds.md",
+          "implementation_note": "Expiring owner-managed internal candidate holds now serialize against direct create/reschedule/reactivation. Booking uses the canonical scheduler and atomically consumes the hold; stable request identity prevents resurrection/duplicate booking. Two-sided negotiated availability, interviewer/panel holds, reschedule-target holds, stale-client revision checks and external RSVP reconciliation remain pending."
         },
         {
           "id": "M18-F04",

@@ -308,3 +308,7 @@ Create request identities now persist in the shared workflow ledger, so an old r
 ## W5 Google Calendar connection foundation — 1 November 2026
 
 [Scope, setup and validation](qa/2026-11-01-google-calendar.md): owner-only OAuth, encrypted credentials, private free/busy and reviewed create/reschedule/cancel mirroring now reuse canonical interview records and workspace locking. Deterministic provider identities prevent duplicate creates on uncertain transport outcomes; ETags and generation/lease guards reject stale operations. No background sync or guest invitations are enabled. Google login for the platform remains unnecessary. Migration 0019 adds only connection/state/event-binding storage; no active connection is seeded. All advanced M18 completion gates remain open.
+
+## W5 internal slot holds — 2 November 2026
+
+[Scope and validation](qa/2026-11-02-interview-slot-holds.md): owner-managed expiring candidate holds share the workspace lock and canonical interview scheduler. Direct booking/reschedule/reactivation respect active holds; hold booking creates the interview and consumes the hold atomically. Retries preserve expiry and cannot recreate cancelled bookings. No new reminder engine, provider writes or external invitations are introduced. Migration 0020 adds only hold storage. M18 remains partial; participant negotiation, provider synchronization and stale-client edit control are still pending. Google OAuth fields are now configured live; account consent remains pending.

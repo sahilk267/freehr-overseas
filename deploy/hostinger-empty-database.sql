@@ -1023,3 +1023,14 @@ CREATE TABLE `googleCalendarEventBindings` (
  KEY `google_calendar_binding_owner_idx` (`ownerId`), FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`), FOREIGN KEY (`connectionId`) REFERENCES `googleCalendarConnections` (`id`), FOREIGN KEY (`interviewId`) REFERENCES `interviews` (`id`)
 );
 INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('39b3bb163341588872ca46ee128242d7b7cc2986904bf96d09a0779fffb247a0', 1787882300000);
+
+-- 0020_interview_slot_holds
+CREATE TABLE `interviewSlotHolds` (
+ `id` varchar(36) NOT NULL PRIMARY KEY, `ownerId` int NOT NULL, `candidateId` varchar(36) NOT NULL,
+ `requestHash` varchar(64) NOT NULL, `scheduledAt` timestamp NOT NULL, `timezone` varchar(64) NOT NULL, `durationMinutes` int NOT NULL,
+ `expiresAt` timestamp(3) NOT NULL, `status` varchar(32) NOT NULL DEFAULT 'active', `interviewId` varchar(36), `bookingHash` varchar(64),
+ `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ KEY `interview_hold_candidate_idx` (`ownerId`,`candidateId`,`status`), KEY `interview_hold_expiry_idx` (`ownerId`,`expiresAt`),
+ FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`), FOREIGN KEY (`candidateId`) REFERENCES `candidates` (`id`), FOREIGN KEY (`interviewId`) REFERENCES `interviews` (`id`)
+);
+INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('d9ffe91190b33b58994daaad1a67212bbecb8f06f5ea2b0065c45814b23772cc', 1787882400000);

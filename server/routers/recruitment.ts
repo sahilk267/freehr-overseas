@@ -1,4 +1,4 @@
-import { configureInterviewReminder, changeInterviewState, previewInterviewSlot, rescheduleInterview, scheduleInterview } from "../services/interviewScheduling";
+import { bookInterviewHold, holdInterviewSlot, listInterviewHolds, releaseInterviewHold, configureInterviewReminder, changeInterviewState, previewInterviewSlot, rescheduleInterview, scheduleInterview } from "../services/interviewScheduling";
 import { withWorkspaceTransaction } from "../services/database";
 import { configureBackgroundWorker } from "../services/backgroundWorker";
 import { intakeCandidateInTransaction, intakeProspectInTransaction, intakeContactInTransaction } from "../services/canonicalIntake";
@@ -779,6 +779,12 @@ export const matchingRouter = router({
 });
 
 export const interviewsRouter = router({
+  holds: router({
+    list: protectedProcedure.query(({ctx}) => listInterviewHolds(ctx.user.id)),
+    create: protectedProcedure.input(z.object({ candidateId: z.string().min(4).max(36), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone), durationMinutes: z.number().int().min(15).max(240), ttlMinutes: z.number().int().min(1).max(30).default(10), requestKey: z.string().trim().min(8).max(100) })).mutation(({ctx,input}) => holdInterviewSlot(ctx.user.id, ctx.actor.id, input)),
+    release: protectedProcedure.input(idInput).mutation(({ctx,input}) => releaseInterviewHold(ctx.user.id, ctx.actor.id, input.id)),
+    book: protectedProcedure.input(z.object({ id: z.string().min(4).max(36), companyId: z.string().min(4).max(36), jobId: z.string().min(4).max(36), meetingUrl: z.string().url().optional() })).mutation(({ctx,input}) => bookInterviewHold(ctx.user.id, ctx.actor.id, input)),
+  }),
   list: protectedProcedure.input(paginationInput).query(async ({ ctx, input }) => {
     const db = await requireDb();
     return db.select().from(interviews).where(eq(interviews.ownerId, ctx.user.id)).orderBy(desc(interviews.scheduledAt)).limit(input.limit);

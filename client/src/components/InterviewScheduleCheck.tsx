@@ -3,7 +3,7 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { zonedDateTimeToUtc } from "@shared/dateTime";
 
-type Result = { hasConflict: boolean; conflicts: Array<{ id: string; scheduledAt: Date; durationMinutes: number; timezone: string; status: string }> };
+type Result = { heldSlots: Array<{id: string; expiresAt: Date}>; hasConflict: boolean; conflicts: Array<{ id: string; scheduledAt: Date; durationMinutes: number; timezone: string; status: string }> };
 export function InterviewScheduleCheck() {
   const { data: candidates = [] } = trpc.recruitment.candidates.list.useQuery({ limit: 100 });
   const utils = trpc.useUtils();
@@ -21,13 +21,13 @@ export function InterviewScheduleCheck() {
         if (!Number.isFinite(scheduledAt.getTime())) throw new Error("A recorded interview has an invalid time.");
         return { id: row.id, scheduledAt, durationMinutes: row.durationMinutes, timezone: row.timezone, status: row.status };
       });
-      setZone(timezone); setResult({ hasConflict: response.hasConflict, conflicts });
+      setZone(timezone); setResult({ heldSlots: (response.heldSlots ?? []).map(h => { if (!h.id || !h.expiresAt || !Number.isFinite(new Date(h.expiresAt).getTime())) throw new Error("An active hold could not be verified. Retry the check."); return { id: h.id, expiresAt: new Date(h.expiresAt) }; }), hasConflict: response.hasConflict, conflicts });
     } catch (e) { setError(e instanceof Error ? e.message : "Schedule check failed."); }
     finally { setPending(false); }
   };
   const field = "mt-1 w-full min-w-0 rounded-lg border border-slate-300 bg-white p-2 text-sm";
   return <section className="min-w-0 space-y-3 rounded-xl border bg-white p-5"><h2 className="text-lg font-semibold">Check candidate schedule</h2>
-    <p className="text-sm text-slate-600">Check recorded interviews before choosing a time. Participant confirmation and external calendar availability still need to be established. This check does not reserve a slot.</p>
+    <p className="text-sm text-slate-600">Check recorded interviews and active internal holds before choosing a time. Participant confirmation and external calendar availability still need to be established. This check does not reserve a slot.</p>
     <form onSubmit={submit} onChange={() => { setResult(null); setError(""); }}><fieldset disabled={pending} className="grid min-w-0 gap-3 md:grid-cols-2">
       <label>Candidate<select aria-label="Schedule-check candidate" name="candidateId" required className={field}><option value="">Choose a candidate</option>{candidates.map(c => <option key={c.id} value={c.id}>{c.fullName}</option>)}</select></label>
       <label>Proposed date and time<input aria-label="Schedule-check date and time" name="scheduledAt" type="datetime-local" required className={field} /></label>
@@ -36,6 +36,6 @@ export function InterviewScheduleCheck() {
       <Button type="submit" className="justify-self-start">{pending ? "Checking…" : "Check proposed time"}</Button>
     </fieldset></form>
     {error && <p role="alert" className="break-words text-sm text-red-700">{error}</p>}
-    {result && <div role="status" className="space-y-2 text-sm"><p>{result.hasConflict ? "This candidate has an overlapping recorded interview." : "No recorded candidate conflict found. Scheduling checks again when saved."}</p>{result.conflicts.map(c => <p key={c.id} className="break-words">Interview …{c.id.slice(-6)} · {new Date(c.scheduledAt).toLocaleString("en-IN", { timeZone: zone })} ({zone}) · {c.durationMinutes} minutes · {c.status}</p>)}</div>}
+    {result && <div role="status" className="space-y-2 text-sm"><p>{result.hasConflict ? "This candidate has an overlapping recorded interview or active internal hold." : "No recorded candidate conflict found. Scheduling checks again when saved."}</p>{result.heldSlots.map(h => <p key={h.id}>Internal hold …{h.id.slice(-6)} · expires {new Date(h.expiresAt).toLocaleString("en-IN", { timeZone: zone })} ({zone})</p>)}{result.conflicts.map(c => <p key={c.id} className="break-words">Interview …{c.id.slice(-6)} · {new Date(c.scheduledAt).toLocaleString("en-IN", { timeZone: zone })} ({zone}) · {c.durationMinutes} minutes · {c.status}</p>)}</div>}
   </section>;
 }
