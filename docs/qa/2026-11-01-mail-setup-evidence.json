@@ -1,0 +1,54 @@
+{
+  "at": "2026-11-01T13:02:06.077Z",
+  "codeCommit": "65655a6",
+  "tokenLocation": "hPanel only; token not copied",
+  "mailboxes": [
+    {
+      "purpose": "owner",
+      "verified": true
+    },
+    {
+      "purpose": "clients",
+      "verified": true
+    },
+    {
+      "purpose": "talent",
+      "verified": true
+    },
+    {
+      "purpose": "interviews",
+      "verified": true
+    },
+    {
+      "purpose": "finance",
+      "verified": true
+    },
+    {
+      "purpose": "privacy",
+      "verified": true
+    }
+  ],
+  "activeSenderCount": 6,
+  "anonymousDiscoveryDenied": true,
+  "readiness": {
+    "configured": true,
+    "tokenConfigured": true,
+    "webhookSecretConfigured": true,
+    "configuredMailboxCount": 6,
+    "configuredSenderAddressCount": 6
+  },
+  "messagesSent": 0,
+  "browser": {
+    "providerDiscovery": "PASS",
+    "desktopAndMobile": "PASS",
+    "runtimeErrors": [],
+    "transportErrors": []
+  },
+  "validation": {
+    "vitestPassed": 422,
+    "vitestSkipped": 16,
+    "typescript": "PASS",
+    "build": "PASS",
+    "entrySmokesPassed": 4
+  }
+}

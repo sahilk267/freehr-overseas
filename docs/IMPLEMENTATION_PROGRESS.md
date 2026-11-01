@@ -2,6 +2,10 @@
 
 Updated 1 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
+## Latest live Mail API checkpoint
+
+The owner saved the real token in hPanel. [Live setup verification](qa/2026-11-01-mail-setup.md) resolved all six authorized mailbox IDs, verified and activated the matching senders. No email was sent. The older missing-Mail-token finding below is historical; AI and the remaining business-module gaps remain open.
+
 ## Latest increment: W4 source intake, campaigns and managed processing
 
 The [W4 implementation and validation report](qa/2026-11-01-w4-automation.md) records scoped source keys, reviewed CSV/JSON imports, conservative canonical identity reuse, four governed campaign scenarios and an observable production Node background worker. Campaigns reuse the existing follow-up plans, scoped grants, outbox and physical queue. Existing manual creation shares the same identity commands. No second delivery engine or fictional provider success was introduced.
