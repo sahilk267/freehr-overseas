@@ -5,10 +5,16 @@ process.env.NODE_ENV ||= "production";
 // the compiled application can still initialize asynchronously after loading.
 import("./dist/hostinger.js")
   .then(async ({ startHostingerServer }) => {
-    // Opt in only after selecting the deployment's database. Run on the host,
-    // where localhost reaches MySQL, rather than inside its isolated builder.
+    // Only this target's reviewed existing baseline is upgraded automatically.
+    // Other targets retain explicit opt-in; an explicit false always wins.
     if (process.env.RUN_DB_MIGRATIONS === "true") {
-      await import("./scripts/migrate-db.mjs");
+      const { migrateDatabase } = await import("./scripts/migrate-db.mjs");
+      await migrateDatabase();
+    } else if (process.env.RUN_DB_MIGRATIONS !== "false" && process.env.APP_BASE_URL) {
+      const { readFile } = await import("node:fs/promises");
+      const release = JSON.parse(await readFile(new URL("./deploy/schema-release.json", import.meta.url), "utf8"));
+      const { migrateReviewedReleaseForTarget } = await import("./scripts/migrate-db.mjs");
+      await migrateReviewedReleaseForTarget({ release, appBaseUrl: process.env.APP_BASE_URL });
     }
     return startHostingerServer();
   })

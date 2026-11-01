@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "targetDomain": "freelancehr.overseasjob.in",
+  "baseline": "0014_promise_baseline_precision",
+  "through": "0018_normalize_phone_identities",
+  "migrations": [
+    {
+      "tag": "0015_outreach_campaigns",
+      "sha256": "e8152ff880969d96ef2f769fd2e38eafd584869fad4e3bf55512ad1508b4afb5"
+    },
+    {
+      "tag": "0016_source_intake",
+      "sha256": "585833e6954f0a07d699e8e10e6c78dd81991062b3dd1c4f56ac124b2cedab37"
+    },
+    {
+      "tag": "0017_managed_background_worker",
+      "sha256": "53a02f186e454bcb232d27cab716b4e2bacff5aac393ad91738df026364006e7"
+    },
+    {
+      "tag": "0018_normalize_phone_identities",
+      "sha256": "c8f8b1ff304393aad239a4b2d67fe62749a551143b9eee9000a26d2bd3cb3331"
+    }
+  ]
+}

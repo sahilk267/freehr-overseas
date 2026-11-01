@@ -5,6 +5,8 @@ import DashboardLayout from "./components/DashboardLayout";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import FollowUpsPage from "./pages/FollowUpsPage";
+import CampaignsPage from "./pages/CampaignsPage";
+import IntakePage from "./pages/IntakePage";
 import Home from "./pages/Home";
 import NotFound from "./pages/NotFound";
 import TeamAcceptPage from "./pages/TeamAcceptPage";
@@ -20,6 +22,8 @@ const Prospects = withDashboard(ProspectsPage);
 const Jobs = withDashboard(JobsPage);
 const Candidates = withDashboard(CandidatesPage);
 const FollowUps = withDashboard(FollowUpsPage);
+const Campaigns = withDashboard(CampaignsPage);
+const Intake = withDashboard(IntakePage);
 const Interviews = withDashboard(InterviewsPage);
 const Placements = withDashboard(PlacementsPage);
 const Finance = withDashboard(FinancePage);
@@ -35,6 +39,8 @@ function Router() {
     <Route path="/jobs" component={Jobs} />
     <Route path="/candidates" component={Candidates} />
     <Route path="/follow-ups" component={FollowUps} />
+    <Route path="/campaigns" component={Campaigns} />
+    <Route path="/intake" component={Intake} />
     <Route path="/interviews" component={Interviews} />
     <Route path="/placements" component={Placements} />
     <Route path="/finance" component={Finance} />

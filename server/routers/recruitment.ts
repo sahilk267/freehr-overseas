@@ -1,3 +1,6 @@
+import { withWorkspaceTransaction } from "../services/database";
+import { configureBackgroundWorker } from "../services/backgroundWorker";
+import { intakeCandidateInTransaction, intakeProspectInTransaction, intakeContactInTransaction } from "../services/canonicalIntake";
 import { stopOwnerFollowUps } from "../services/followupEvents";
 import { isValidTimezone } from "../../shared/dateTime";
 import { createCalendarSubscriptionToken, interviewCalendarEvent } from "../services/calendarFeed";
@@ -6,8 +9,6 @@ import { createHash } from "crypto";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray, like, not, notInArray, or } from "drizzle-orm";
 import { z } from "zod";
-import { parse as parseCookieHeader } from "cookie";
-import { COOKIE_NAME } from "@shared/const";
 import {
   approvals,
   automationQueue,
@@ -31,7 +32,6 @@ import {
 } from "../../drizzle/schema";
 import { createId, ensureWorkspace, hashContactValue, recordAudit, requireDb } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
-import { createHeartbeatJob } from "../_core/heartbeat";
 import { getPrivateDocumentUrl, putPrivateDocument } from "../services/privateStorage";
 import { createInterviewEventUid, createInterviewIcs, generateCalendarFeedIcs } from "../services/calendar";
 import { scanCandidateDocument } from "../services/documentScanner";
@@ -78,27 +78,9 @@ export const prospectsRouter = router({
     confidence: z.number().int().min(0).max(100).default(0),
     notes: z.string().trim().max(5000).optional(),
   })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const id = createId("cmp_");
-    await db.insert(companies).values({
-      id,
-      ownerId: ctx.user.id,
-      name: input.name,
-      domain: input.domain?.toLowerCase() ?? null,
-      sector: input.sector ?? null,
-      location: input.location ?? null,
-      sourceType: input.sourceType,
-      sourceUrl: input.sourceUrl ?? null,
-      sourceCollectedAt: new Date(),
-      hiringSignal: input.hiringSignal ?? null,
-      confidence: input.confidence,
-      pipelineState: "new",
-      companyType: "prospect",
-      verificationState: "pending",
-      notes: input.notes ?? null,
-    });
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "company.created", resourceType: "company", resourceId: id, nextState: "new", metadata: { sourceType: input.sourceType } });
-    return { id };
+    const result = await withWorkspaceTransaction(ctx.user.id, tx => intakeProspectInTransaction(tx, ctx.user.id, input));
+    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: result.alreadyExists ? "company.intake_reused" : "company.created", resourceType: "company", resourceId: result.id, metadata: { sourceType: input.sourceType } });
+    return result;
   }),
   transition: protectedProcedure.input(z.object({ id: z.string().min(4), state: z.string().min(2).max(48) })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
@@ -133,13 +115,9 @@ export const prospectsRouter = router({
   addContact: protectedProcedure.input(z.object({
     companyId: z.string().min(4), name: z.string().trim().min(2).max(160), title: z.string().trim().max(160).optional(), email: z.string().email().optional(), phone: z.string().trim().max(64).optional(), sourceUrl: z.string().url().optional(),
   })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const rows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
-    await requireOwned(rows[0], ctx.user.id, "Company");
-    const id = createId("con_");
-    await db.insert(contacts).values({ id, ownerId: ctx.user.id, companyId: input.companyId, name: input.name, title: input.title ?? null, email: input.email?.toLowerCase() ?? null, phone: input.phone ?? null, sourceUrl: input.sourceUrl ?? null, sourceType: input.sourceUrl ? "sourced" : "manual" });
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "contact.created", resourceType: "contact", resourceId: id, metadata: { companyId: input.companyId } });
-    return { id };
+    const result = await withWorkspaceTransaction(ctx.user.id, tx => intakeContactInTransaction(tx, ctx.user.id, input));
+    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: result.alreadyExists ? "contact.intake_reused" : "contact.created", resourceType: "contact", resourceId: result.id, metadata: { companyId: input.companyId } });
+    return result;
   }),
   attachKybDocument: protectedProcedure.input(z.object({
     companyId: z.string().min(4),
@@ -440,16 +418,9 @@ export const candidatesRouter = router({
   create: protectedProcedure.input(z.object({
     fullName: z.string().trim().min(2).max(160), email: z.string().email().optional(), phone: z.string().trim().max(64).optional(), headline: z.string().trim().max(255).optional(), location: z.string().trim().max(160).optional(), availability: z.string().trim().max(120).optional(), sourceType: z.string().trim().min(2).max(64).default("manual"), sourceUrl: z.string().url().optional(),
   })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const id = createId("can_");
-    const email = input.email?.trim().toLowerCase();
-    const phone = input.phone?.trim();
-    await db.insert(candidates).values({
-      id, ownerId: ctx.user.id, fullName: input.fullName, email: email ?? null, emailHash: email ? hashContactValue(email) : null, phone: phone ?? null, phoneHash: phone ? hashContactValue(phone) : null,
-      headline: input.headline ?? null, location: input.location ?? null, availability: input.availability ?? null, sourceType: input.sourceType, sourceUrl: input.sourceUrl ?? null, sourceCollectedAt: new Date(), profileState: "consent_pending",
-    });
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "candidate.created", resourceType: "candidate", resourceId: id, nextState: "consent_pending", metadata: { sourceType: input.sourceType } });
-    return { id };
+    const result = await withWorkspaceTransaction(ctx.user.id, tx => intakeCandidateInTransaction(tx, ctx.user.id, input));
+    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: result.alreadyExists ? "candidate.intake_reused" : "candidate.created", resourceType: "candidate", resourceId: result.id, metadata: { sourceType: input.sourceType } });
+    return result;
   }),
   transition: protectedProcedure.input(z.object({ id: z.string().min(4), state: z.string().min(2).max(48) })).mutation(async ({ ctx, input }) => {
     if (["deleted", "deletion_pending"].includes(input.state)) throw new TRPCError({ code: "FORBIDDEN", message: "Candidate erasure must use the privacy deletion workflow." });
@@ -811,17 +782,7 @@ export const interviewsRouter = router({
     const db = await requireDb();
     return db.select().from(interviews).where(eq(interviews.ownerId, ctx.user.id)).orderBy(desc(interviews.scheduledAt)).limit(input.limit);
   }),
-  enableReminderSchedule: protectedProcedure.mutation(async ({ ctx }) => {
-    if (["owner_password", "oidc"].includes(process.env.AUTH_MODE ?? "")) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No Hostinger schedule was registered. Configure and verify an external authenticated callback for /api/scheduled/interview-reminders." });
-    if (ctx.actor && ctx.actor.id !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the workspace owner can manage reminder schedules." });
-    const db = await requireDb();
-    const cookie = parseCookieHeader(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
-    if (!cookie) throw new TRPCError({ code: "UNAUTHORIZED", message: "A session cookie is required to create a schedule." });
-    const job = await createHeartbeatJob({ name: `interview-reminders-${ctx.user.id}`, cron: "0 */5 * * * *", path: "/api/scheduled/interview-reminders", description: "Queue due interview reminder drafts every five minutes." }, cookie);
-    await db.update(workspaceSettings).set({ scheduleCronTaskUid: job.taskUid }).where(eq(workspaceSettings.ownerId, ctx.user.id));
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "interview.reminder_schedule_enabled", resourceType: "workspace", resourceId: String(ctx.user.id), metadata: { taskUid: job.taskUid, cron: "0 */5 * * * *" } });
-    return job;
-  }),
+  enableReminderSchedule: protectedProcedure.mutation(({ ctx }) => configureBackgroundWorker(ctx.user.id, ctx.actor.id, true)),
   create: protectedProcedure.input(z.object({ companyId: z.string().min(4), candidateId: z.string().min(4), jobId: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone.").default("Asia/Kolkata"), durationMinutes: z.number().int().min(15).max(240).default(45), meetingUrl: z.string().url().optional() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);

@@ -35,7 +35,10 @@ export async function controlFollowUp(ownerId: number, planId: string, action: "
 
 export async function grantFollowUpSending(ownerId: number, actorId: number, planId: string, expiresAt: Date, maxSends: number, expectedRevision?: number) {
   const db = await requireDb();
-  return db.transaction(async (tx: any) => {
+  return db.transaction((tx: any) => grantFollowUpSendingInTransaction(tx, ownerId, actorId, planId, expiresAt, maxSends, expectedRevision));
+}
+
+export async function grantFollowUpSendingInTransaction(tx: any, ownerId: number, actorId: number, planId: string, expiresAt: Date, maxSends: number, expectedRevision?: number) {
     await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, ownerId)).limit(1));
     const plan = (await lockedSelect(tx.select().from(followUpPlans).where(and(eq(followUpPlans.id, planId), eq(followUpPlans.ownerId, ownerId))).limit(1)))[0] as FollowUpPlan;
     if (!plan || !["scheduled", "waiting", "approval_pending"].includes(plan.status)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Follow-up is not active." });
@@ -65,5 +68,5 @@ export async function grantFollowUpSending(ownerId: number, actorId: number, pla
     }
     await appendWorkflowEvent(tx, ownerId, "followup.sending_delegated", plan.id, plan.revision, { grantId, maxSends, expiresAt: expiresAt.toISOString() }, grantId);
     return { grantId };
-  });
+
 }

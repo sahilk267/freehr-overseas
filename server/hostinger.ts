@@ -13,6 +13,8 @@ import { requireDb, verifyDatabaseConnectivity } from "./db";
 import { sdk } from "./_core/sdk";
 import { processHostingerMailWebhook } from "./services/hostingerWebhook";
 import { processDueInterviewReminders } from "./services/interviewReminders";
+import { processIntakeWebhook } from "./services/sourceIntake";
+import { startManagedBackgroundWorker } from "./services/backgroundWorker";
 import { processDueAutomationBatch } from "./services/queue";
 import { getPrivateStorageStatus, readPrivateDocument } from "./services/privateStorage";
 import {
@@ -58,6 +60,10 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
   });
 
   await app.register(cors, { origin: process.env.APP_BASE_URL ?? false, credentials: true });
+  app.post<{ Params: { sourceId: string } }>("/api/integrations/intake/:sourceId", { bodyLimit: 256 * 1024 }, async (request, reply) => {
+    const result = await processIntakeWebhook({ sourceId: request.params.sourceId, authorization: request.headers.authorization, body: request.body });
+    return reply.status(result.statusCode).send(result.body);
+  });
   await app.register(fastifyTRPCPlugin, {
     prefix: "/api/trpc",
     trpcOptions: { router: appRouter, createContext: createFastifyContext },
@@ -258,7 +264,10 @@ export async function startHostingerServer() {
   const app = await buildFastifyServer({ logger: true });
   const rawPort = process.env.PORT ? Number(process.env.PORT) : 3000;
   const port = Number.isInteger(rawPort) && rawPort > 0 && rawPort <= 65535 ? rawPort : 3000;
+  let stopBackground = async () => {};
+  app.addHook("onClose", async () => { await stopBackground(); });
   await app.listen({ port, host: "0.0.0.0" });
+  stopBackground = startManagedBackgroundWorker();
 }
 
 // Start server when executed directly

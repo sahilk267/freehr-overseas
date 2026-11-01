@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { invoiceCollectionSettings, invoicePaymentPromises } from "../drizzle/schema";
+import { invoiceCollectionSettings, invoicePaymentPromises, outreachCampaigns } from "../drizzle/schema";
 import { processDueInvoiceCollections } from "./services/invoiceCollections";
 import { pathToFileURL } from "node:url";
 import { requireDb, verifyDatabaseConnectivity } from "./db";
@@ -15,7 +15,8 @@ export async function runWorker(once = false) {
   try {
     await db.select({ id: invoiceCollectionSettings.id }).from(invoiceCollectionSettings).limit(1);
     await db.select({ id: invoicePaymentPromises.id }).from(invoicePaymentPromises).limit(1);
-  } catch { throw new Error("Collection schema is unavailable. Apply pnpm db:migrate to this database before starting the worker."); }
+    await db.select({ id: outreachCampaigns.id }).from(outreachCampaigns).limit(1);
+  } catch { throw new Error("Automation schema is unavailable. Apply pnpm db:migrate to this database before starting the worker."); }
   let stopping = false, lastEnrollment = 0;
   const stop = () => { stopping = true; };
   process.once("SIGTERM", stop);

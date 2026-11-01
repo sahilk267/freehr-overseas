@@ -45,6 +45,11 @@ export const workspaceSettings = mysqlTable(
     policyConfig: json("policyConfig"),
     scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
     automationCronTaskUid: varchar("automationCronTaskUid", { length: 65 }),
+    backgroundEnabled: boolean("backgroundEnabled").notNull().default(false),
+    backgroundRevision: int("backgroundRevision").notNull().default(1),
+    backgroundLastHeartbeatAt: timestamp("backgroundLastHeartbeatAt"),
+    backgroundLastResult: json("backgroundLastResult"),
+    backgroundLastError: varchar("backgroundLastError", { length: 500 }),
     createdAt,
     updatedAt,
   },
@@ -783,3 +788,57 @@ export const teamInvitations = mysqlTable(
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+
+// Campaigns own audience and exact sequence intent. Follow-up plans/outbox/queue
+// remain the only authorities for timing, sending permission and delivery.
+export const outreachCampaigns = mysqlTable("outreachCampaigns", {
+  id: id("id").primaryKey(),
+  ownerId: int("ownerId").notNull().references(() => users.id),
+  name: varchar("name", { length: 160 }).notNull(),
+  scenarioId: varchar("scenarioId", { length: 8 }).notNull(),
+  audienceType: mysqlEnum("audienceType", ["contact", "candidate"]).notNull(),
+  senderIdentityId: id("senderIdentityId").notNull().references(() => emailIdentities.id),
+  steps: json("steps").$type<FollowUpStep[]>().notNull(),
+  timezone: varchar("timezone", { length: 64 }).notNull(),
+  businessDaysOnly: boolean("businessDaysOnly").notNull().default(true),
+  deadlineAt: timestamp("deadlineAt").notNull(),
+  executionMode: mysqlEnum("executionMode", ["review", "delegated"]).notNull().default("review"),
+  status: state("status").notNull().default("draft"),
+  revision: int("revision").notNull().default(1),
+  launchHash: varchar("launchHash", { length: 64 }),
+  lastError: varchar("lastError", { length: 500 }),
+  createdById: int("createdById").notNull().references(() => users.id),
+  requestKey: varchar("requestKey", { length: 80 }).notNull(),
+  requestHash: varchar("requestHash", { length: 64 }).notNull(),
+  lastProcessedAt: timestamp("lastProcessedAt"),
+  createdAt,
+  updatedAt,
+}, table => [uniqueIndex("campaign_request_unique").on(table.ownerId, table.requestKey), index("campaign_owner_status_idx").on(table.ownerId, table.status), index("campaign_scan_idx").on(table.status, table.lastProcessedAt)]);
+
+export const outreachCampaignRecipients = mysqlTable("outreachCampaignRecipients", {
+  id: id("id").primaryKey(),
+  ownerId: int("ownerId").notNull().references(() => users.id),
+  campaignId: id("campaignId").notNull().references(() => outreachCampaigns.id),
+  recipientId: id("recipientId").notNull(),
+  recipientHash: varchar("recipientHash", { length: 64 }),
+  renderedSteps: json("renderedSteps").$type<FollowUpStep[]>(),
+  planId: id("planId").references(() => followUpPlans.id),
+  status: state("status").notNull().default("pending"),
+  reason: varchar("reason", { length: 500 }),
+  createdAt,
+  updatedAt,
+}, table => [uniqueIndex("campaign_recipient_unique").on(table.campaignId, table.recipientId), index("campaign_recipient_owner_idx").on(table.ownerId, table.campaignId, table.status)]);
+
+export const intakeSources = mysqlTable("intakeSources", {
+  id: id("id").primaryKey(), ownerId: int("ownerId").notNull().references(() => users.id),
+  name: varchar("name", { length: 160 }).notNull(), kind: mysqlEnum("kind", ["candidate", "prospect"]).notNull(),
+  enabled: boolean("enabled").notNull().default(true), tokenHash: varchar("tokenHash", { length: 64 }).notNull(),
+  revision: int("revision").notNull().default(1), requestKey: varchar("requestKey", { length: 80 }).notNull(),
+  createdById: int("createdById").notNull().references(() => users.id), lastReceivedAt: timestamp("lastReceivedAt"), createdAt, updatedAt,
+}, table => [uniqueIndex("intake_source_request_unique").on(table.ownerId, table.requestKey), index("intake_source_owner_idx").on(table.ownerId, table.enabled)]);
+
+export const intakeBatches = mysqlTable("intakeBatches", {
+  id: id("id").primaryKey(), ownerId: int("ownerId").notNull().references(() => users.id),
+  sourceId: id("sourceId").notNull().references(() => intakeSources.id), batchKey: varchar("batchKey", { length: 80 }).notNull(), payloadHash: varchar("payloadHash", { length: 64 }).notNull(),
+  results: json("results").$type<import("../shared/intake").IntakeOutcome[]>().notNull(), createdAt, updatedAt,
+}, table => [uniqueIndex("intake_batch_key_unique").on(table.ownerId, table.sourceId, table.batchKey), index("intake_batch_source_time_idx").on(table.sourceId, table.createdAt)]);

@@ -1,7 +1,6 @@
+import { backgroundWorkerStatus, configureBackgroundWorker } from "../services/backgroundWorker";
 import { and, count, desc, eq, inArray, sql } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { parse as parseCookieHeader } from "cookie";
-import { COOKIE_NAME } from "@shared/const";
 import { z } from "zod";
 import {
   aiUsage,
@@ -21,7 +20,6 @@ import {
 } from "../../drizzle/schema";
 import { createId, ensureWorkspace, getRecentAudits, recordAudit, requireDb } from "../db";
 import { protectedProcedure, router } from "../_core/trpc";
-import { createHeartbeatJob } from "../_core/heartbeat";
 import { processOneQueuedJob } from "../services/queue";
 import { isValidTimezone } from "../../shared/dateTime";
 import { createHash } from "node:crypto";
@@ -206,30 +204,10 @@ export const operationsRouter = router({
     runNext: protectedProcedure.mutation(async ({ ctx }) => {
       return processOneQueuedJob(ctx.user.id);
     }),
-    enableSchedule: protectedProcedure.mutation(async ({ ctx }) => {
-      if (["owner_password", "oidc"].includes(process.env.AUTH_MODE ?? "")) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No Hostinger schedule was registered. Configure and verify an external authenticated callback for /api/scheduled/automation-queue." });
-      if (ctx.actor && ctx.actor.id !== ctx.user.id) throw new TRPCError({ code: "FORBIDDEN", message: "Only the workspace owner can manage queue schedules." });
-      const db = await requireDb();
-      const cookie = parseCookieHeader(ctx.req.headers.cookie ?? "")[COOKIE_NAME] ?? "";
-      if (!cookie) throw new TRPCError({ code: "UNAUTHORIZED", message: "A session cookie is required to create a schedule." });
-      const job = await createHeartbeatJob({
-        name: `automation-queue-${ctx.user.id}`,
-        cron: "0 */2 * * * *",
-        path: "/api/scheduled/automation-queue",
-        description: "Process queued automation jobs on a scheduled interval.",
-      }, cookie);
-      await db.update(workspaceSettings).set({ automationCronTaskUid: job.taskUid }).where(eq(workspaceSettings.ownerId, ctx.user.id));
-      await recordAudit({
-        ownerId: ctx.user.id,
-        actorType: "user",
-        actorId: String(ctx.user.id),
-        action: "automation.schedule_enabled",
-        resourceType: "workspace",
-        resourceId: String(ctx.user.id),
-        metadata: { taskUid: job.taskUid, cron: "0 */2 * * * *" },
-      });
-      return job;
-    }),
+    workerStatus: protectedProcedure.query(({ ctx }) => backgroundWorkerStatus(ctx.user.id)),
+    configureWorker: protectedProcedure.input(z.object({ enabled: z.boolean(), expectedRevision: z.number().int().positive() })).mutation(({ ctx, input }) => configureBackgroundWorker(ctx.user.id, ctx.actor.id, input.enabled, input.expectedRevision)),
+    // Compatibility route delegates to the same persisted runtime controller.
+    enableSchedule: protectedProcedure.mutation(({ ctx }) => configureBackgroundWorker(ctx.user.id, ctx.actor.id, true)),
   }),
   exceptions: router({
     list: protectedProcedure.input(paginationInput).query(async ({ ctx, input }) => {

@@ -106,6 +106,34 @@
       "when": 1787881800000,
       "tag": "0014_promise_baseline_precision",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "5",
+      "when": 1787881900000,
+      "tag": "0015_outreach_campaigns",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1787882000000,
+      "tag": "0016_source_intake",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1787882100000,
+      "tag": "0017_managed_background_worker",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1787882200000,
+      "tag": "0018_normalize_phone_identities",
+      "breakpoints": true
     }
   ]
 }

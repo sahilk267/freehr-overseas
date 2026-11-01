@@ -1,6 +1,6 @@
 import { stopFollowUp } from "./workflowStore";
 import { and, eq } from "drizzle-orm";
-import { emailDispatches, followUpPlans, workflowEvents, workspaceSettings } from "../../drizzle/schema";
+import { emailDispatches, followUpPlans, outreachCampaignRecipients, outreachCampaigns, workflowEvents, workspaceSettings } from "../../drizzle/schema";
 import { ensureWorkspace, requireDb } from "../db";
 import { lockedSelect } from "./database";
 import { stopRelatedFollowUps } from "./followups";
@@ -12,6 +12,8 @@ export async function stopOwnerFollowUps(ownerId: number, match: { candidateId?:
     await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, ownerId)).limit(1));
     await stopRelatedFollowUps(tx, ownerId, match, reason, status);
     if (redact && match.candidateId) {
+      const campaignIds = (await tx.select().from(outreachCampaigns).where(and(eq(outreachCampaigns.ownerId, ownerId), eq(outreachCampaigns.audienceType, "candidate")))).map((c: typeof outreachCampaigns.$inferSelect) => c.id);
+      for (const campaignId of campaignIds) await tx.update(outreachCampaignRecipients).set({ renderedSteps: null, recipientHash: null, status: "cancelled", reason: "Candidate erasure" }).where(and(eq(outreachCampaignRecipients.ownerId, ownerId), eq(outreachCampaignRecipients.campaignId, campaignId), eq(outreachCampaignRecipients.recipientId, match.candidateId)));
       const plans = await tx.select().from(followUpPlans).where(eq(followUpPlans.candidateId, match.candidateId));
       for (const plan of plans.filter((p: typeof followUpPlans.$inferSelect) => p.ownerId === ownerId)) {
         await tx.update(followUpPlans).set({ recipient: "erased", objective: "Erased candidate follow-up", steps: [], replyCursor: [], reason: "Candidate erasure" }).where(eq(followUpPlans.id, plan.id));

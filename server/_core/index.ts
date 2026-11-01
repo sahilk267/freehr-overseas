@@ -16,6 +16,8 @@ import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { processHostingerMailWebhook } from "../services/hostingerWebhook";
 import { processDueInterviewReminders } from "../services/interviewReminders";
+import { processIntakeWebhook } from "../services/sourceIntake";
+import { startManagedBackgroundWorker } from "../services/backgroundWorker";
 import { processDueAutomationBatch } from "../services/queue";
 import { readPrivateDocument } from "../services/privateStorage";
 import { sdk } from "./sdk";
@@ -45,7 +47,15 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 async function startServer() {
   assertProductionRuntimeConfiguration();
   const app = express();
+  app.post("/api/integrations/intake/:sourceId", express.json({ limit: "256kb" }), async (req, res) => {
+    const result = await processIntakeWebhook({ sourceId: req.params.sourceId, authorization: req.headers.authorization, body: req.body });
+    res.status(result.statusCode).json(result.body);
+  });
   const server = createServer(app);
+  server.once("listening", () => {
+    const stopBackground = startManagedBackgroundWorker();
+    server.once("close", () => { void stopBackground(); });
+  });
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));

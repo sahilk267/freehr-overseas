@@ -1,4 +1,6 @@
 import { collectionsRouter } from "./routers/collections";
+import { campaignsRouter } from "./routers/campaigns";
+import { intakeRouter } from "./routers/intake";
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
@@ -50,6 +52,8 @@ export const appRouter = router({
   team: teamRouter,
   followups: followupsRouter,
   collections: collectionsRouter,
+  campaigns: campaignsRouter,
+  intake: intakeRouter,
 
   // TODO: add feature routers here, e.g.
   // todo: router({

@@ -882,3 +882,124 @@ INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('eb807dd816974
 -- Cumulative receipts can exceed one signed INT even though each receipt fits.
 ALTER TABLE `invoicePaymentPromises` MODIFY COLUMN `baselinePaid` bigint NOT NULL;
 INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('b23a261ea4d4bbc5a4abb29f7155a2c84d0d74d45070cdd63e3a104147f8dd60', 1787881800000);
+
+-- 0015_outreach_campaigns
+CREATE TABLE `outreachCampaigns` (
+  `id` varchar(36) NOT NULL,
+  `ownerId` int NOT NULL,
+  `name` varchar(160) NOT NULL,
+  `scenarioId` varchar(8) NOT NULL,
+  `audienceType` enum('contact','candidate') NOT NULL,
+  `senderIdentityId` varchar(36) NOT NULL,
+  `steps` json NOT NULL,
+  `timezone` varchar(64) NOT NULL,
+  `businessDaysOnly` boolean NOT NULL DEFAULT true,
+  `deadlineAt` timestamp NOT NULL,
+  `executionMode` enum('review','delegated') NOT NULL DEFAULT 'review',
+  `status` varchar(48) NOT NULL DEFAULT 'draft',
+  `revision` int NOT NULL DEFAULT 1,
+  `launchHash` varchar(64),
+  `lastError` varchar(500),
+  `createdById` int NOT NULL,
+  `requestKey` varchar(80) NOT NULL,
+  `requestHash` varchar(64) NOT NULL,
+  `lastProcessedAt` timestamp NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `campaign_request_unique` (`ownerId`,`requestKey`),
+  KEY `campaign_owner_status_idx` (`ownerId`,`status`),
+  KEY `campaign_scan_idx` (`status`,`lastProcessedAt`),
+  FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`),
+  FOREIGN KEY (`createdById`) REFERENCES `users` (`id`),
+  FOREIGN KEY (`senderIdentityId`) REFERENCES `emailIdentities` (`id`)
+);
+CREATE TABLE `outreachCampaignRecipients` (
+  `id` varchar(36) NOT NULL,
+  `ownerId` int NOT NULL,
+  `campaignId` varchar(36) NOT NULL,
+  `recipientId` varchar(36) NOT NULL,
+  `recipientHash` varchar(64),
+  `renderedSteps` json,
+  `planId` varchar(36),
+  `status` varchar(48) NOT NULL DEFAULT 'pending',
+  `reason` varchar(500),
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `campaign_recipient_unique` (`campaignId`,`recipientId`),
+  KEY `campaign_recipient_owner_idx` (`ownerId`,`campaignId`,`status`),
+  FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`),
+  FOREIGN KEY (`campaignId`) REFERENCES `outreachCampaigns` (`id`),
+  FOREIGN KEY (`planId`) REFERENCES `followUpPlans` (`id`)
+);
+INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('e8152ff880969d96ef2f769fd2e38eafd584869fad4e3bf55512ad1508b4afb5', 1787881900000);
+
+-- 0016_source_intake
+CREATE TABLE `intakeSources` (
+  `id` varchar(36) NOT NULL PRIMARY KEY,
+  `ownerId` int NOT NULL,
+  `name` varchar(160) NOT NULL,
+  `kind` enum('candidate','prospect') NOT NULL,
+  `enabled` boolean NOT NULL DEFAULT true,
+  `tokenHash` varchar(64) NOT NULL,
+  `revision` int NOT NULL DEFAULT 1,
+  `requestKey` varchar(80) NOT NULL,
+  `createdById` int NOT NULL,
+  `lastReceivedAt` timestamp NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `intake_source_request_unique` (`ownerId`,`requestKey`),
+  KEY `intake_source_owner_idx` (`ownerId`,`enabled`),
+  FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`),
+  FOREIGN KEY (`createdById`) REFERENCES `users` (`id`)
+);
+CREATE TABLE `intakeBatches` (
+  `id` varchar(36) NOT NULL PRIMARY KEY,
+  `ownerId` int NOT NULL,
+  `sourceId` varchar(36) NOT NULL,
+  `batchKey` varchar(80) NOT NULL,
+  `payloadHash` varchar(64) NOT NULL,
+  `results` json NOT NULL,
+  `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `intake_batch_key_unique` (`ownerId`,`sourceId`,`batchKey`),
+  KEY `intake_batch_source_time_idx` (`sourceId`,`createdAt`),
+  FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`),
+  FOREIGN KEY (`sourceId`) REFERENCES `intakeSources` (`id`)
+);
+INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('585833e6954f0a07d699e8e10e6c78dd81991062b3dd1c4f56ac124b2cedab37', 1787882000000);
+
+-- 0017_managed_background_worker
+ALTER TABLE `workspaceSettings`
+  ADD COLUMN `backgroundEnabled` boolean NOT NULL DEFAULT false,
+  ADD COLUMN `backgroundRevision` int NOT NULL DEFAULT 1,
+  ADD COLUMN `backgroundLastHeartbeatAt` timestamp NULL,
+  ADD COLUMN `backgroundLastResult` json,
+  ADD COLUMN `backgroundLastError` varchar(500);
+INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('53a02f186e454bcb232d27cab716b4e2bacff5aac393ad91738df026364006e7', 1787882100000);
+
+-- 0018_normalize_phone_identities
+-- Preserve active legacy suppressions before normalizing surviving phone hashes.
+-- This updates identity indexes, never merges people or grants contact permission.
+INSERT INTO `suppressionList` (`id`,`ownerId`,`channel`,`valueHash`,`reason`,`source`,`active`)
+SELECT CONCAT('sup_',REPLACE(UUID(),'-','')), c.`ownerId`, 'phone',
+  SHA2(REGEXP_REPLACE(c.`phone`,'[[:space:]().-]',''),256),
+  s.`reason`, 'canonical_phone_alias', true
+FROM `candidates` c JOIN `suppressionList` s
+  ON s.`ownerId`=c.`ownerId` AND s.`channel`='phone' AND s.`valueHash`=c.`phoneHash` AND s.`active`=true
+WHERE REGEXP_REPLACE(c.`phone`,'[[:space:]().-]','') REGEXP '^[+][1-9][0-9]{7,14}$'
+  AND c.`phoneHash` <> SHA2(REGEXP_REPLACE(c.`phone`,'[[:space:]().-]',''),256)
+ON DUPLICATE KEY UPDATE `active`=true;
+UPDATE `candidates`
+SET `phoneHash`=SHA2(REGEXP_REPLACE(`phone`,'[[:space:]().-]',''),256)
+WHERE REGEXP_REPLACE(`phone`,'[[:space:]().-]','') REGEXP '^[+][1-9][0-9]{7,14}$';
+UPDATE `contacts` SET `phone`=REGEXP_REPLACE(`phone`,'[[:space:]().-]','')
+WHERE REGEXP_REPLACE(`phone`,'[[:space:]().-]','') REGEXP '^[+][1-9][0-9]{7,14}$';
+UPDATE `contacts` SET `email`=LOWER(TRIM(`email`)) WHERE `email` IS NOT NULL;
+-- Canonicalize valid legacy company URLs too. Keep duplicate rows intact so
+-- intake can hold collisions rather than creating another company or merging.
+UPDATE `companies`
+SET `domain`=TRIM(TRAILING '.' FROM REGEXP_REPLACE(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(TRIM(`domain`)), '^[a-z][a-z0-9+.-]*://', ''), '[/#?].*$', ''), '^www[.]', ''))
+WHERE TRIM(TRAILING '.' FROM REGEXP_REPLACE(REGEXP_REPLACE(REGEXP_REPLACE(LOWER(TRIM(`domain`)), '^[a-z][a-z0-9+.-]*://', ''), '[/#?].*$', ''), '^www[.]', '')) REGEXP '^[a-z0-9][a-z0-9.-]*[.][a-z]{2,63}$';
+INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('c8f8b1ff304393aad239a4b2d67fe62749a551143b9eee9000a26d2bd3cb3331', 1787882200000);

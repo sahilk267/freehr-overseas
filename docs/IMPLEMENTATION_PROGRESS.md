@@ -1,8 +1,16 @@
 # Automation implementation progress
 
-Updated 31 October 2026. This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+Updated 1 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
-## Latest live verification: personal owner login and recruitment-to-receipt QA
+## Latest increment: W4 source intake, campaigns and managed processing
+
+The [W4 implementation and validation report](qa/2026-11-01-w4-automation.md) records scoped source keys, reviewed CSV/JSON imports, conservative canonical identity reuse, four governed campaign scenarios and an observable production Node background worker. Campaigns reuse the existing follow-up plans, scoped grants, outbox and physical queue. Existing manual creation shares the same identity commands. No second delivery engine or fictional provider success was introduced.
+
+Validation: 419 passing tests with 16 skips, 147 passing real-MySQL regressions, 15 passing browser assertions, TypeScript/build success, four Hostinger entry smokes and a concurrent/repeated reviewed 15-to-19 migration upgrade. Positive local browser execution used disposable synthetic sender data; no real email or funds were sent. The router now contains 158 procedures. npm is the canonical package manager and the production audit has zero critical/high findings, with nine moderate/low package findings remaining. Deployment/live observations are recorded in the dated W4 report.
+
+Eight partial feature records were updated and the CSV backlog synchronized; no complete module is claimed. Real external sourcing, reply-to-booking, agreements, portals, adaptive screening, calendar negotiation, checkout/reconciliation and retention/replacement still need work and provider verification. Historical checkpoints below retain their original observations; current installation uses `npm ci` and the reviewed schema release through 0018.
+
+## Previous live verification: personal owner login and recruitment-to-receipt QA
 
 The deployed target is `https://freelancehr.overseasjob.in`, using personal owner-password authentication without Google login and a persistent MySQL database migrated through 0014. Earlier deployment/connector notes below describe their historical checkpoints, not the current live setup.
 

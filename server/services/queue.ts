@@ -1,4 +1,5 @@
 import { evaluateInvoiceCollection } from "./invoiceCollections";
+import { processDueCampaigns } from "./campaigns";
 import { blockFollowUpFailure } from "./followupEvents";
 import { and, asc, eq, inArray, lte, notInArray, sql } from "drizzle-orm";
 import { aiModelRoutes, aiUsage, approvals, automationQueue, candidateDocuments, candidates, contacts, conversations, emailDispatches, interviews, invoices, matches, messages, suppressionList, workspaceSettings } from "../../drizzle/schema";
@@ -554,6 +555,7 @@ export type ProcessBatchResult = {
   completed: number;
   failed: number;
   skipped: number;
+  sources?: { campaigns: Awaited<ReturnType<typeof processDueCampaigns>> };
   results: Array<{
     status: string;
     jobId?: string;
@@ -564,6 +566,7 @@ export type ProcessBatchResult = {
 
 export async function processDueAutomationBatch(ownerId?: number, limit = 5): Promise<ProcessBatchResult> {
   const boundedLimit = Math.min(Math.max(limit, 1), 25);
+  const campaigns = await processDueCampaigns(ownerId, boundedLimit);
   const results: Array<{ status: string; jobId?: string; reason?: string; selectedModel?: string }> = [];
   const skippedOwnerIds = new Set<number>();
 
@@ -620,6 +623,7 @@ export async function processDueAutomationBatch(ownerId?: number, limit = 5): Pr
     failed,
     skipped,
     results,
+    ...(campaigns.evaluated ? { sources: { campaigns } } : {}),
   };
 }
 

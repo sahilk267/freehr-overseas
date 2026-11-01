@@ -2,6 +2,8 @@
 
 FreelanceHR is a private recruitment-operations workspace for controlled client acquisition, hiring intake, candidate management, evidence-based matching, interview coordination, placements, and revenue tracking. The React interface is backed by typed tRPC procedures, a MySQL workflow ledger, an owner approval queue, and a server-side OpenRouter AI adapter.
 
+The supported install is **npm with the committed `package-lock.json`**, matching Hostinger's build. Use `npm ci`, `npm run check`, `npm test` and `npm run build`; older dated pnpm validation examples describe previous releases. Competing pnpm/Bun lockfiles were removed. See [implementation progress](docs/IMPLEMENTATION_PROGRESS.md) for the latest verified scope and external blockers.
+
 ## Operating model
 
 The application is deliberately designed as a **controlled automation system**, not a tool that sends messages or makes hiring decisions without accountability. The owner must approve client activation, candidate profile sharing, joining confirmation, and invoice issuance. AI can extract, classify, draft, and score evidence, but it cannot autonomously make a final candidate rejection.
@@ -17,7 +19,7 @@ The application is deliberately designed as a **controlled automation system**, 
 
 ## Implemented workspaces
 
-The dashboard includes Command Center, Prospects, Jobs, Candidates, Follow-ups, Interviews, Placements, Finance, Exceptions, and Control Plane. All user-created operational records are saved in the database; the product deliberately starts with no fabricated candidate, client, review, or placement data.
+The dashboard includes Command Center, Prospects, Jobs, Candidates, Source intake, Campaigns, Follow-ups, Interviews, Placements, Finance, Exceptions, Team access and Control Plane. Source intake supports scoped machine keys, reviewed CSV/JSON imports, canonical identity checks and durable receipts. Campaigns reuse central follow-up plans, grants, outbox and delivery controls. Control Plane can enable managed runtime polling and show actual persisted heartbeats; an enabled flag alone does not prove activity. Actual sourcing-provider feeds, verified mailboxes and AI credentials must be configured separately.
 
 ## Workflow guardrails
 

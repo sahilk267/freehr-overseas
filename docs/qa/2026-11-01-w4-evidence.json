@@ -1,0 +1,151 @@
+{
+  "date": "2026-11-01",
+  "timezone": "Asia/Calcutta",
+  "scope": "W4 increment; local production browser and disposable real MySQL; no real provider delivery or funds",
+  "fullSuite": {
+    "passed": 419,
+    "skipped": 16,
+    "filesPassed": 54,
+    "filesSkipped": 1
+  },
+  "mysql": {
+    "passed": 147,
+    "files": 9
+  },
+  "upgrade": {
+    "baselineEntries": 15,
+    "finalEntries": 19,
+    "concurrentAndRepeatedUpgrade": "PASS",
+    "legacyPhoneHashAndSuppressionAliases": "PASS",
+    "contactNormalizationWithoutPermissionGrant": "PASS",
+    "legacyCompanyDomainNormalization": "PASS",
+    "defaultBackgroundDisabled": "PASS",
+    "changedManifestRejected": "PASS"
+  },
+  "typecheck": "PASS",
+  "productionBuild": "PASS; existing chunk-size advisory",
+  "entrySmokes": {
+    "passed": 4
+  },
+  "browser": {
+    "results": [
+      {
+        "name": "UI candidate CSV preview does not write, import deduplicates identities, and replay reuses its receipt",
+        "status": "PASS"
+      },
+      {
+        "name": "UI malformed CSV preserves the last valid draft",
+        "status": "PASS"
+      },
+      {
+        "name": "UI key rotation and disable immediately revoke machine intake access",
+        "status": "PASS"
+      },
+      {
+        "name": "UI prospect import creates one company and one contact with unknown permission",
+        "status": "PASS"
+      },
+      {
+        "name": "UI rejected campaign draft preserves content, then exact preview activates only review mode",
+        "status": "PASS"
+      },
+      {
+        "name": "UI enables the production runtime worker without claiming a pre-existing heartbeat",
+        "status": "PASS"
+      },
+      {
+        "name": "Native production worker prepares an owner-review sequence while the browser is closed",
+        "status": "PASS"
+      },
+      {
+        "name": "UI pause and resume preserve a held sequence and never silently grant sending",
+        "status": "PASS"
+      },
+      {
+        "name": "UI /intake has no horizontal overflow at 1440px",
+        "status": "PASS"
+      },
+      {
+        "name": "UI /campaigns has no horizontal overflow at 1440px",
+        "status": "PASS"
+      },
+      {
+        "name": "UI /control has no horizontal overflow at 1440px",
+        "status": "PASS"
+      },
+      {
+        "name": "UI /intake has no horizontal overflow at 390px",
+        "status": "PASS"
+      },
+      {
+        "name": "UI /campaigns has no horizontal overflow at 390px",
+        "status": "PASS"
+      },
+      {
+        "name": "UI /control has no horizontal overflow at 390px",
+        "status": "PASS"
+      },
+      {
+        "name": "UI managed polling can be paused and records the persisted flag honestly",
+        "status": "PASS"
+      }
+    ],
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "scope": "Local production build; disposable MySQL and synthetic sender state only; no provider delivery."
+  },
+  "productionDependencyAudit": {
+    "metadata": {
+      "info": 0,
+      "low": 6,
+      "moderate": 3,
+      "high": 0,
+      "critical": 0,
+      "total": 9
+    },
+    "packages": [
+      {
+        "name": "@fastify/static",
+        "severity": "moderate"
+      },
+      {
+        "name": "glob",
+        "severity": "moderate"
+      },
+      {
+        "name": "katex",
+        "severity": "low"
+      },
+      {
+        "name": "mermaid",
+        "severity": "low"
+      },
+      {
+        "name": "micromark-extension-math",
+        "severity": "low"
+      },
+      {
+        "name": "minimatch",
+        "severity": "moderate"
+      },
+      {
+        "name": "rehype-katex",
+        "severity": "low"
+      },
+      {
+        "name": "remark-math",
+        "severity": "low"
+      },
+      {
+        "name": "streamdown",
+        "severity": "low"
+      }
+    ]
+  },
+  "moduleRegistry": {
+    "modules": 25,
+    "features": 163,
+    "completedModules": 0,
+    "statusesSynchronized": true
+  }
+}

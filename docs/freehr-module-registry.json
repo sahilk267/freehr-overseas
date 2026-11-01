@@ -60,7 +60,9 @@
         {
           "id": "M02-F02",
           "description": "OAuth refresh, credential rotation, per-workspace scopes, destination restrictions, health probes, quota/cost limits and connection-specific kill switches.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-01-w4-automation.md",
+          "implementation_note": "Source-scoped intake keys can be rotated/disabled; provider OAuth and broader credential lifecycle remain pending."
         },
         {
           "id": "M02-F03",
@@ -76,7 +78,8 @@
           "id": "M02-F05",
           "description": "Real scheduler registration checks through M05; no mock success in production. Provider sandbox/contract tests, schema-drift detection and reconnect workflows.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-01-w4-automation.md",
+          "implementation_note": "Managed runtime polling and observed heartbeat added; real external provider verification remains separate."
         },
         {
           "id": "M02-F06",
@@ -99,7 +102,9 @@
         {
           "id": "M03-F01",
           "description": "Stable workspace-scoped IDs and canonical links for organization, contact, person, requisition, candidacy and commercial engagement.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-01-w4-automation.md",
+          "implementation_note": "Manual and source intake share owned candidate/company/contact commands; full candidacy/engagement modeling remains pending."
         },
         {
           "id": "M03-F02",
@@ -109,7 +114,9 @@
         {
           "id": "M03-F03",
           "description": "Normalized email/phone/domain matching, explainable duplicate suggestions, confidence-based merges, reversible merge lineage and collision review.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-01-w4-automation.md",
+          "implementation_note": "Normalized identity checks, serialized creation, collision holds and legacy phone suppression aliases added; reversible merges remain pending."
         },
         {
           "id": "M03-F04",
@@ -215,8 +222,8 @@
           "id": "M05-F02",
           "description": "Real external scheduler or managed worker timer service; persistent timers survive deploys, browser closure and restarts; health verifies actual callbacks.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "W3 due/grace/promise deadlines use the existing persistent queue and worker; production supervision and recovery drills remain open."
+          "evidence_ref": "qa/2026-11-01-w4-automation.md",
+          "implementation_note": "Managed production Node poller consumes the existing persistent queue and records heartbeats; outages delay work and external cron is not registered."
         },
         {
           "id": "M05-F03",
@@ -505,7 +512,9 @@
         {
           "id": "M10-F03",
           "description": "Personalized acquisition campaigns and reply routing; M06 owns cadence, M07 delivery, M08 grounded drafting.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-01-w4-automation.md",
+          "implementation_note": "Reviewed acquisition/talent campaign audiences and exact sequences use M06/M07, with bounded grants and reply/opt-out stops; discovery/reply-to-booking automation remains pending."
         },
         {
           "id": "M10-F04",
@@ -650,7 +659,9 @@
         {
           "id": "M13-F01",
           "description": "Approved job-board/ATS APIs, candidate application portal, referrals, email imports and licensed talent pools with source permissions.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-01-w4-automation.md",
+          "implementation_note": "Approved source webhook and CSV/JSON gateway added; real job-board/ATS/application/referral adapters remain pending."
         },
         {
           "id": "M13-F02",
@@ -660,7 +671,9 @@
         {
           "id": "M13-F03",
           "description": "Identity dedupe/merge via M03, provenance, source freshness, contact validation, skill/experience/availability refresh and referral attribution.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-01-w4-automation.md",
+          "implementation_note": "Conservative cross-source identity reuse and provenance added; profile enrichment, validated refresh and reversible merging remain pending."
         },
         {
           "id": "M13-F04",
@@ -2203,10 +2216,11 @@
     }
   ],
   "implementation_tracking": {
-    "wave": "W0/W1/W2/W3",
+    "wave": "W0/W1/W2/W3/W4",
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "W3 adds opted-in invoice aging/collection sources and evidenced payment promises through the existing review-default follow-up engine. These increment labels do not certify the similarly named master-plan delivery waves. Automated provider reconciliation, most lifecycle adapters and full advanced packages remain pending."
+    "note": "W4 adds scoped source intake, canonical identity reuse, governed campaigns and observed managed background processing using the existing follow-up/outbox/queue. Real provider execution and the full advanced 25-module roadmap remain incomplete.",
+    "updated_at": "2026-11-01"
   }
 }
