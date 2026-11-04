@@ -1,0 +1,39 @@
+{
+  "validation": {
+    "unitPassed": 523,
+    "unitSkipped": 29,
+    "mysqlPassed": 238,
+    "mysqlFiles": 14,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingEntrySmokes": 4
+  },
+  "browser": {
+    "at": "2026-11-04T22:08:59.029Z",
+    "checks": [
+      "Collected booking controls without overflow at 1440px",
+      "Collected booking controls without overflow at 390px",
+      "Browser saves one canonical tentative interview and closes both availability links",
+      "Synthetic appointment cancelled immediately"
+    ],
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "mailSent": 0,
+    "guestInvitationsSent": 0
+  },
+  "liveLifecycleAndCleanup": {
+    "at": "2026-11-04T22:09:03.028Z",
+    "replayAfterCancellation": "PASS",
+    "changedBookingRejected": "PASS",
+    "closedCapabilitiesDenied": "PASS",
+    "participantAcceptance": false,
+    "syntheticInterviewCancelled": true,
+    "reminderDisabled": true,
+    "calendarCancellationOutcome": "no_external_event",
+    "mailSent": 0,
+    "guestInvitationsSent": 0,
+    "note": "Existing Calendar automation may create/cancel a synthetic event. Final cancellation was verified through the managed worker."
+  },
+  "applicationCommit": "d022933",
+  "scope": "Synthetic paired availability; owner-reviewed tentative booking, cancellation and existing Calendar worker reconciliation. No verified participant acceptance or invitations."
+}

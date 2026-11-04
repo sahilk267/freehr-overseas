@@ -6,4 +6,4 @@ W2,M18,Actual prospective Google lifecycle pilot,verified_provider,qa/2026-11-05
 W1,M25,Repository CI and disposable SQL runner,validated_local,qa/2026-11-05-phase-batches.md,Hosted GitHub Actions run not yet verified
 W2,M18,Common availability proposals,verified_live_read_only,qa/2026-11-05-common-availability.md,Authenticated participant collection and confirmed booking remain pending
 W2,M18,Scoped participant availability collection,verified_live_capability,qa/2026-11-05-participant-availability.md,Automated delivery and verified acceptance-booking orchestration remain pending
-W2,M18,Tentative booking from paired responses,validated_local,qa/2026-11-05-collected-booking.md,Live booking verification and participant confirmation-delivery remain pending
+W2,M18,Tentative booking from paired responses,verified_live_tentative,qa/2026-11-05-collected-booking.md,Verified participant confirmation and delivery remain pending
