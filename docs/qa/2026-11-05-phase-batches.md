@@ -1,6 +1,6 @@
 # Phase implementation checkpoint — 5 November 2026
 
-Three related batches were implemented together, using the existing interview scheduler, Google adapter and worker. This checkpoint does not close the W2 vertical-slice or W5 production-acceptance gates.
+Four related batches were implemented together, using the existing interview scheduler, Google adapter and worker. This checkpoint does not close the W2 vertical-slice or W5 production-acceptance gates.
 
 1. **Google conflict recovery:** owner can fetch a limited comparison of the saved interview and its owned Google event, then explicitly replace the reviewed Google version. Review binds the local snapshot and exact remote ID/ETag. New Google/local edits invalidate the review, and `If-Match` remains mandatory. Automatic jobs cannot use this override. Guests and private provider metadata are not returned. Deleted/unrecognizable Google events remain blocked; this is not bidirectional ingestion or automatic merge.
 2. **Stale browser edits:** interview list carries a server-computed scheduling fingerprint. Browser reschedule, cancellation, state and reminder mutations submit it, checked under the existing workspace lock before side effects. Stale edits fail with a reload/review instruction. Legacy API clients may omit it for compatibility; universal mandatory revision enforcement is still pending. This changes no SQL schema.
@@ -13,3 +13,5 @@ The previous actual Google pilot completed create/reschedule/cancel through the 
 Next acceptance work remains two-sided availability coordination, interviewer/panel constraints, reschedule holds, offer/joining and verified revenue-provider journeys, plus the remaining W0/W1 controls and advanced feature gates. Existing module/backlog records retain their planned/implementing statuses; no complete advanced module is certified by these batches.
 
 [Sanitized evidence](2026-11-05-phase-batches-evidence.json).
+
+4. **Repeatable CI:** `.github/workflows/verify.yml` runs tracker validation, types, unit regressions, disposable SQL regressions, production build and hosting entry smokes. `npm run test:mysql` is now repository-owned, requires a local admin endpoint, creates a randomly named disposable database and drops only that generated database in `finally`. `npm run tracker:check` validates the 25-module/163-package catalogue. The new runner passed 214 SQL tests locally; hosted GitHub Actions execution is not claimed as verified.

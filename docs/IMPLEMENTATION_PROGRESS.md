@@ -320,3 +320,5 @@ Create request identities now persist in the shared workflow ledger, so an old r
 ## Phase batches and tracker checkpoint — 5 November 2026
 
 [Three-batch checkpoint](qa/2026-11-05-phase-batches.md) adds owner-reviewed external conflict replacement, stale-browser scheduling guards and an executable registry/backlog consistency checker. [Scoped phase tracker](PHASE_IMPLEMENTATION_TRACKER.csv) separates validated slices from unpassed phase/module acceptance. 493 tests and 214 real-MySQL checks pass, with TypeScript/build/entry checks passing. Historical actual Google create/reschedule/cancel evidence is now archived; synthetic cleanup and enabled automation were rechecked. This supersedes earlier disconnected/no-provider-success statements as current status, while preserving those historical checkpoints. No advanced module or complete autonomous agency is certified.
+
+A fourth batch moves the disposable SQL runner into the repository and adds GitHub Actions verification. `npm run test:mysql` passed 214 SQL regressions locally; `npm run tracker:check` passed. Hosted CI execution remains separately unverified.
