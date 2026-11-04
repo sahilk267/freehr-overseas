@@ -1,0 +1,43 @@
+{
+  "validation": {
+    "unitPassed": 493,
+    "unitSkipped": 26,
+    "mysqlPassed": 214,
+    "mysqlFiles": 12,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingEntrySmokes": 4,
+    "trackerModules": 25,
+    "trackerPackages": 163
+  },
+  "historicalActualGooglePilot": {
+    "at": "2026-11-01T20:18:04.255Z",
+    "provider": "Google Calendar",
+    "phases": [
+      {
+        "phase": "create",
+        "status": "completed",
+        "action": "upserted",
+        "invitationsSent": false
+      },
+      {
+        "phase": "reschedule",
+        "status": "completed",
+        "action": "upserted",
+        "invitationsSent": false
+      },
+      {
+        "phase": "cancel",
+        "status": "completed",
+        "action": "upserted",
+        "invitationsSent": false
+      }
+    ],
+    "syntheticInterviewCancelled": true,
+    "reminderDisabled": true,
+    "guestInvitationsSent": 0,
+    "mailSent": 0,
+    "scope": "Actual server-to-Google event create/reschedule/cancel via shared managed worker. Synthetic internal records retained for audit; no attendees or real hiring activity."
+  },
+  "scope": "Conflict replacement and stale browser guards tested with synthetic responses and disposable SQL. Historical actual provider pilot retains original timestamp. New live verification recorded separately."
+}

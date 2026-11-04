@@ -1,3 +1,4 @@
+import { interviewEditFingerprint } from "../../shared/interviewRevision";
 import { bookInterviewHold, holdInterviewSlot, listInterviewHolds, releaseInterviewHold, configureInterviewReminder, changeInterviewState, previewInterviewSlot, rescheduleInterview, scheduleInterview } from "../services/interviewScheduling";
 import { withWorkspaceTransaction } from "../services/database";
 import { configureBackgroundWorker } from "../services/backgroundWorker";
@@ -787,7 +788,7 @@ export const interviewsRouter = router({
   }),
   list: protectedProcedure.input(paginationInput).query(async ({ ctx, input }) => {
     const db = await requireDb();
-    return db.select().from(interviews).where(eq(interviews.ownerId, ctx.user.id)).orderBy(desc(interviews.scheduledAt)).limit(input.limit);
+    return (await db.select().from(interviews).where(eq(interviews.ownerId, ctx.user.id)).orderBy(desc(interviews.scheduledAt)).limit(input.limit)).map(row=>({...row,editFingerprint:interviewEditFingerprint(row)}));
   }),
   checkSlot: protectedProcedure.input(z.object({ candidateId: z.string().min(4), scheduledAt: z.date(), durationMinutes: z.number().int().min(15).max(240), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone), excludeInterviewId: z.string().min(4).optional() })).query(({ ctx, input }) => previewInterviewSlot(ctx.user.id, input)),
   enableReminderSchedule: protectedProcedure.mutation(({ ctx }) => configureBackgroundWorker(ctx.user.id, ctx.actor.id, true)),
@@ -800,11 +801,11 @@ export const interviewsRouter = router({
     const content = createInterviewIcs({ uid: interview.calendarEventId ?? createInterviewEventUid(interview.id), sequence: interview.calendarSequence, start: interview.scheduledAt, end: new Date(interview.scheduledAt.getTime() + interview.durationMinutes * 60_000), summary: `FreelanceHR interview ${interview.id.slice(-6)}`, description: `Interview status: ${interview.status}. Timezone: ${interview.timezone}.`, location: interview.meetingUrl, status: interview.calendarStatus === "cancelled" ? "CANCELLED" : interview.calendarStatus === "confirmed" ? "CONFIRMED" : "TENTATIVE" });
     return { content, filename: `freelancehr-interview-${interview.id}.ics`, calendarStatus: interview.calendarStatus, sequence: interview.calendarSequence };
   }),
-  setReminder: protectedProcedure.input(z.object({ id: z.string().min(4), reminderAt: z.date().nullable() })).mutation(({ ctx, input }) => configureInterviewReminder(ctx.user.id, ctx.actor.id, input.id, input.reminderAt)),
+  setReminder: protectedProcedure.input(z.object({ id: z.string().min(4), expectedFingerprint:z.string().length(64).optional(), reminderAt: z.date().nullable() })).mutation(({ ctx, input }) => configureInterviewReminder(ctx.user.id, ctx.actor.id, input.id, input.reminderAt, input.expectedFingerprint)),
 
-  reschedule: protectedProcedure.input(z.object({ id: z.string().min(4), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone."), durationMinutes: z.number().int().min(15).max(240), meetingUrl: z.string().url().nullable().optional() })).mutation(({ ctx, input }) => rescheduleInterview(ctx.user.id, ctx.actor.id, input)),
-  cancel: protectedProcedure.input(idInput).mutation(({ ctx, input }) => changeInterviewState(ctx.user.id, ctx.actor.id, input.id, "cancelled")),
-  transition: protectedProcedure.input(z.object({ id: z.string().min(4), state: z.string().min(2).max(48) })).mutation(({ ctx, input }) => changeInterviewState(ctx.user.id, ctx.actor.id, input.id, input.state)),
+  reschedule: protectedProcedure.input(z.object({ id: z.string().min(4), expectedFingerprint:z.string().length(64).optional(), scheduledAt: z.date(), timezone: z.string().trim().min(2).max(64).refine(isValidTimezone, "Choose a valid timezone."), durationMinutes: z.number().int().min(15).max(240), meetingUrl: z.string().url().nullable().optional() })).mutation(({ ctx, input }) => rescheduleInterview(ctx.user.id, ctx.actor.id, input)),
+  cancel: protectedProcedure.input(z.object({id:z.string().min(4),expectedFingerprint:z.string().length(64).optional()})).mutation(({ ctx, input }) => changeInterviewState(ctx.user.id, ctx.actor.id, input.id, "cancelled", input.expectedFingerprint)),
+  transition: protectedProcedure.input(z.object({ id: z.string().min(4), expectedFingerprint:z.string().length(64).optional(), state: z.string().min(2).max(48) })).mutation(({ ctx, input }) => changeInterviewState(ctx.user.id, ctx.actor.id, input.id, input.state, input.expectedFingerprint)),
 
   calendarFeed: protectedProcedure.query(async ({ ctx }) => {
     const db = await requireDb();

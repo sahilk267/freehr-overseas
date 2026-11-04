@@ -1,3 +1,4 @@
+import { interviewEditFingerprint } from "../../shared/interviewRevision";
 import { enqueueCalendarSync } from "./calendarAutomation";
 import { isValidTimezone } from "../../shared/dateTime";
 import { appendWorkflowEvent, workflowHash } from "./workflowStore";
@@ -72,9 +73,13 @@ async function scheduleInterviewInTransaction(tx: any, ownerId: number, actorId:
     await remember(id);
     return { id, alreadyExists: false };
 }
-export async function rescheduleInterview(ownerId: number, actorId: number, input: Slot & { id: string }) {
+function checkEditFingerprint(row: any, expected?: string) {
+  if (expected && interviewEditFingerprint(row) !== expected) throw new TRPCError({code:"CONFLICT",message:"This interview changed since you opened it. Reload and review the current schedule before editing."});
+}
+export async function rescheduleInterview(ownerId: number, actorId: number, input: Slot & { id: string; expectedFingerprint?: string }) {
   const result = await withWorkspaceTransaction(ownerId, async tx => {
     const row = await ownedInterview(tx, ownerId, input.id);
+    checkEditFingerprint(row, input.expectedFingerprint);
     await candidate(tx, ownerId, row.candidateId);
     assertTransition("interview", row.status, "reschedule_requested");
     const scheduledAt = instant(input.scheduledAt), meetingUrl = input.meetingUrl === undefined ? row.meetingUrl : input.meetingUrl;
@@ -89,9 +94,10 @@ export async function rescheduleInterview(ownerId: number, actorId: number, inpu
   });
   return result;
 }
-export async function changeInterviewState(ownerId: number, actorId: number, id: string, state: string) {
+export async function changeInterviewState(ownerId: number, actorId: number, id: string, state: string, expectedFingerprint?: string) {
   const result = await withWorkspaceTransaction(ownerId, async tx => {
     const row = await ownedInterview(tx, ownerId, id);
+    checkEditFingerprint(row, expectedFingerprint);
     if (row.status === state) return { success: true, alreadyCurrent: true };
     assertTransition("interview", row.status, state);
     if (reservedStates.includes(state)) {
@@ -109,9 +115,10 @@ export async function changeInterviewState(ownerId: number, actorId: number, id:
   return result;
 }
 
-export async function configureInterviewReminder(ownerId: number, actorId: number, id: string, reminderAt: Date | null) {
+export async function configureInterviewReminder(ownerId: number, actorId: number, id: string, reminderAt: Date | null, expectedFingerprint?: string) {
   return withWorkspaceTransaction(ownerId, async tx => {
     const row = await ownedInterview(tx, ownerId, id);
+    checkEditFingerprint(row, expectedFingerprint);
     if (reminderAt && (row.calendarStatus === "cancelled" || ["completed", "feedback_pending", "closed", "no_show"].includes(row.status))) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Ended interviews cannot receive reminders." });
     const next = reminderAt ? instant(reminderAt) : null;
     if ((row.reminderAt?.getTime() ?? null) === (next?.getTime() ?? null)) return { success: true, alreadyCurrent: true };

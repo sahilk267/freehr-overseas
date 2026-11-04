@@ -936,15 +936,15 @@
           "id": "M18-F02",
           "description": "Google/Microsoft free-busy/event sync, meeting creation, ICS fallback, scoped subscription tokens and revocation.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-02-calendar-automation.md",
-          "implementation_note": "Optional prospective Google event automation now uses canonical scheduling transactions and the shared durable queue/managed worker, with pause/revision fencing, bounded retries, deterministic IDs and external ETag protection. Two-sided negotiation, RSVP/bidirectional ingestion, Microsoft/Meet and conflict-resolution UI remain pending."
+          "evidence_ref": "qa/2026-11-05-phase-batches.md",
+          "implementation_note": "Actual Google automation lifecycle verified; exact-version owner review can replace external edits. Automatic overrides remain forbidden. Bidirectional ingestion, RSVP, Microsoft, Meet and participant negotiation remain pending."
         },
         {
           "id": "M18-F03",
           "description": "Versioned schedule/RSVP lifecycle, temporary slot holds, reschedule/cancel reconciliation, no-show and alternative-slot recovery.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-02-interview-slot-holds.md",
-          "implementation_note": "Expiring owner-managed internal candidate holds now serialize against direct create/reschedule/reactivation. Booking uses the canonical scheduler and atomically consumes the hold; stable request identity prevents resurrection/duplicate booking. Two-sided negotiated availability, interviewer/panel holds, reschedule-target holds, stale-client revision checks and external RSVP reconciliation remain pending."
+          "evidence_ref": "qa/2026-11-05-phase-batches.md",
+          "implementation_note": "Internal holds and canonical scheduling remain shared. Browser scheduling/state/reminder/cancel edits now carry fingerprints; stale edits reject before side effects. Legacy callers may omit fingerprints for compatibility, so universal API revision enforcement remains partial. Participant negotiation and reschedule-target holds remain pending."
         },
         {
           "id": "M18-F04",
@@ -2226,7 +2226,7 @@
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "W5 adds recorded candidate scheduling conflicts and consistent calendar/reminder lifecycle using shared transactions and follow-ups. No complete advanced module or autonomous agency is certified.",
-    "updated_at": "2026-11-01"
+    "note": "Prospective Google automation has actual create/reschedule/cancel evidence. Owner-reviewed conflict replacement, browser edit fingerprints and tracker consistency checks added. Advanced modules and phase acceptance gates remain incomplete.",
+    "updated_at": "2026-11-05"
   }
 }

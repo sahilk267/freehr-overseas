@@ -157,7 +157,7 @@ export async function googleInterviewSnapshot(tx: any, ownerId: number, id: stri
   return { connection: row, binding, eventId: `fh${binding}`, interviewId: id, event, previewHash: hash(JSON.stringify([row.revision, binding, event])) };
 }
 export async function previewGoogleInterview(ownerId: number, id: string) { return withWorkspaceTransaction(ownerId, async tx => { const s = await googleInterviewSnapshot(tx, ownerId, id); return { interviewId: id, previewHash: s.previewHash, calendarId: s.connection.calendarId, accountEmail: s.connection.accountEmail, event: s.event, invitationsSent: false, mode: "owner_review" }; }); }
-export async function syncGoogleInterview(ownerId: number, id: string, previewHash: string, automationGuard: () => Promise<void> = async () => {}, execution: "manual" | "automatic" = "manual") {
+export async function syncGoogleInterview(ownerId: number, id: string, previewHash: string, automationGuard: () => Promise<void> = async () => {}, execution: "manual" | "automatic" = "manual", approvedExternalReviewHash?: string) {
   return withCalendar(ownerId, async (row, access, guard) => {
     await automationGuard();
     const s = await withWorkspaceTransaction(ownerId, tx => googleInterviewSnapshot(tx, ownerId, id));
@@ -176,7 +176,8 @@ export async function syncGoogleInterview(ownerId: number, id: string, previewHa
     if (data?.extendedProperties?.private?.freehrBinding !== s.binding || (typeof data?.etag !== "string" || !data.etag || data.etag.length > 512)) throw new CalendarFailure("event_identity_conflict");
     const previousBinding = await withWorkspaceTransaction(ownerId, async tx =>
       (await tx.select().from(bindings).where(and(eq(bindings.ownerId, ownerId), eq(bindings.id, s.binding))).limit(1))[0]);
-    if (previousBinding?.providerEtag && previousBinding.providerEtag !== data.etag) throw new CalendarFailure("external_event_changed");
+    if (approvedExternalReviewHash && (execution !== "manual" || approvedExternalReviewHash !== externalReviewKey(s.previewHash, data))) throw new CalendarFailure("external_review_changed");
+    if (previousBinding?.providerEtag && previousBinding.providerEtag !== data.etag && !approvedExternalReviewHash) throw new CalendarFailure("external_event_changed");
     await stillCurrent();
     const patched = await request(`${url}/${s.eventId}?sendUpdates=none`, { method: "PATCH", headers: { ...headers, "If-Match": data.etag }, body: JSON.stringify(s.event) }, [412]);
     if (patched.status === 412) throw new CalendarFailure("external_event_changed");
@@ -189,10 +190,25 @@ export async function syncGoogleInterview(ownerId: number, id: string, previewHa
       const values = { ownerId, connectionId: row.id, interviewId: id, eventId: s.eventId, syncedFingerprint: previewHash, providerEtag: saved.etag || null, lastSyncedAt: new Date(), lastErrorCode: latest.previewHash === previewHash ? null : "interview_changed_after_write" };
       const prior = (await tx.select().from(bindings).where(eq(bindings.id, s.binding)).limit(1))[0];
       if (prior) await tx.update(bindings).set(values).where(eq(bindings.id, s.binding)); else await tx.insert(bindings).values({ id: s.binding, ...values });
-      await recordAudit({ ownerId, actorType: execution === "automatic" ? "system" : "user", actorId: execution === "automatic" ? undefined : String(ownerId), action: "google_calendar.event_synced", resourceType: "interview", resourceId: id, metadata: { execution, current: latest.previewHash === previewHash, invitationsSent: false } }, tx);
+      await recordAudit({ ownerId, actorType: execution === "automatic" ? "system" : "user", actorId: execution === "automatic" ? undefined : String(ownerId), action: "google_calendar.event_synced", resourceType: "interview", resourceId: id, metadata: { execution, externalChangeReviewed: Boolean(approvedExternalReviewHash), current: latest.previewHash === previewHash, invitationsSent: false } }, tx);
       return latest.previewHash === previewHash;
     });
     if (!currentAfterWrite) throw new CalendarFailure("interview_changed_after_write");
     return { synced: true, action: "upserted", invitationsSent: false };
+  });
+}
+
+function externalReviewKey(previewHash: string, remote: any) { return hash(JSON.stringify([previewHash, remote.id, remote.etag])); }
+export async function reviewGoogleConflict(ownerId: number, id: string) {
+  return withCalendar(ownerId, async (row, access, guard) => {
+    const s = await withWorkspaceTransaction(ownerId, tx => googleInterviewSnapshot(tx, ownerId, id));
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(row.calendarId)}/events/${s.eventId}`;
+    const remote = await (await request(url, { headers: { Authorization: `Bearer ${access}` } })).json() as any;
+    if (remote.id !== s.eventId || remote.extendedProperties?.private?.freehrBinding !== s.binding || typeof remote.etag !== "string" || remote.etag.length > 512) throw new CalendarFailure("event_identity_conflict");
+    await guard();
+    const latest = await withWorkspaceTransaction(ownerId, tx => googleInterviewSnapshot(tx, ownerId, id));
+    if (latest.previewHash !== s.previewHash) throw new CalendarFailure("interview_changed");
+    return { previewHash: s.previewHash, approvedExternalReviewHash: externalReviewKey(s.previewHash, remote), saved: s.event,
+      remote: { summary: String(remote.summary || "").slice(0,1000), status: String(remote.status || ""), start: String(remote.start?.dateTime || remote.start?.date || ""), end: String(remote.end?.dateTime || remote.end?.date || ""), location: String(remote.location || "").slice(0,1000) } };
   });
 }

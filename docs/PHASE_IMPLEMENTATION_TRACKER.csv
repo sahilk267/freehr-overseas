@@ -1,0 +1,5 @@
+phase,module,batch,status,evidence,remaining_gate
+W2,M18,Owner-reviewed Google conflict replacement,validated_local,qa/2026-11-05-phase-batches.md,Live UI/API verification and remaining advanced module features
+W2,M18,Stale browser scheduling edits,validated_local,qa/2026-11-05-phase-batches.md,Legacy unversioned callers remain supported
+W1,M25,Canonical tracker consistency checker,validated_local,qa/2026-11-05-phase-batches.md,Full production acceptance and remaining observability gates
+W2,M18,Actual prospective Google lifecycle pilot,verified_provider,qa/2026-11-05-phase-batches-evidence.json,Two-sided negotiation and remaining integration scope

@@ -316,3 +316,7 @@ Create request identities now persist in the shared workflow ledger, so an old r
 ## W5 prospective Google automation — 2 November 2026
 
 [Scope and verification](qa/2026-11-02-calendar-automation.md): future saved interview changes can mirror through the existing queue and managed worker under an owner-controlled, versioned policy. No backfill or invitations; calendar/reconnect changes require re-enabling. Stale tasks cancel and provider failures retry within a bounded budget; external edits remain protected. No new schema or external scheduler is introduced. The M18 advanced module remains partial.
+
+## Phase batches and tracker checkpoint — 5 November 2026
+
+[Three-batch checkpoint](qa/2026-11-05-phase-batches.md) adds owner-reviewed external conflict replacement, stale-browser scheduling guards and an executable registry/backlog consistency checker. [Scoped phase tracker](PHASE_IMPLEMENTATION_TRACKER.csv) separates validated slices from unpassed phase/module acceptance. 493 tests and 214 real-MySQL checks pass, with TypeScript/build/entry checks passing. Historical actual Google create/reschedule/cancel evidence is now archived; synthetic cleanup and enabled automation were rechecked. This supersedes earlier disconnected/no-provider-success statements as current status, while preserving those historical checkpoints. No advanced module or complete autonomous agency is certified.

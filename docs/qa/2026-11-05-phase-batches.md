@@ -1,0 +1,15 @@
+# Phase implementation checkpoint — 5 November 2026
+
+Three related batches were implemented together, using the existing interview scheduler, Google adapter and worker. This checkpoint does not close the W2 vertical-slice or W5 production-acceptance gates.
+
+1. **Google conflict recovery:** owner can fetch a limited comparison of the saved interview and its owned Google event, then explicitly replace the reviewed Google version. Review binds the local snapshot and exact remote ID/ETag. New Google/local edits invalidate the review, and `If-Match` remains mandatory. Automatic jobs cannot use this override. Guests and private provider metadata are not returned. Deleted/unrecognizable Google events remain blocked; this is not bidirectional ingestion or automatic merge.
+2. **Stale browser edits:** interview list carries a server-computed scheduling fingerprint. Browser reschedule, cancellation, state and reminder mutations submit it, checked under the existing workspace lock before side effects. Stale edits fail with a reload/review instruction. Legacy API clients may omit it for compatibility; universal mandatory revision enforcement is still pending. This changes no SQL schema.
+3. **Tracker consistency:** `python3 scripts/check-module-tracker.py` verifies unique module/package IDs, exact registry/backlog membership and statuses, and existing evidence paths. All 25 modules and 163 packages agree. Scoped batch completion is separate from module acceptance.
+
+493 tests passed / 26 skipped; a disposable MySQL run passed 214 tests across 12 files. TypeScript, production build and four hosting entry checks passed. The initial SQL connection was unavailable because the existing local test container was stopped; it was restarted and the disposable regression run then passed. No production database reset or schema change was needed.
+
+The previous actual Google pilot completed create/reschedule/cancel through the managed worker, with no guest invitations or mail, and the synthetic interview is cancelled with reminders disabled. Original provider timestamps are preserved in the evidence rather than re-labelled as a new run. A read-only production check confirms the cleanup and that prospective automation remains enabled.
+
+Next acceptance work remains two-sided availability coordination, interviewer/panel constraints, reschedule holds, offer/joining and verified revenue-provider journeys, plus the remaining W0/W1 controls and advanced feature gates. Existing module/backlog records retain their planned/implementing statuses; no complete advanced module is certified by these batches.
+
+[Sanitized evidence](2026-11-05-phase-batches-evidence.json).
