@@ -1,0 +1,36 @@
+{
+  "validation": {
+    "unitPassed": 503,
+    "unitSkipped": 26,
+    "mysqlPassed": 215,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingEntrySmokes": 4
+  },
+  "live": {
+    "at": "2026-11-04T20:43:37.120Z",
+    "buildCommit": "9d447b55599b6aa3575492f1d07215b9fa809b1c",
+    "googleReadVerified": true,
+    "proposalCount": 3,
+    "noOverlap": "PASS",
+    "invalidInput": "PASS",
+    "anonymousGuard": "PASS",
+    "reservation": false,
+    "participantAcceptance": false,
+    "googleEventWrites": 0,
+    "mailSent": 0
+  },
+  "browser": {
+    "at": "2026-11-04T20:43:45.088Z",
+    "checks": [
+      "No overflow at 1440px",
+      "No overflow at 390px",
+      "Form completes read-only common-slot query",
+      "Input changes clear stale suggestions"
+    ],
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "googleEventWrites": 0
+  },
+  "scope": "Owner-entered windows; no participant acceptance, reservation, invitation or event write."
+}

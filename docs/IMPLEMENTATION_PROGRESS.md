@@ -330,3 +330,5 @@ The application deployment delay subsequently resolved: `229a118` is live, with 
 ## W2 common availability proposals — 5 November 2026
 
 [Scope and checks](qa/2026-11-05-common-availability.md): owner-entered participant windows can produce common slots with separate timezones, bounded intervals, Google free/busy exclusion and buffers. Existing Calendar authorization/leases are reused; this neither reserves time nor records participant acceptance. Secure participant links and confirmed-booking orchestration remain pending. 503 tests, TypeScript/build and hosting entry checks pass; live results are recorded separately. M18 remains implementing.
+
+Live follow-up: common availability application commit `9d447b5` passed real read-only Google proposal and access/input checks, plus mobile/desktop form and stale-result clearing. Disposable MySQL: 215 passing tests. Evidence is archived in `qa/2026-11-05-common-availability-evidence.json`; the scoped tracker now marks this read-only slice live-verified. Authenticated participant collection and binding acceptance remain pending.
