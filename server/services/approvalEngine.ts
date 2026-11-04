@@ -1,6 +1,9 @@
+import {materializeAvailabilityEmail} from "./availabilityMail";
+import type {AvailabilityMailScope} from "./availabilityMailScope";
 import { stopFollowUp } from "./workflowStore";
 import { and, eq } from "drizzle-orm";
 import {
+  availabilityInvites,
   approvals,
   automationQueue,
   companies,
@@ -98,13 +101,14 @@ export async function applySideEffect(
   // Approval authorizes the immutable message record; it never sends an email.
   if (approval.actionType === "email_send") {
     const message = (await db.select().from(messages).where(and(eq(messages.id, approval.resourceId), eq(messages.ownerId, approval.ownerId))).limit(1))[0];
-    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string } | null;
+    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope } | null;
     const identity = payload?.senderIdentityId ? (await db.select().from(emailIdentities).where(and(eq(emailIdentities.id, payload.senderIdentityId), eq(emailIdentities.ownerId, approval.ownerId))).limit(1))[0] : null;
     if (!message || message.status !== "approval_pending" || !identity || identity.status !== "active" || !payload?.recipient) throw new Error("Email authorization is stale or incomplete.");
     if (payload.senderAddress !== identity.email || payload.senderPurpose !== identity.purpose) throw new Error("Sender identity changed; a new approval is required.");
-    if (payload.contentHash !== emailContentHash({ senderIdentityId: identity.id, recipient: payload.recipient, subject: message.subject ?? "", body: message.body })) throw new Error("Email content changed; a new approval is required.");
+    if (payload.contentHash !== emailContentHash({ senderIdentityId: identity.id, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink })) throw new Error("Email content changed; a new approval is required.");
     const suppressed = (await db.select().from(suppressionList).where(and(eq(suppressionList.ownerId, approval.ownerId), eq(suppressionList.valueHash, hashContactValue(payload.recipient)), eq(suppressionList.active, true))).limit(1))[0];
     if (suppressed) throw new Error("Email recipient is suppressed.");
+    await materializeAvailabilityEmail(db,approval.ownerId,payload,message,decidedAt);
     const dispatch = (await db.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, approval.ownerId), eq(emailDispatches.approvalId, approval.id))).limit(1))[0];
     if (dispatch) {
       if (dispatch.status !== "queued") throw new Error("Dispatch is no longer pending authorization.");
@@ -361,6 +365,13 @@ export async function applyApprovalDecision(
     if (decision === "approved") {
       await applySideEffect(tx, current, decidedAt, decidedById);
     } else if (current.actionType === "email_send") {
+      const privateLink=(current.payload as {privateLink?:AvailabilityMailScope}|null)?.privateLink;
+      if(privateLink){
+        await tx.update(emailDispatches).set({status:"cancelled",lastError:"Owner rejected availability link delivery."}).where(and(eq(emailDispatches.ownerId,current.ownerId),eq(emailDispatches.approvalId,current.id)));
+        await tx.update(messages).set({status:"cancelled"}).where(and(eq(messages.ownerId,current.ownerId),eq(messages.id,current.resourceId)));
+        const link=(await tx.select().from(availabilityInvites).where(and(eq(availabilityInvites.ownerId,current.ownerId),eq(availabilityInvites.id,privateLink.inviteId))).limit(1))[0];
+        if(link?.revision===privateLink.revision&&link.status==="pending")await tx.update(availabilityInvites).set({status:"revoked",tokenHash:"",revision:link.revision+1}).where(eq(availabilityInvites.id,link.id));
+      }
       const dispatch = (await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, current.ownerId), eq(emailDispatches.approvalId, current.id))).limit(1))[0];
       if (dispatch?.planId) {
         const plan = (await tx.select().from(followUpPlans).where(and(eq(followUpPlans.ownerId, current.ownerId), eq(followUpPlans.id, dispatch.planId))).limit(1))[0];

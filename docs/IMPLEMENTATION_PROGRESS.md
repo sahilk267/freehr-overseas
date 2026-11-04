@@ -344,3 +344,7 @@ Live follow-up: `470eb33` passed one-time link creation/retry, anonymous browser
 [Booking implementation](qa/2026-11-05-collected-booking.md) binds response and calendar generations, rechecks Google availability and buffered internal conflicts/holds, then uses the canonical scheduler and existing workflow ledger. Interview creation and capability closure commit together. No new migration or second scheduler. 523 tests and 238 SQL regressions pass; tentative scheduling remains separate from verified acceptance, delivery and unattended confirmation.
 
 Live follow-up: `d022933` passed the owner browser paired-response booking flow, token closure, immutable replay, changed-request denial, synthetic cancellation and managed Calendar reconciliation. Mobile/desktop checks passed. Evidence is archived in `qa/2026-11-05-collected-booking-evidence.json`. Synthetic booking is cancelled and links revoked. Participant acceptance/delivery remain open; no invitations or mail were sent.
+
+## W2 approved availability-link email — 5 November 2026
+
+[Shared outbox implementation](qa/2026-11-05-availability-email.md) prepares one owner approval per pending participant link, reusing the shared dispatch queue and gateway. Scoped HMAC envelopes avoid persisting plaintext tokens/URLs in drafts; recipient/permission/resource checks repeat at authorization and dispatch. Rejection cleans up the draft and pending capability. 535 tests and 251 SQL regressions pass. Actual recipient mail delivery is not claimed; confirmation/acceptance and unattended sending remain pending.

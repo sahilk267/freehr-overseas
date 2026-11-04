@@ -1,8 +1,9 @@
+import {hasCandidateCommunicationPermission} from "./communicationPermission";
 import { invoiceCollectionFacts, ACTIVE_COLLECTION_STATES } from "./collectionFacts";
 import { and, desc, eq, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { approvals, automationGrants, candidates, consents, contacts, conversations, emailDispatches, emailIdentities, followUpPlans, interviews, invoices, jobs, messages, payments, suppressionList, workflowEvents, workspaceSettings } from "../../drizzle/schema";
+import { approvals, automationGrants, candidates, contacts, conversations, emailDispatches, emailIdentities, followUpPlans, interviews, invoices, jobs, messages, payments, suppressionList, workflowEvents, workspaceSettings } from "../../drizzle/schema";
 import { FOLLOW_UP_SCENARIOS } from "../../shared/followups";
 import { createId, ensureWorkspace, hashContactValue, requireDb } from "../db";
 import { lockedSelect } from "./database";
@@ -36,9 +37,8 @@ export async function followUpEligibility(tx: any, plan: FollowUpPlan, now = new
   if (conversation.candidateId) {
     const candidate = (await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.id, conversation.candidateId), eq(candidates.ownerId, plan.ownerId))).limit(1)))[0];
     if (!candidate || candidate.deletedAt || candidate.withdrawnAt || candidate.doNotContactAt || ["deleted", "deletion_pending", "withdrawn", "do_not_contact"].includes(candidate.profileState) || candidate.email?.trim().toLowerCase() !== plan.recipient) return { state: "cancelled", reason: "Candidate is withdrawn, unavailable for contact or has changed address." };
-    const grants = await lockedSelect(tx.select().from(consents).where(and(eq(consents.ownerId, plan.ownerId), eq(consents.candidateId, candidate.id), eq(consents.status, "granted"))));
     const allowedTypes = plan.scenarioId === "FU18" || plan.scenarioId === "FU17" || plan.scenarioId === "FU19" ? ["interview_processing", "recruitment_communication"] : ["recruitment_communication"];
-    if (!grants.some((consent: typeof consents.$inferSelect) => allowedTypes.includes(consent.consentType) && (!consent.expiresAt || consent.expiresAt > now) && (!consent.jobId || consent.jobId === conversation.jobId))) return { state: "blocked", reason: "Current purpose-appropriate communication permission is required." };
+    if (!(await hasCandidateCommunicationPermission(tx,plan.ownerId,candidate.id,conversation.jobId,allowedTypes,now))) return { state: "blocked", reason: "Current purpose-appropriate communication permission is required." };
   } else if (conversation.contactId) {
     const contact = (await lockedSelect(tx.select().from(contacts).where(and(eq(contacts.id, conversation.contactId), eq(contacts.ownerId, plan.ownerId))).limit(1)))[0];
     if (!contact || contact.companyId !== conversation.companyId || contact.optedOutAt || contact.email?.trim().toLowerCase() !== plan.recipient) return { state: "cancelled", reason: "Contact is opted out or has changed address." };

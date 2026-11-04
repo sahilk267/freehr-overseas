@@ -1,3 +1,4 @@
+import {availabilityMailOptions,prepareAvailabilityEmail} from "../services/availabilityMail";
 import {z} from 'zod';
 import {publicProcedure,protectedProcedure,router} from '../_core/trpc';
 import {bookCollectedAvailability,createAvailabilityInvites,listAvailabilityInvites,proposeCollectedAvailability,publicAvailability,revokeAvailability} from '../services/participantAvailability';
@@ -5,6 +6,8 @@ const capability=z.object({id:z.string().min(4).max(36),token:z.string().regex(/
 const group=z.object({groupId:z.string().min(4).max(36)});
 function noStore(ctx:any){ctx.res?.setHeader?.('Cache-Control','private, no-store');ctx.res?.setHeader?.('Referrer-Policy','no-referrer');}
 export const participantAvailabilityRouter=router({
+ mailOptions:protectedProcedure.input(z.object({inviteId:z.string().min(4).max(36)})).query(({ctx,input})=>{noStore(ctx);return availabilityMailOptions(ctx.user.id,input.inviteId);}),
+ prepareEmail:protectedProcedure.input(z.object({inviteId:z.string().min(4).max(36),conversationId:z.string().min(4).max(36),senderIdentityId:z.string().min(4).max(36)})).mutation(({ctx,input})=>{noStore(ctx);return prepareAvailabilityEmail(ctx.user.id,ctx.actor.id,input);}),
  book:protectedProcedure.input(group.extend({scheduledAt:z.date(),durationMinutes:z.number().int().min(15).max(240),bufferMinutes:z.number().int().min(0).max(60),responsesFingerprint:z.string().length(64),meetingUrl:z.string().url().max(512).optional()})).mutation(({ctx,input})=>{noStore(ctx);return bookCollectedAvailability(ctx.user.id,ctx.actor.id,input);}),
  list:protectedProcedure.query(({ctx})=>{noStore(ctx);return listAvailabilityInvites(ctx.user.id);}),
  create:protectedProcedure.input(z.object({candidateId:z.string().min(4).max(36),jobId:z.string().min(4).max(36),requestKey:z.string().min(8).max(100),expiresHours:z.number().int().min(1).max(168).default(48)})).mutation(({ctx,input})=>{noStore(ctx);return createAvailabilityInvites(ctx.user.id,ctx.actor.id,input);}),
