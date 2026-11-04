@@ -61,5 +61,52 @@
     "types": "PASS",
     "tracker": "PASS",
     "buildAndEntry": "PASS"
+  },
+  "mail": {
+    "start": {
+      "at": "2026-11-04T23:41:36.983Z",
+      "buildCommit": "1d2fbe487f751be52496326e4f13b67237d54085",
+      "syntheticRecipientOnly": true,
+      "roleMatchedOptions": "PASS",
+      "ownerGuards": 2,
+      "followupSetupCancelled": true,
+      "realEmailsSent": 0
+    },
+    "browser": {
+      "at": "2026-11-04T23:42:12.413Z",
+      "checks": [
+        "Anonymous same-tab interview-response role switch without stale participant",
+        "Anonymous same-tab availability role switch without stale participant",
+        "Private email preparation form without overflow at 1440px",
+        "Private email preparation form without overflow at 390px",
+        "Owner browser prepares draft only; no approval or send action"
+      ],
+      "runtimeErrors": [],
+      "transportErrors": [],
+      "realEmailsSent": 0
+    },
+    "finish": {
+      "at": "2026-11-04T23:42:23.542Z",
+      "prepareReplay": "PASS",
+      "draftPendingOwnerApproval": "PASS",
+      "noPlaintextPrivateUrl": "PASS",
+      "approvalUnconsumedBeforeRejection": "PASS",
+      "rejectedDraftCancelled": "PASS",
+      "unusedCapabilityRevoked": "PASS",
+      "realEmailsSent": 0,
+      "providerDeliveryVerified": false
+    },
+    "cleanup": {
+      "at": "2026-11-04T23:42:40.570Z",
+      "candidateWithdrawn": true,
+      "interviewCancelled": true,
+      "reminderDisabled": true,
+      "linksRevoked": true,
+      "setupFollowupCancelled": true,
+      "calendarCancellation": "upserted",
+      "realEmailsSent": 0
+    },
+    "applicationCommit": "1d2fbe4",
+    "actualProviderRecipientDeliveryVerified": false
   }
 }
