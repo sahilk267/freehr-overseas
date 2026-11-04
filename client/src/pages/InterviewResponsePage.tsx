@@ -1,10 +1,11 @@
+import {usePrivateCapability} from "@/hooks/usePrivateCapability";
 import {useEffect,useState} from 'react';
 import {trpc} from '@/lib/trpc';
 import {Button} from '@/components/ui/button';
 type Response={participant:string;status:string;scheduledAt:string | Date;timezone:string;durationMinutes:number;interviewStatus:string};
 function decoded(r:{participant?:string;status?:string;scheduledAt?:string | Date;timezone?:string;durationMinutes?:number;interviewStatus?:string}):Response{if(!r.participant||!r.status||!r.scheduledAt||!r.timezone||!r.durationMinutes||!r.interviewStatus)throw Error('Invalid interview response.');return {participant:r.participant,status:r.status,scheduledAt:r.scheduledAt,timezone:r.timezone,durationMinutes:r.durationMinutes,interviewStatus:r.interviewStatus};}
 export default function InterviewResponsePage(){
- const utils=trpc.useUtils(),[capability]=useState(()=>{const m=/^#([A-Za-z0-9_-]{4,36})\.([A-Za-z0-9_-]{43})$/.exec(window.location.hash);return m?{id:m[1],token:m[2]}:null;});
+ const utils=trpc.useUtils(),capability=usePrivateCapability();
  const [state,setState]=useState<Response|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
  useEffect(()=>{window.history.replaceState(null,'',window.location.pathname);if(!capability){setError('Open the complete interview response link supplied by your recruiter.');return;}let active=true;utils.client.interviewConfirmations.read.mutate(capability).then(r=>{if(active)setState(decoded(r));}).catch(()=>{if(active)setError('This link is unavailable. Ask your recruiter for a current link.');});return()=>{active=false;};},[capability]);
  const respond=async(decision:'confirmed'|'declined')=>{if(!capability||busy)return;setBusy(true);setError('');try{setState(decoded(await utils.client.interviewConfirmations.respond.mutate({...capability,decision})));}catch(e){setError(e instanceof Error?e.message:'Response could not be saved.');}finally{setBusy(false);}};

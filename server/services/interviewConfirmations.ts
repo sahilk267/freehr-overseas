@@ -52,3 +52,13 @@ export async function publicInterviewConfirmation(input:{id:string;token:string;
   return {participant:r.participant,status:r.status,scheduledAt:i.scheduledAt!,timezone:i.timezone,durationMinutes:i.durationMinutes,interviewStatus:(await owned(tx,r.ownerId,i.id)).status,identityVerified:false as const};
  });
 }
+
+/** Reused by the shared private-link outbox; no independent sending or authorization engine. */
+export async function pendingConfirmationForMail(tx:any,ownerId:number,id:string,now:Date){
+ const r=(await tx.select().from(links).where(and(eq(links.ownerId,ownerId),eq(links.id,id))).limit(1))[0] as typeof links.$inferSelect;
+ if(!r)throw new TRPCError({code:'NOT_FOUND',message:'Owned interview confirmation is required.'});
+ const i=await owned(tx,ownerId,r.interviewId);
+ if(r.status!=='pending'||r.expiresAt<=now||!current(r,i)||i.status!=='scheduled')throw new TRPCError({code:'PRECONDITION_FAILED',message:'Interview confirmation is expired, answered, revoked or its schedule changed.'});
+ await requireSchedulableCandidate(tx,ownerId,i.candidateId);
+ return {...r,jobId:i.jobId,revision:1,submissionCount:0,scheduledAt:i.scheduledAt!,timezone:i.timezone,durationMinutes:i.durationMinutes};
+}

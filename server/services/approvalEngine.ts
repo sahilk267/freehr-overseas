@@ -1,9 +1,8 @@
-import {materializeAvailabilityEmail} from "./availabilityMail";
+import {materializeAvailabilityEmail,revokePreparedPrivateLink} from "./availabilityMail";
 import type {AvailabilityMailScope} from "./availabilityMailScope";
 import { stopFollowUp } from "./workflowStore";
 import { and, eq } from "drizzle-orm";
 import {
-  availabilityInvites,
   approvals,
   automationQueue,
   companies,
@@ -367,10 +366,9 @@ export async function applyApprovalDecision(
     } else if (current.actionType === "email_send") {
       const privateLink=(current.payload as {privateLink?:AvailabilityMailScope}|null)?.privateLink;
       if(privateLink){
-        await tx.update(emailDispatches).set({status:"cancelled",lastError:"Owner rejected availability link delivery."}).where(and(eq(emailDispatches.ownerId,current.ownerId),eq(emailDispatches.approvalId,current.id)));
+        await tx.update(emailDispatches).set({status:"cancelled",lastError:"Owner rejected private link delivery."}).where(and(eq(emailDispatches.ownerId,current.ownerId),eq(emailDispatches.approvalId,current.id)));
         await tx.update(messages).set({status:"cancelled"}).where(and(eq(messages.ownerId,current.ownerId),eq(messages.id,current.resourceId)));
-        const link=(await tx.select().from(availabilityInvites).where(and(eq(availabilityInvites.ownerId,current.ownerId),eq(availabilityInvites.id,privateLink.inviteId))).limit(1))[0];
-        if(link?.revision===privateLink.revision&&link.status==="pending")await tx.update(availabilityInvites).set({status:"revoked",tokenHash:"",revision:link.revision+1}).where(eq(availabilityInvites.id,link.id));
+        await revokePreparedPrivateLink(tx,current.ownerId,privateLink);
       }
       const dispatch = (await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, current.ownerId), eq(emailDispatches.approvalId, current.id))).limit(1))[0];
       if (dispatch?.planId) {

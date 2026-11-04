@@ -1,0 +1,65 @@
+{
+  "start": {
+    "at": "2026-11-04T23:35:28.475Z",
+    "buildCommit": "94833c32c2cf8bab3190c9cc24da3893d20b1e3d",
+    "ownerCreation": "PASS",
+    "anonymousCreationDenied": "PASS",
+    "credentialRedisclosurePrevented": "PASS",
+    "ownerListNoToken": "PASS",
+    "syntheticOnly": true,
+    "mailSent": 0,
+    "guestInvitations": 0
+  },
+  "browser": {
+    "at": "2026-11-04T23:37:59.768Z",
+    "ownerPanel": "PASS",
+    "anonymousCandidateDesktop": "PASS",
+    "anonymousInterviewerMobile": "PASS",
+    "fragmentsRemoved": "PASS",
+    "overflow": false,
+    "runtimeErrors": 0,
+    "transportErrors": 0,
+    "mailSent": 0,
+    "guestInvitations": 0
+  },
+  "finish": {
+    "at": "2026-11-04T23:38:11.352Z",
+    "pairedCanonicalConfirmation": "PASS",
+    "idempotentAnswer": "PASS",
+    "changedAnswerDenied": "PASS",
+    "reminderEditPreservesLink": "PASS",
+    "rescheduleInvalidatesLink": "PASS",
+    "declineRequestsReschedule": "PASS",
+    "peerRevokedOnDecline": "PASS",
+    "oldIcsCancelled": "PASS",
+    "candidateWithdrawn": true,
+    "interviewCancelled": true,
+    "reminderDisabled": true,
+    "allLinksRevoked": true,
+    "managedCalendarCancellation": "upserted",
+    "mailSent": 0,
+    "guestInvitations": 0
+  },
+  "upgrade": {
+    "baselineEntries": 22,
+    "finalEntries": 23,
+    "concurrentAndRepeatedUpgrade": "PASS",
+    "existingPhoneHashesAndSuppressionsPreserved": "PASS",
+    "existingContactsAndPermissionsPreserved": "PASS",
+    "existingCompaniesPreserved": "PASS",
+    "noActiveCalendarCreated": "PASS",
+    "noHoldSeeded": "PASS",
+    "noAvailabilityLinksSeeded": "PASS",
+    "defaultBackgroundDisabled": "PASS",
+    "changedManifestRejected": "PASS",
+    "noConfirmationLinksSeeded": "PASS"
+  },
+  "local": {
+    "unitPassed": 566,
+    "unitSkipped": 33,
+    "realMysqlPassed": 281,
+    "types": "PASS",
+    "tracker": "PASS",
+    "buildAndEntry": "PASS"
+  }
+}

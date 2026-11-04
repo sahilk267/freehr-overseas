@@ -1,9 +1,10 @@
+import {usePrivateCapability} from "@/hooks/usePrivateCapability";
 import {useEffect,useState,type FormEvent} from 'react';
 import {trpc} from '@/lib/trpc';
 import {Button} from '@/components/ui/button';
 import {zonedDateTimeToUtc} from '@shared/dateTime';
 export default function AvailabilityResponsePage(){
- const utils=trpc.useUtils();const [capability]=useState(()=>{const match=/^#([A-Za-z0-9_-]{4,36})\.([A-Za-z0-9_-]{43})$/.exec(window.location.hash);return match?{id:match[1],token:match[2]}:null;});
+ const utils=trpc.useUtils();const capability=usePrivateCapability();
  const [state,setState]=useState<{participant:string;status:string;revision:number}|null>(null),[error,setError]=useState(''),[busy,setBusy]=useState(false),[saved,setSaved]=useState(false);
  useEffect(()=>{window.history.replaceState(null,'',window.location.pathname);if(!capability){setError('Open the complete availability link supplied by your recruiter.');return;}let active=true;utils.client.participantAvailability.read.mutate(capability).then(r=>{if(active)setState({participant:r.participant,status:r.status,revision:r.revision});}).catch(()=>{if(active)setError('This link is unavailable. Ask the recruiter for a new request.');});return()=>{active=false;};},[capability]);
  const submit=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();if(!capability||!state)return;setBusy(true);setError('');setSaved(false);const f=new FormData(e.currentTarget);try{const timezone=String(f.get('timezone')),r=await utils.client.participantAvailability.respond.mutate({...capability,expectedRevision:state.revision,timezone,windows:[{start:zonedDateTimeToUtc(String(f.get('start')),timezone),end:zonedDateTimeToUtc(String(f.get('end')),timezone)}]});setState({participant:r.participant,status:r.status,revision:r.revision});setSaved(true);}catch(e){setError(e instanceof Error?e.message:'Response could not be saved.');}finally{setBusy(false);}};
