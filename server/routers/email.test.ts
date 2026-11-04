@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
-import { approvals, emailDispatches, messages, suppressionList } from "../../drizzle/schema";
+import { approvals, automationQueue, emailDispatches, messages, suppressionList } from "../../drizzle/schema";
 import { createId, hashContactValue } from "../db";
 import { followupFixture } from "../testSupport/followupFixture";
 
@@ -81,4 +81,8 @@ describe("email router controlled evidence with the shared delivery gateway", ()
     expect((await f.db.select().from(emailDispatches).where(eq(emailDispatches.messageId, mail.messageId)))[0].status).toBe("sent");
     expect((await f.db.select().from(messages).where(eq(messages.id, mail.messageId)))[0]).toMatchObject({ status: "sent", providerMessageId: "provider-email-test", deliveredAt: null });
   });
+  it("redacts quoted private availability capabilities before storing inbound mail",async()=>{const token='Z'.repeat(43),url='https://example.test/availability#avi_synthetic.'+token;await f.caller.email.inbound.record({conversationId:f.conversationId,sender:f.address,subject:url,body:'Available tomorrow. '+url});const incoming=(await f.db.select().from(messages).where(eq(messages.ownerId,f.ownerId))).find(m=>m.direction==='inbound')!;expect(incoming.body).toContain('Available tomorrow.');expect(incoming.body).not.toContain(token);expect(incoming.subject).not.toContain(token);});
+
+  it("redacts private link quotes from manual reply classification payloads",async()=>{const token='Y'.repeat(43),url='https://example.test/availability#avi_synthetic.'+token;const r=await f.caller.recruitment.outreach.classifyInboundReply({conversationId:f.conversationId,messageText:'Available tomorrow. '+url});const task=(await f.db.select().from(automationQueue).where(eq(automationQueue.id,r.queueId)))[0],message=(await f.db.select().from(messages).where(eq(messages.id,r.messageId)))[0];expect(JSON.stringify(task.payload)).not.toContain(token);expect(message.body).not.toContain(token);expect(message.body).toContain('Available tomorrow.');});
+
 });

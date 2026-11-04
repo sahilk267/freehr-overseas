@@ -7,4 +7,5 @@ W1,M25,Repository CI and disposable SQL runner,validated_local,qa/2026-11-05-pha
 W2,M18,Common availability proposals,verified_live_read_only,qa/2026-11-05-common-availability.md,Authenticated participant collection and confirmed booking remain pending
 W2,M18,Scoped participant availability collection,verified_live_capability,qa/2026-11-05-participant-availability.md,Automated delivery and verified acceptance-booking orchestration remain pending
 W2,M18,Tentative booking from paired responses,verified_live_tentative,qa/2026-11-05-collected-booking.md,Verified participant confirmation and delivery remain pending
-W2,M18,Owner-approved availability link email,validated_local,qa/2026-11-05-availability-email.md,Live draft checks and actual recipient delivery remain unverified
+W2,M18,Owner-approved availability link email,verified_live_draft_no_send,qa/2026-11-05-availability-email.md,Actual recipient delivery remains unverified
+W1,M25,Private capability quote redaction,validated_local,qa/2026-11-05-availability-email.md,Live inbound redaction verification pending

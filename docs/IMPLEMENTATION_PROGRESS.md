@@ -348,3 +348,5 @@ Live follow-up: `d022933` passed the owner browser paired-response booking flow,
 ## W2 approved availability-link email — 5 November 2026
 
 [Shared outbox implementation](qa/2026-11-05-availability-email.md) prepares one owner approval per pending participant link, reusing the shared dispatch queue and gateway. Scoped HMAC envelopes avoid persisting plaintext tokens/URLs in drafts; recipient/permission/resource checks repeat at authorization and dispatch. Rejection cleans up the draft and pending capability. 535 tests and 251 SQL regressions pass. Actual recipient mail delivery is not claimed; confirmation/acceptance and unattended sending remain pending.
+
+Live no-send follow-up: `b96fd7e` passed options/guards, desktop/mobile draft preparation, immutable retry, rejection and cleanup. Synthetic follow-up was cancelled, links revoked and candidate withdrawn; no email was approved or sent. A second privacy batch redacts recognized private capability quotes from incoming text/subjects and AI classification inputs. Current validation: 541 tests and 253 SQL regressions, types/build/entry checks passing. Actual provider recipient delivery remains unverified.

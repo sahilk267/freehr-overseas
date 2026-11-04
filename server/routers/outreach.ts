@@ -1,3 +1,4 @@
+import {redactAvailabilityLinks} from "../services/privateLinkRedaction";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -24,14 +25,15 @@ export const outreachRouter = router({
     return { conversationId, messageId, queueId };
   }),
   classifyInboundReply: protectedProcedure.input(z.object({ conversationId: z.string().min(4), messageText: z.string().trim().min(1).max(12000) })).mutation(async ({ ctx, input }) => {
-    ensureSafeAiText(input.messageText);
+    const messageText=redactAvailabilityLinks(input.messageText);
+    ensureSafeAiText(messageText);
     const db = await requireDb();
     const conversation = (await db.select().from(conversations).where(and(eq(conversations.id, input.conversationId), eq(conversations.ownerId, ctx.user.id))).limit(1))[0];
     if (!conversation) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation was not found." });
     const messageId = createId("msg_");
     const queueId = createId("que_");
-    await db.insert(messages).values({ id: messageId, conversationId: conversation.id, ownerId: ctx.user.id, direction: "inbound", status: "received", body: input.messageText, idempotencyKey: `inbound:${messageId}`, aiGenerated: false, deliveredAt: new Date() });
-    await db.insert(automationQueue).values({ id: queueId, ownerId: ctx.user.id, jobType: "classify_reply", payload: { conversationId: conversation.id, messageId, messageText: input.messageText, instruction: "Classify only. If the message asks to stop contact, recommend stop_contact." }, idempotencyKey: `classify_reply:${messageId}` });
+    await db.insert(messages).values({ id: messageId, conversationId: conversation.id, ownerId: ctx.user.id, direction: "inbound", status: "received", body: messageText, idempotencyKey: `inbound:${messageId}`, aiGenerated: false, deliveredAt: new Date() });
+    await db.insert(automationQueue).values({ id: queueId, ownerId: ctx.user.id, jobType: "classify_reply", payload: { conversationId: conversation.id, messageId, messageText: messageText, instruction: "Classify only. If the message asks to stop contact, recommend stop_contact." }, idempotencyKey: `classify_reply:${messageId}` });
     await db.update(conversations).set({ status: "reply_received", lastMessageAt: new Date() }).where(eq(conversations.id, conversation.id));
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "outreach.reply_queued_for_classification", resourceType: "conversation", resourceId: conversation.id, nextState: "reply_received", metadata: { queueId } });
     return { messageId, queueId };

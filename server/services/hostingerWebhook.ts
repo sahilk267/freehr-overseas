@@ -1,3 +1,4 @@
+import {redactAvailabilityLinks} from "./privateLinkRedaction";
 import { stopOwnerFollowUps } from "./followupEvents";
 import { timingSafeEqual } from "node:crypto";
 import { and, desc, eq, inArray, or } from "drizzle-orm";
@@ -70,8 +71,8 @@ export function normalizeHostingerMailEvent(body: unknown) {
   return {
     providerMessageId,
     sender,
-    subject,
-    text,
+    subject:subject?redactAvailabilityLinks(subject):subject,
+    text:redactAvailabilityLinks(text),
     inReplyTo,
     references,
     event: asString(root.event, root.type, data.event) ?? "message.received",
