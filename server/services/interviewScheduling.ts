@@ -95,7 +95,9 @@ export async function rescheduleInterview(ownerId: number, actorId: number, inpu
   return result;
 }
 export async function changeInterviewState(ownerId: number, actorId: number, id: string, state: string, expectedFingerprint?: string) {
-  const result = await withWorkspaceTransaction(ownerId, async tx => {
+  return withWorkspaceTransaction(ownerId, tx => changeInterviewStateInTransaction(tx, ownerId, String(actorId), id, state, expectedFingerprint));
+}
+export async function changeInterviewStateInTransaction(tx: any, ownerId: number, actorId: string, id: string, state: string, expectedFingerprint?: string, actorType: "user" | "provider" = "user") {
     const row = await ownedInterview(tx, ownerId, id);
     checkEditFingerprint(row, expectedFingerprint);
     if (row.status === state) return { success: true, alreadyCurrent: true };
@@ -106,13 +108,12 @@ export async function changeInterviewState(ownerId: number, actorId: number, id:
       if (row.scheduledAt && (await overlaps(tx, ownerId, row.candidateId, { scheduledAt: row.scheduledAt, durationMinutes: row.durationMinutes, timezone: row.timezone }, row.id)).length) rejectConflict();
     }
     const ended = ["cancelled", "completed", "no_show", "closed", "feedback_pending", "reschedule_requested"].includes(state);
-    if (ended) await stopRelatedFollowUps(tx, ownerId, { resourceType: "interview", resourceId: id }, `Interview state changed to ${state}.`, state === "completed" ? "completed" : "cancelled");
-    await tx.update(interviews).set({ status: state, completedAt: state === "completed" ? new Date() : row.completedAt, ...(ended ? { reminderAt: null } : {}), calendarStatus: state === "confirmed" ? "confirmed" : state === "cancelled" ? "cancelled" : row.calendarStatus, calendarSequence: row.calendarSequence + (state === "cancelled" ? 1 : 0) }).where(eq(interviews.id, id));
-    await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: state === "cancelled" ? "interview.cancelled" : "interview.state_changed", resourceType: "interview", resourceId: id, previousState: row.status, nextState: state }, tx);
+    const calendarChanged = ["confirmed", "cancelled", "reschedule_requested"].includes(state);
+    if (ended || calendarChanged) await stopRelatedFollowUps(tx, ownerId, { resourceType: "interview", resourceId: id }, `Interview state changed to ${state}.`, state === "completed" ? "completed" : "cancelled");
+    await tx.update(interviews).set({ status: state, completedAt: state === "completed" ? new Date() : row.completedAt, ...(ended ? { reminderAt: null } : {}), calendarStatus: state === "confirmed" ? "confirmed" : ["cancelled", "reschedule_requested"].includes(state) ? "cancelled" : row.calendarStatus, calendarSequence: row.calendarSequence + (calendarChanged ? 1 : 0) }).where(eq(interviews.id, id));
+    await recordAudit({ ownerId, actorType, actorId, action: state === "cancelled" ? "interview.cancelled" : "interview.state_changed", resourceType: "interview", resourceId: id, previousState: row.status, nextState: state }, tx);
     await enqueueCalendarSync(tx, ownerId, row.id);
     return { success: true, alreadyCurrent: false };
-  });
-  return result;
 }
 
 export async function configureInterviewReminder(ownerId: number, actorId: number, id: string, reminderAt: Date | null, expectedFingerprint?: string) {

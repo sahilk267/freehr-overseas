@@ -1,6 +1,6 @@
 import { stopFollowUp } from "./workflowStore";
 import { and, eq } from "drizzle-orm";
-import { availabilityInvites, emailDispatches, followUpPlans, outreachCampaignRecipients, outreachCampaigns, workflowEvents, workspaceSettings } from "../../drizzle/schema";
+import { interviewConfirmations, availabilityInvites, emailDispatches, followUpPlans, outreachCampaignRecipients, outreachCampaigns, workflowEvents, workspaceSettings } from "../../drizzle/schema";
 import { ensureWorkspace, requireDb } from "../db";
 import { lockedSelect } from "./database";
 import { stopRelatedFollowUps } from "./followups";
@@ -12,6 +12,7 @@ export async function stopOwnerFollowUps(ownerId: number, match: { candidateId?:
     await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, ownerId)).limit(1));
     await stopRelatedFollowUps(tx, ownerId, match, reason, status);
     if (match.candidateId && (status === "cancelled" || redact)) {
+      await tx.update(interviewConfirmations).set({status:"revoked",tokenHash:""}).where(and(eq(interviewConfirmations.ownerId,ownerId),eq(interviewConfirmations.candidateId,match.candidateId)));
       const links = await tx.select().from(availabilityInvites).where(and(eq(availabilityInvites.ownerId, ownerId), eq(availabilityInvites.candidateId, match.candidateId)));
       for (const link of links) await tx.update(availabilityInvites).set({ status: "revoked", tokenHash: "", revision: link.revision + 1, ...(redact ? { windows: null, timezone: null } : {}) }).where(eq(availabilityInvites.id, link.id));
     }

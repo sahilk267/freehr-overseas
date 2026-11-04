@@ -884,3 +884,10 @@ export const availabilityInvites = mysqlTable("availabilityInvites", {
   revision:int("revision").notNull().default(1),status:varchar("status",{length:24}).notNull().default("pending"),expiresAt:timestamp("expiresAt",{fsp:3}).notNull(),
   windows:json("windows").$type<Array<{start:string;end:string}>>(),timezone:varchar("timezone",{length:64}),submissionCount:int("submissionCount").notNull().default(0),createdAt,updatedAt,
 },t=>[uniqueIndex("availability_group_role_unique").on(t.groupId,t.participant),index("availability_owner_idx").on(t.ownerId,t.createdAt)]);
+
+export const interviewConfirmations = mysqlTable("interviewConfirmations", {
+ id:id("id").primaryKey(),ownerId:int("ownerId").notNull().references(()=>users.id),groupId:id("groupId").notNull(),
+ interviewId:id("interviewId").notNull().references(()=>interviews.id),candidateId:id("candidateId").notNull().references(()=>candidates.id),
+ participant:varchar("participant",{length:20}).notNull(),requestHash:varchar("requestHash",{length:64}).notNull(),scheduleFingerprint:varchar("scheduleFingerprint",{length:64}).notNull(),tokenHash:varchar("tokenHash",{length:64}).notNull(),
+ status:varchar("status",{length:24}).notNull().default("pending"),expiresAt:timestamp("expiresAt",{fsp:3}).notNull(),respondedAt:timestamp("respondedAt",{fsp:3}),createdAt,updatedAt,
+},t=>[uniqueIndex("confirmation_group_role_unique").on(t.groupId,t.participant),index("confirmation_owner_interview_idx").on(t.ownerId,t.interviewId)]);

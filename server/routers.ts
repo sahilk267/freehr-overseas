@@ -1,3 +1,4 @@
+import { interviewConfirmationsRouter } from "./routers/interviewConfirmations";
 import { participantAvailabilityRouter } from "./routers/participantAvailability";
 import { googleCalendarRouter } from "./routers/googleCalendar";
 import { collectionsRouter } from "./routers/collections";
@@ -16,6 +17,7 @@ import { getRuntimeLogoutCookie } from "./services/runtimeAuth";
 import { recordAudit } from "./db";
 
 export const appRouter = router({
+  interviewConfirmations: interviewConfirmationsRouter,
   participantAvailability: participantAvailabilityRouter,
   googleCalendar: googleCalendarRouter,
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly

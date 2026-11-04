@@ -9,3 +9,4 @@ W2,M18,Scoped participant availability collection,verified_live_capability,qa/20
 W2,M18,Tentative booking from paired responses,verified_live_tentative,qa/2026-11-05-collected-booking.md,Verified participant confirmation and delivery remain pending
 W2,M18,Owner-approved availability link email,verified_live_draft_no_send,qa/2026-11-05-availability-email.md,Actual recipient delivery remains unverified
 W1,M25,Private capability quote redaction,verified_live_inbound_no_send,qa/2026-11-05-availability-email.md,Additional encoded formats and retention gates remain pending
+W2,M18,Schedule-bound participant attendance confirmation,implemented_local_verification,qa/2026-11-05-interview-confirmations.md,Identity verification and automatic confirmation email delivery remain pending

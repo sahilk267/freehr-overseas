@@ -943,8 +943,8 @@
           "id": "M18-F03",
           "description": "Versioned schedule/RSVP lifecycle, temporary slot holds, reschedule/cancel reconciliation, no-show and alternative-slot recovery.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-05-collected-booking.md",
-          "implementation_note": "Current paired responses and selected calendar generation bind owner-reviewed tentative booking, using fresh Google reads, buffered internal conflict/hold checks, canonical scheduling and an atomic request ledger/token closure. Retries cannot recreate cancelled bookings. Verified participant acceptance/RSVP, delivery and unattended confirmed booking remain pending; legacy unversioned interview callers remain supported."
+          "evidence_ref": "qa/2026-11-05-interview-confirmations.md",
+          "implementation_note": "Schedule-bound candidate/interviewer capabilities record explicit attendance attestations. Both responses atomically use the canonical confirmed transition; decline requests rescheduling, cancels the old calendar occurrence and stops old reminders. Reminder edits preserve links; actual schedule changes invalidate them, including away/back changes. Identity verification, provider RSVP ingestion, automatic confirmation email and unattended recovery remain pending; legacy manual transitions remain supported."
         },
         {
           "id": "M18-F04",

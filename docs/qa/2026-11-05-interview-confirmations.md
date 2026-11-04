@@ -1,0 +1,11 @@
+# Schedule-bound interview confirmation — 5 November 2026
+
+Separate candidate/interviewer capability links record an explicit attendance response for a saved future tentative interview. Both current responses move the existing canonical interview to confirmed in the same workspace transaction. Decline requests rescheduling, clears old reminders and cancels the old Calendar occurrence; the next saved time creates a fresh version. Canonical conflict/hold checks, audit events and Google automation queue remain shared. Capability possession is an attestation, not verified identity, contract acceptance or provider RSVP.
+
+Links use random 32-byte tokens, hash-only storage, URL fragments and anonymous POST endpoints with no-store headers. Public output includes only assigned role, time/zone/duration and response/interview status. Request retries cannot redisclose credentials; replacement revokes the entire earlier pair. Schedule fingerprints include the reschedule counter so returning to an earlier time cannot revive a link. Reminder-only changes preserve links. Expiry is capped at the appointment start; withdrawal/erasure and owner revocation stop access. Recognized confirmation-link quotes are redacted using the existing inbound/AI privacy path.
+
+The owner interview panel creates/revokes links and displays response state. This checkpoint requires private sharing of links: automatic confirmation email delivery, identity verification, Google RSVP ingestion, panel negotiation and unattended replacement-slot recovery remain pending. Legacy owner manual state transitions remain available. M18 and its phase remain implementing.
+
+Migration 0022 adds only scoped confirmation storage. A disposable local MySQL rehearsal verified 22→23 migration entries, concurrent/repeated upgrades, preservation of existing business records, no seeded capabilities and changed-manifest rejection. Validation counts and live checks are recorded after completion below.
+
+Local validation: 551 tests passed (32 skipped); disposable MySQL: 265 tests in 16 files passed, including concurrent participant confirmations and rollback of the second response when canonical conflict checks fail. TypeScript, tracker consistency, production build and all four Hostinger entry checks passed. Live verification is pending at this commit.

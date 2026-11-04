@@ -1,3 +1,4 @@
+import InterviewResponsePage from "./pages/InterviewResponsePage";
 import AvailabilityResponsePage from "./pages/AvailabilityResponsePage";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -34,6 +35,7 @@ const ControlPlane = withDashboard(ControlPlanePage);
 
 function Router() {
   return <Switch>
+    <Route path="/interview-response" component={InterviewResponsePage} />
     <Route path="/availability" component={AvailabilityResponsePage} />
     <Route path="/login" component={OwnerLoginPage} />
     <Route path="/" component={CommandCenter} />
