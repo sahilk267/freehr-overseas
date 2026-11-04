@@ -44,7 +44,7 @@ type ScheduleInput = Slot & { candidateId: string; companyId: string; jobId: str
 export async function scheduleInterview(ownerId: number, actorId: number, input: ScheduleInput) {
   return withWorkspaceTransaction(ownerId, tx => scheduleInterviewInTransaction(tx, ownerId, actorId, input));
 }
-async function scheduleInterviewInTransaction(tx: any, ownerId: number, actorId: number, input: ScheduleInput, excludeHoldId?: string) {
+export async function scheduleInterviewInTransaction(tx: any, ownerId: number, actorId: number, input: ScheduleInput, excludeHoldId?: string) {
     await requireSchedulableCandidate(tx, ownerId, input.candidateId);
     const company = (await tx.select().from(companies).where(and(eq(companies.ownerId, ownerId), eq(companies.id, input.companyId))).limit(1))[0];
     const job = (await tx.select().from(jobs).where(and(eq(jobs.ownerId, ownerId), eq(jobs.id, input.jobId))).limit(1))[0];
@@ -196,4 +196,9 @@ export async function bookInterviewHold(ownerId: number, actorId: number, input:
     await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "interview.slot_booked", resourceType: "interview_hold", resourceId: hold.id, metadata: { interviewId: result.id } }, tx);
     return result;
   });
+}
+
+export async function assertRecordedSlotFree(tx:any,ownerId:number,candidateId:string,slot:Slot){
+ await rejectHeldSlot(tx,ownerId,candidateId,slot);
+ if((await overlaps(tx,ownerId,candidateId,slot)).length)rejectConflict();
 }

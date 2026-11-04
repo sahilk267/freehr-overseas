@@ -133,7 +133,7 @@ export async function googleFreeBusy(ownerId: number, start: Date, end: Date) {
   if (end <= start || end.getTime() - start.getTime() > 31 * 86400000) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose an increasing window of at most 31 days." });
   return withCalendar(ownerId, async (row, access, guard) => {
     const busy = await providerBusy(row, access, start, end);
-    await guard(); return { calendarId: row.calendarId, checkedAt: new Date(), busy, reservation: false };
+    await guard(); return { calendarId: row.calendarId, connectionRevision: row.revision, checkedAt: new Date(), busy, reservation: false };
   });
 }
 export async function configureGoogleCalendar(ownerId: number, calendarId: string, expectedRevision: number) {

@@ -943,8 +943,8 @@
           "id": "M18-F03",
           "description": "Versioned schedule/RSVP lifecycle, temporary slot holds, reschedule/cancel reconciliation, no-show and alternative-slot recovery.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-05-phase-batches.md",
-          "implementation_note": "Internal holds and canonical scheduling remain shared. Browser scheduling/state/reminder/cancel edits now carry fingerprints; stale edits reject before side effects. Legacy callers may omit fingerprints for compatibility, so universal API revision enforcement remains partial. Participant negotiation and reschedule-target holds remain pending."
+          "evidence_ref": "qa/2026-11-05-collected-booking.md",
+          "implementation_note": "Current paired responses and selected calendar generation bind owner-reviewed tentative booking, using fresh Google reads, buffered internal conflict/hold checks, canonical scheduling and an atomic request ledger/token closure. Retries cannot recreate cancelled bookings. Verified participant acceptance/RSVP, delivery and unattended confirmed booking remain pending; legacy unversioned interview callers remain supported."
         },
         {
           "id": "M18-F04",
