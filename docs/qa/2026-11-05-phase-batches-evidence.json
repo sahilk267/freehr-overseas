@@ -39,5 +39,17 @@
     "mailSent": 0,
     "scope": "Actual server-to-Google event create/reschedule/cancel via shared managed worker. Synthetic internal records retained for audit; no attendees or real hiring activity."
   },
-  "scope": "Conflict replacement and stale browser guards tested with synthetic responses and disposable SQL. Historical actual provider pilot retains original timestamp. New live verification recorded separately."
+  "scope": "Conflict replacement and stale browser guards tested with synthetic responses and disposable SQL. Historical actual provider pilot retains original timestamp. New live verification recorded separately.",
+  "ci": {
+    "localDisposableSqlRunner": "PASS: 214 tests",
+    "nonLocalTargetRefusal": "PASS before connecting",
+    "hostedWorkflowExecution": "NOT_VERIFIED"
+  },
+  "deployment": {
+    "requestedSourceCommit": "e3e8c34",
+    "lastObservedProductionCommit": "53f307044efd58ffb50e8791829e683f7044a9b4",
+    "newUiAndApiVerification": "PENDING",
+    "hostingerManagementReadStatus": 403,
+    "note": "Source pushed successfully. Production still served the earlier build during checks; no build failure cause is inferred without logs."
+  }
 }
