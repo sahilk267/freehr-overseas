@@ -47,9 +47,31 @@
   },
   "deployment": {
     "requestedSourceCommit": "e3e8c34",
-    "lastObservedProductionCommit": "53f307044efd58ffb50e8791829e683f7044a9b4",
-    "newUiAndApiVerification": "PENDING",
+    "lastObservedProductionCommit": "229a118d6a537d43f1d7df43435695748eea7bb8",
+    "newUiAndApiVerification": "PASS: access guards, edit fingerprints, stale edit rejection and desktop/mobile UI",
     "hostingerManagementReadStatus": 403,
-    "note": "Source pushed successfully. Production still served the earlier build during checks; no build failure cause is inferred without logs."
+    "note": "Application changes observed live after initial delay. Hostinger management 403 persists but did not prevent Git auto-deployment. CI-only and documentation commits are tracked separately; hosted CI remains unverified."
+  },
+  "live": {
+    "at": "2026-11-04T19:06:58.066Z",
+    "buildCommit": "229a118d6a537d43f1d7df43435695748eea7bb8",
+    "ownerLogin": "PASS",
+    "serverEditFingerprint": "PASS",
+    "staleEditRejectedWithoutChanges": "PASS",
+    "anonymousConflictReviewDenied": "PASS",
+    "missingOwnedRecordRejected": "PASS",
+    "automaticSyncEnabled": true,
+    "googleEventWrites": 0,
+    "mailSent": 0
+  },
+  "browser": {
+    "at": "2026-11-04T19:07:06.803Z",
+    "checks": [
+      "Conflict review control and no overflow at 1440px",
+      "Conflict review control and no overflow at 390px"
+    ],
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "googleEventWrites": 0
   }
 }
