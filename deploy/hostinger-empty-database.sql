@@ -1034,3 +1034,16 @@ CREATE TABLE `interviewSlotHolds` (
  FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`), FOREIGN KEY (`candidateId`) REFERENCES `candidates` (`id`), FOREIGN KEY (`interviewId`) REFERENCES `interviews` (`id`)
 );
 INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('d9ffe91190b33b58994daaad1a67212bbecb8f06f5ea2b0065c45814b23772cc', 1787882400000);
+
+-- 0021_participant_availability
+CREATE TABLE `availabilityInvites` (
+ `id` varchar(36) NOT NULL PRIMARY KEY, `ownerId` int NOT NULL, `groupId` varchar(36) NOT NULL,
+ `candidateId` varchar(36) NOT NULL, `jobId` varchar(36) NOT NULL, `participant` varchar(20) NOT NULL,
+ `requestHash` varchar(64) NOT NULL, `tokenHash` varchar(64) NOT NULL, `revision` int NOT NULL DEFAULT 1,
+ `status` varchar(24) NOT NULL DEFAULT 'pending', `expiresAt` timestamp(3) NOT NULL,
+ `windows` json, `timezone` varchar(64), `submissionCount` int NOT NULL DEFAULT 0,
+ `createdAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP, `updatedAt` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ UNIQUE KEY `availability_group_role_unique` (`groupId`,`participant`), KEY `availability_owner_idx` (`ownerId`,`createdAt`),
+ FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`), FOREIGN KEY (`candidateId`) REFERENCES `candidates` (`id`), FOREIGN KEY (`jobId`) REFERENCES `jobs` (`id`)
+);
+INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('9d8399f61d1c96fc55cc4f3cefb3dbf291c738a9a469adfdaec578cc1bfd7d1e', 1787882500000);

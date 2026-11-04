@@ -929,8 +929,8 @@
           "id": "M18-F01",
           "description": "Two-sided availability collection, timezone/DST/business-hour handling, interviewer panels, buffers and conflict-aware slot proposals.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-05-common-availability.md",
-          "implementation_note": "Owner-entered candidate/interviewer windows now yield bounded common slots with separate timezone conversion, Google busy exclusion and buffers. No acceptance/reservation is claimed. Authenticated participant collection, multi-calendar/panel constraints and business-hour policy remain pending."
+          "evidence_ref": "qa/2026-11-05-participant-availability.md",
+          "implementation_note": "Separate expiring/revocable capability links collect participant-reported windows without app login; exact retries, bounded corrections, stale revisions and erasure are handled. Current paired responses feed existing Google-backed proposals. Capability possession is not verified identity or acceptance. Automated delivery/follow-ups, panel constraints and confirmed-booking orchestration remain pending."
         },
         {
           "id": "M18-F02",

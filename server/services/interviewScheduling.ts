@@ -20,7 +20,7 @@ async function ownedInterview(tx: any, ownerId: number, id: string) {
   if (!row) throw missing("Interview");
   return { ...row, calendarSequence: row.calendarSequence ?? 0, rescheduleCount: row.rescheduleCount ?? 0, meetingUrl: row.meetingUrl ?? null } as typeof interviews.$inferSelect;
 }
-async function candidate(tx: any, ownerId: number, id: string) {
+export async function requireSchedulableCandidate(tx: any, ownerId: number, id: string) {
   const row = (await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.ownerId, ownerId), eq(candidates.id, id))).limit(1)))[0];
   if (!row) throw missing("Candidate");
   if (row.deletedAt || row.withdrawnAt || row.doNotContactAt || ["deleted", "deletion_pending", "withdrawn", "do_not_contact"].includes(row.profileState)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This candidate is withdrawn, erased or unavailable for scheduling." });
@@ -33,7 +33,7 @@ async function overlaps(tx: any, ownerId: number, candidateId: string, slot: Slo
 const rejectConflict = () => { throw new TRPCError({ code: "CONFLICT", message: "This candidate already has an overlapping recorded interview. Check their schedule and choose another time." }); };
 export async function previewInterviewSlot(ownerId: number, input: Slot & { candidateId: string; excludeInterviewId?: string }) {
   return withWorkspaceTransaction(ownerId, async tx => {
-    await candidate(tx, ownerId, input.candidateId);
+    await requireSchedulableCandidate(tx, ownerId, input.candidateId);
     if (input.excludeInterviewId && (await ownedInterview(tx, ownerId, input.excludeInterviewId)).candidateId !== input.candidateId) throw missing("Interview for this candidate");
     const rows = await overlaps(tx, ownerId, input.candidateId, input, input.excludeInterviewId);
     const held = await holdConflicts(tx, ownerId, input.candidateId, input);
@@ -45,7 +45,7 @@ export async function scheduleInterview(ownerId: number, actorId: number, input:
   return withWorkspaceTransaction(ownerId, tx => scheduleInterviewInTransaction(tx, ownerId, actorId, input));
 }
 async function scheduleInterviewInTransaction(tx: any, ownerId: number, actorId: number, input: ScheduleInput, excludeHoldId?: string) {
-    await candidate(tx, ownerId, input.candidateId);
+    await requireSchedulableCandidate(tx, ownerId, input.candidateId);
     const company = (await tx.select().from(companies).where(and(eq(companies.ownerId, ownerId), eq(companies.id, input.companyId))).limit(1))[0];
     const job = (await tx.select().from(jobs).where(and(eq(jobs.ownerId, ownerId), eq(jobs.id, input.jobId))).limit(1))[0];
     if (!company || !job) throw missing("Client or job");
@@ -80,7 +80,7 @@ export async function rescheduleInterview(ownerId: number, actorId: number, inpu
   const result = await withWorkspaceTransaction(ownerId, async tx => {
     const row = await ownedInterview(tx, ownerId, input.id);
     checkEditFingerprint(row, input.expectedFingerprint);
-    await candidate(tx, ownerId, row.candidateId);
+    await requireSchedulableCandidate(tx, ownerId, row.candidateId);
     assertTransition("interview", row.status, "reschedule_requested");
     const scheduledAt = instant(input.scheduledAt), meetingUrl = input.meetingUrl === undefined ? row.meetingUrl : input.meetingUrl;
     if (row.scheduledAt?.getTime() === scheduledAt.getTime() && row.durationMinutes === input.durationMinutes && row.timezone === input.timezone && row.meetingUrl === meetingUrl) return { success: true, alreadyCurrent: true, calendarSequence: row.calendarSequence };
@@ -101,7 +101,7 @@ export async function changeInterviewState(ownerId: number, actorId: number, id:
     if (row.status === state) return { success: true, alreadyCurrent: true };
     assertTransition("interview", row.status, state);
     if (reservedStates.includes(state)) {
-      await candidate(tx, ownerId, row.candidateId);
+      await requireSchedulableCandidate(tx, ownerId, row.candidateId);
       if (row.scheduledAt) await rejectHeldSlot(tx, ownerId, row.candidateId, { scheduledAt: row.scheduledAt, durationMinutes: row.durationMinutes, timezone: row.timezone });
       if (row.scheduledAt && (await overlaps(tx, ownerId, row.candidateId, { scheduledAt: row.scheduledAt, durationMinutes: row.durationMinutes, timezone: row.timezone }, row.id)).length) rejectConflict();
     }
@@ -161,7 +161,7 @@ export async function holdInterviewSlot(ownerId: number, actorId: number, input:
       if (prior.requestHash !== requestHash) throw new TRPCError({ code: "CONFLICT", message: "Hold request content changed. Start a new hold request after reviewing the slot." });
       return { ...publicHold(prior), alreadyExists: true };
     }
-    await candidate(tx, ownerId, input.candidateId);
+    await requireSchedulableCandidate(tx, ownerId, input.candidateId);
     const now = Date.now(), scheduledAt = instant(input.scheduledAt);
     if (!Number.isInteger(input.durationMinutes) || input.durationMinutes < 15 || input.durationMinutes > 240 || !Number.isInteger(input.ttlMinutes) || input.ttlMinutes < 1 || input.ttlMinutes > 30 || !isValidTimezone(input.timezone) || !Number.isFinite(scheduledAt.getTime()) || scheduledAt.getTime() <= now || scheduledAt.getTime() > now + 90*86400000) throw new TRPCError({ code: "BAD_REQUEST", message: "Choose a future slot within 90 days, a valid timezone, 15–240 minute duration and a 1–30 minute hold." });
     await rejectHeldSlot(tx, ownerId, input.candidateId, input);

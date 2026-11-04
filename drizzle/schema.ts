@@ -876,3 +876,11 @@ export const interviewSlotHolds = mysqlTable("interviewSlotHolds", {
   interviewId: id("interviewId").references(() => interviews.id), bookingHash: varchar("bookingHash", { length: 64 }),
   createdAt, updatedAt,
 }, t => [index("interview_hold_candidate_idx").on(t.ownerId, t.candidateId, t.status), index("interview_hold_expiry_idx").on(t.ownerId, t.expiresAt)]);
+
+export const availabilityInvites = mysqlTable("availabilityInvites", {
+  id:id("id").primaryKey(),ownerId:int("ownerId").notNull().references(()=>users.id),groupId:id("groupId").notNull(),
+  candidateId:id("candidateId").notNull().references(()=>candidates.id),jobId:id("jobId").notNull().references(()=>jobs.id),
+  participant:varchar("participant",{length:20}).notNull(),requestHash:varchar("requestHash",{length:64}).notNull(),tokenHash:varchar("tokenHash",{length:64}).notNull(),
+  revision:int("revision").notNull().default(1),status:varchar("status",{length:24}).notNull().default("pending"),expiresAt:timestamp("expiresAt",{fsp:3}).notNull(),
+  windows:json("windows").$type<Array<{start:string;end:string}>>(),timezone:varchar("timezone",{length:64}),submissionCount:int("submissionCount").notNull().default(0),createdAt,updatedAt,
+},t=>[uniqueIndex("availability_group_role_unique").on(t.groupId,t.participant),index("availability_owner_idx").on(t.ownerId,t.createdAt)]);
