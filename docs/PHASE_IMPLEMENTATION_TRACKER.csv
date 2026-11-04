@@ -5,4 +5,4 @@ W1,M25,Canonical tracker consistency checker,validated_local,qa/2026-11-05-phase
 W2,M18,Actual prospective Google lifecycle pilot,verified_provider,qa/2026-11-05-phase-batches-evidence.json,Two-sided negotiation and remaining integration scope
 W1,M25,Repository CI and disposable SQL runner,validated_local,qa/2026-11-05-phase-batches.md,Hosted GitHub Actions run not yet verified
 W2,M18,Common availability proposals,verified_live_read_only,qa/2026-11-05-common-availability.md,Authenticated participant collection and confirmed booking remain pending
-W2,M18,Scoped participant availability collection,validated_local,qa/2026-11-05-participant-availability.md,Live capability checks and delivery-acceptance-booking orchestration remain pending
+W2,M18,Scoped participant availability collection,verified_live_capability,qa/2026-11-05-participant-availability.md,Automated delivery and verified acceptance-booking orchestration remain pending

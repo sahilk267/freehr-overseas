@@ -1,0 +1,62 @@
+{
+  "validation": {
+    "unitPassed": 514,
+    "unitSkipped": 27,
+    "mysqlPassed": 227,
+    "mysqlFiles": 13,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingEntrySmokes": 4
+  },
+  "migration": {
+    "baselineEntries": 21,
+    "finalEntries": 22,
+    "concurrentAndRepeatedUpgrade": "PASS",
+    "existingPhoneHashesAndSuppressionsPreserved": "PASS",
+    "existingContactsAndPermissionsPreserved": "PASS",
+    "existingCompaniesPreserved": "PASS",
+    "noActiveCalendarCreated": "PASS",
+    "noHoldSeeded": "PASS",
+    "noAvailabilityLinksSeeded": "PASS",
+    "defaultBackgroundDisabled": "PASS",
+    "changedManifestRejected": "PASS"
+  },
+  "liveCreation": {
+    "at": "2026-11-04T21:17:47.119Z",
+    "buildCommit": "470eb33611aa2e888405f552ca384903b0ba9625",
+    "creationAndRetry": "PASS",
+    "anonymousCapabilityRead": "PASS",
+    "swappedTokenDenied": "PASS",
+    "ownerProcedureGuards": 4,
+    "noCredentialDisclosure": "PASS",
+    "mailSent": 0,
+    "googleEventWrites": 0
+  },
+  "browser": {
+    "at": "2026-11-04T21:17:55.858Z",
+    "checks": [
+      "Owner availability collection panel renders",
+      "Anonymous response form without overflow at 1440px",
+      "Anonymous response form without overflow at 390px",
+      "Anonymous browser submits assigned participant availability; token removed from URL"
+    ],
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "mailSent": 0,
+    "googleEventWrites": 0
+  },
+  "liveResponsesAndCleanup": {
+    "at": "2026-11-04T21:18:00.680Z",
+    "bothParticipantSubmissions": "PASS",
+    "exactResponseRetry": "PASS",
+    "staleResponseRejected": "PASS",
+    "googleProposalRead": "PASS",
+    "proposalCount": 4,
+    "revokedCapabilitiesDenied": "PASS",
+    "syntheticLinksRevoked": true,
+    "mailSent": 0,
+    "googleEventWrites": 0,
+    "interviewBookings": 0
+  },
+  "privacy": "Raw tokens and private link URLs excluded from this evidence."
+}

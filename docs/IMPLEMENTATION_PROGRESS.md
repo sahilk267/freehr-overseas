@@ -336,3 +336,5 @@ Live follow-up: common availability application commit `9d447b5` passed real rea
 ## W2 participant availability collection — 5 November 2026
 
 [Implementation and validation](qa/2026-11-05-participant-availability.md): separate capability links collect candidate/interviewer windows, then reuse existing Google-backed proposals. Links expire/revoke; exact retries are idempotent and differing stale responses reject. Withdrawal and erasure reuse the existing stop/redaction hook. Migration 0021 adds scoped storage; 21→22 upgrade checks pass. 514 tests and 227 SQL regressions pass, plus types/build/entry checks. Delivery, verified acceptance and automatic booking remain pending.
+
+Live follow-up: `470eb33` passed one-time link creation/retry, anonymous browser response, token scoping/no disclosure, paired-response Google proposals, stale/replay checks and revocation. Mobile/desktop checks passed; synthetic links were revoked. Evidence is archived in `qa/2026-11-05-participant-availability-evidence.json`. No booking, mail or provider event was created.
