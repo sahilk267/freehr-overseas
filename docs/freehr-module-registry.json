@@ -929,8 +929,8 @@
           "id": "M18-F01",
           "description": "Two-sided availability collection, timezone/DST/business-hour handling, interviewer panels, buffers and conflict-aware slot proposals.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-01-interview-scheduling.md",
-          "implementation_note": "Recorded candidate conflicts and Google private free/busy adapter implemented. Actual Google connection requires owner OAuth setup. Two-sided availability, panels, buffers and reservations remain pending."
+          "evidence_ref": "qa/2026-11-05-common-availability.md",
+          "implementation_note": "Owner-entered candidate/interviewer windows now yield bounded common slots with separate timezone conversion, Google busy exclusion and buffers. No acceptance/reservation is claimed. Authenticated participant collection, multi-calendar/panel constraints and business-hour policy remain pending."
         },
         {
           "id": "M18-F02",

@@ -4,3 +4,4 @@ W2,M18,Stale browser scheduling edits,verified_live_guard,qa/2026-11-05-phase-ba
 W1,M25,Canonical tracker consistency checker,validated_local,qa/2026-11-05-phase-batches.md,Full production acceptance and remaining observability gates
 W2,M18,Actual prospective Google lifecycle pilot,verified_provider,qa/2026-11-05-phase-batches-evidence.json,Two-sided negotiation and remaining integration scope
 W1,M25,Repository CI and disposable SQL runner,validated_local,qa/2026-11-05-phase-batches.md,Hosted GitHub Actions run not yet verified
+W2,M18,Common availability proposals,validated_local,qa/2026-11-05-common-availability.md,Authenticated participant collection and confirmed booking remain pending

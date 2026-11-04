@@ -326,3 +326,7 @@ A fourth batch moves the disposable SQL runner into the repository and adds GitH
 Deployment verification remains open for the 5 November batches: main pushes succeeded, but the last observed production commit is `53f3070`; Hostinger management access returned 403. Tracker rows remain locally validated rather than live-verified. No assumed build failure/root cause or full-phase completion is recorded.
 
 The application deployment delay subsequently resolved: `229a118` is live, with stale-edit rejection, access guards and desktop/mobile checks passing. Evidence captures the initial pending state and later successful application verification. Remaining open scope includes hosted CI execution, universal mandatory API revisions, two-sided participant coordination and all unpassed module/phase gates.
+
+## W2 common availability proposals — 5 November 2026
+
+[Scope and checks](qa/2026-11-05-common-availability.md): owner-entered participant windows can produce common slots with separate timezones, bounded intervals, Google free/busy exclusion and buffers. Existing Calendar authorization/leases are reused; this neither reserves time nor records participant acceptance. Secure participant links and confirmed-booking orchestration remain pending. 503 tests, TypeScript/build and hosting entry checks pass; live results are recorded separately. M18 remains implementing.
