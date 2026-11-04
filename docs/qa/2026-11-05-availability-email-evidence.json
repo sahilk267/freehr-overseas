@@ -1,0 +1,65 @@
+{
+  "validation": {
+    "unitPassed": 541,
+    "unitSkipped": 30,
+    "mysqlPassed": 253,
+    "mysqlFiles": 15,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingEntrySmokes": 4
+  },
+  "initialCoreValidation": {
+    "unitPassed": 535,
+    "mysqlPassed": 251
+  },
+  "liveSetup": {
+    "at": "2026-11-04T22:59:56.612Z",
+    "buildCommit": "b96fd7ee1901e44233c68e969bb9a50286478e5b",
+    "syntheticRecipientOnly": true,
+    "roleMatchedOptions": "PASS",
+    "ownerGuards": 2,
+    "followupSetupCancelled": true,
+    "realEmailsSent": 0
+  },
+  "browser": {
+    "at": "2026-11-04T23:00:05.645Z",
+    "checks": [
+      "Private email preparation form without overflow at 1440px",
+      "Private email preparation form without overflow at 390px",
+      "Owner browser prepares draft only; no approval or send action"
+    ],
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "realEmailsSent": 0
+  },
+  "liveDraftAndRejection": {
+    "at": "2026-11-04T23:00:09.460Z",
+    "prepareReplay": "PASS",
+    "draftPendingOwnerApproval": "PASS",
+    "noPlaintextPrivateUrl": "PASS",
+    "approvalUnconsumedBeforeRejection": "PASS",
+    "rejectedDraftCancelled": "PASS",
+    "unusedCapabilityRevoked": "PASS",
+    "realEmailsSent": 0,
+    "providerDeliveryVerified": false
+  },
+  "cleanup": {
+    "at": "2026-11-04T23:04:33.938Z",
+    "syntheticLinksRevoked": true,
+    "syntheticFollowupCancelled": true,
+    "syntheticCandidateWithdrawn": true,
+    "realEmailsSent": 0
+  },
+  "liveQuoteRedaction": {
+    "at": "2026-11-04T23:13:16.454Z",
+    "buildCommit": "8eaa0c993be9e029960ad93c725689c7add98382",
+    "syntheticInboundCapabilityRedacted": "PASS",
+    "subjectAndBodyProtected": "PASS",
+    "nonceStopNotTreatedAsOptOut": "PASS",
+    "syntheticFollowupRemainsCancelled": true,
+    "realEmailsSent": 0,
+    "note": "An owner-recorded synthetic inbound quote was used; no real webhook or recipient mail delivery was fabricated."
+  },
+  "providerRecipientDeliveryVerified": false,
+  "privacy": "No raw capability tokens, private URLs, recipient addresses or envelope metadata copied into this evidence."
+}

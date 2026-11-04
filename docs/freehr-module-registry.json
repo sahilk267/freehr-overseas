@@ -930,7 +930,7 @@
           "description": "Two-sided availability collection, timezone/DST/business-hour handling, interviewer panels, buffers and conflict-aware slot proposals.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-05-availability-email.md",
-          "implementation_note": "Scoped participant windows and Google-backed proposals now support owner-reviewed private-link email through the existing outbox. Tokens are derived only at dispatch and permission/link state rechecks apply. Real recipient delivery, verified identity/acceptance, alternative-window follow-ups, panel constraints and unattended booking remain pending."
+          "implementation_note": "Scoped participant windows and Google-backed proposals now support owner-reviewed private-link email through the existing outbox. Tokens are derived in memory for binding/validation/transport without plaintext draft storage; permission/link state rechecks apply. Real recipient delivery, verified identity/acceptance, alternative-window follow-ups, panel constraints and unattended booking remain pending."
         },
         {
           "id": "M18-F02",
