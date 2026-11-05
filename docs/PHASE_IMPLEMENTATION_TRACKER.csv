@@ -13,4 +13,4 @@ W2,M18,Schedule-bound participant attendance confirmation,verified_live_attestat
 W2,M18,Owner-approved interview confirmation email,verified_live_draft_no_send,qa/2026-11-05-interview-confirmations.md,Actual recipient delivery and automatic confirmation coordination remain unverified
 W2,M18,Decline recovery and bound interview rescheduling,verified_live_assisted_recovery,qa/2026-11-05-interview-recovery.md,Scoped automatic selection is tracked separately; actual recipient delivery remains unverified
 W2,M18,Recovery expiry and owner exception escalation,verified_live_worker_and_synthetic_ui,qa/2026-11-05-recovery-deadlines.md,Positive elapsed-deadline production acceptance remains unverified
-W2,M18,Scoped automatic recovery slot selection,validated_local,qa/2026-11-05-recovery-auto-selection.md,Live automatic selection and cross-cycle delegation remain unverified
+W2,M18,Scoped automatic recovery slot selection,validated_local_deployment_pending,qa/2026-11-05-recovery-auto-selection.md,Live automatic selection and cross-cycle delegation remain unverified

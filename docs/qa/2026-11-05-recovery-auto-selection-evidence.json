@@ -8,10 +8,31 @@
     "tracker": "PASS",
     "build": "PASS",
     "hostingEntryChecks": 4,
-    "newMigrations": 0
+    "newMigrations": 0,
+    "persistentProductionEntryBoot": {
+      "at": "2026-11-05T03:51:19.259Z",
+      "productionRootEntryWithPersistentMysql": "PASS",
+      "actualManagedHeartbeat": "PASS",
+      "localBuildCommit": "f8e861318abd942f2d980f1169ffe1d48ac284f1",
+      "deadlineSource": {
+        "scanned": 0,
+        "skipped": 0,
+        "escalated": 0
+      },
+      "syntheticOnly": true,
+      "realProviderCallsClaimed": false,
+      "runtimeNode": "v24.19.0"
+    }
   },
   "live": {
-    "status": "pending",
+    "status": "deployment_not_updated",
+    "checkedAt": "2026-11-05T03:57:45.543886+00:00",
+    "githubMainApplicationCommit": "f8e861318abd942f2d980f1169ffe1d48ac284f1",
+    "servedCommit": "ba3d204466882bcc5df09a6022da86e35a0ffd91",
+    "healthStatus": 200,
+    "newProtectedRouteStatus": 404,
+    "managementReadStatus": 403,
+    "syntheticDomainRecordsCreated": false,
     "actualRecipientDeliveryVerified": false
   }
 }
