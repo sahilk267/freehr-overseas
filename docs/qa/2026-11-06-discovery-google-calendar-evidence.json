@@ -1,0 +1,150 @@
+{
+  "scope": "Scoped discovery Google Calendar create/retry/cancel using actual managed worker and owned private event",
+  "client_date": "2026-11-06",
+  "client_timezone": "Asia/Calcutta",
+  "local_validation": {
+    "unit_passed": 680,
+    "unit_skipped": 52,
+    "mysql_passed": 414,
+    "mysql_files": 25,
+    "types": "PASS",
+    "tracker": "PASS",
+    "production_build": "PASS",
+    "hostinger_entry_checks": 4,
+    "followup_privacy_review_tests_passed": 49,
+    "followup_privacy_review_tests_skipped": 6
+  },
+  "live": {
+    "checkedAt": "2026-11-05T22:50:12.445Z",
+    "tests": [
+      {
+        "name": "owner UI explicitly authorizes both tentative selection and one-request Google mirroring",
+        "status": "PASS"
+      },
+      {
+        "name": "anonymous mobile client submits availability and loses fragment from history",
+        "status": "PASS"
+      },
+      {
+        "name": "actual managed worker books and syncs the inherited calendar authority",
+        "status": "PASS"
+      },
+      {
+        "name": "real Google event is private and tentative with zero guests and no reminder emails",
+        "status": "PASS"
+      },
+      {
+        "name": "anonymous callers cannot access owner event previews",
+        "status": "PASS"
+      },
+      {
+        "name": "reviewed repeat sync retains the same resource identity and no invitations",
+        "status": "PASS"
+      },
+      {
+        "name": "owner desktop pause and fresh-preview reauthorization keep the same event",
+        "status": "PASS"
+      },
+      {
+        "name": "mobile calendar controls fit the page and remain single",
+        "status": "PASS"
+      },
+      {
+        "name": "owner cancellation produces an actual Google cancellation on the same identity",
+        "status": "PASS"
+      },
+      {
+        "name": "request sync policy is disabled after provider cleanup and interview policy is preserved",
+        "status": "PASS"
+      }
+    ],
+    "noRecipientEmail": true,
+    "noGuestInvitations": true,
+    "buildCommit": "de422c318bc93a90253911b9b5fc7443b44c9178",
+    "interviewPolicyBefore": {
+      "enabled": true,
+      "revision": 1
+    },
+    "managed": {
+      "meetingId": "dcm_FJiKuTfQ9c9TVyDmsTIA",
+      "status": "tentative",
+      "jobs": [
+        {
+          "id": "que_8tJL4szFjMO095LRHqui",
+          "status": "completed",
+          "action": "upserted"
+        }
+      ]
+    },
+    "remoteActive": {
+      "status": "tentative",
+      "visibility": "private",
+      "attendeeCount": 0,
+      "remindersEnabled": false,
+      "start": "2026-11-08T04:25:00+05:30",
+      "end": "2026-11-08T04:55:00+05:30"
+    },
+    "remoteCancellation": {
+      "verified": true,
+      "action": "already_cancelled",
+      "sameBinding": true
+    },
+    "interviewPolicyAfter": {
+      "enabled": true,
+      "revision": 1
+    },
+    "runtimeErrors": [],
+    "transportErrors": []
+  },
+  "cleanup": {
+    "checkedAt": "2026-11-05T22:51:39.256Z",
+    "tests": [
+      {
+        "name": "synthetic local meeting and its Google event are cancelled before policy cleanup",
+        "status": "PASS"
+      },
+      {
+        "name": "contact opted out and review chase/campaign cancelled without mail",
+        "status": "PASS"
+      }
+    ],
+    "noRecipientEmail": true,
+    "noGuestInvitations": true,
+    "requests": [
+      {
+        "id": "dcr_fJwkfcwrP2FTe0nouo8M",
+        "status": "cancelled",
+        "meetingId": "dcm_FJiKuTfQ9c9TVyDmsTIA",
+        "googleCancellation": "already_cancelled",
+        "policyDisabled": true
+      }
+    ],
+    "worker": {
+      "enabled": true,
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "emergencyStop": false,
+      "lastError": null
+    },
+    "health": "ok",
+    "buildCommit": "de422c318bc93a90253911b9b5fc7443b44c9178"
+  },
+  "screenshots": [
+    {
+      "name": "owner-desktop.png",
+      "sha256": "71b553904aa5a67543c13cb46f7bfb892b9014f36b95fd7ae0e6508b5849c8d4",
+      "stored": "local QA workspace artifact"
+    },
+    {
+      "name": "owner-mobile.png",
+      "sha256": "5c51e74bb8f5fab7cbf8b703989b88a0a1c70e80591dff37f823b96014cdda8e",
+      "stored": "local QA workspace artifact"
+    }
+  ],
+  "limitations": [
+    "No participant invitations, attendance/identity verification or Google Meet creation",
+    "External edit/unknown creation races positively covered with local provider simulation and MySQL; live external overwrite was not forced",
+    "No automatic cleanup/migration across changed calendars or accounts",
+    "Discovery reminders, expiry SLA and actual recipient email delivery remain pending"
+  ]
+}

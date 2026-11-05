@@ -522,7 +522,7 @@
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-06-discovery-google-calendar.md",
-          "implementation_note": "Private availability, automatic/manual tentative booking and owner-reviewed discovery mail are verified. Optional request/per-meeting Google mirroring now reuses the shared event engine and worker with distinct identity, ETag review, default-off scoped authority and no guest/reminder emails. Live provider acceptance follows; real mail delivery, attendance, stakeholder mapping and SLA escalation remain pending."
+          "implementation_note": "Private collection, scoped automatic/manual tentative booking and owner-reviewed mail preparation are verified. Actual managed Google discovery create/cancel, stable retry identity, explicit request/per-meeting grants and provider privacy/no-guest/no-reminder checks passed live; cleanup verified. Actual mail delivery, attendance, stakeholder mapping and automatic SLA escalation remain pending."
         },
         {
           "id": "M10-F05",
@@ -940,7 +940,7 @@
           "description": "Google/Microsoft free-busy/event sync, meeting creation, ICS fallback, scoped subscription tokens and revocation.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-06-discovery-google-calendar.md",
-          "implementation_note": "Existing interview Google lifecycle and exact-version external review remain supported. Discovery adds a scoped resource adapter to the same provider engine/worker with private tentative create/cancel, connection/version fences and observed creation identity. Live discovery provider acceptance follows; bidirectional ingestion, RSVP, Microsoft and Meet remain pending."
+          "implementation_note": "Interview and discovery resources reuse one Google provider engine, connection lease and persistent worker. Actual discovery private tentative create/cancel and same-identity retry are live-verified; external-change owner review and unknown-result fencing pass local/SQL regressions. RSVP, bidirectional ingestion, Microsoft, Meet and cross-calendar migration/cleanup remain pending."
         },
         {
           "id": "M18-F03",
@@ -2230,7 +2230,7 @@
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Prospective Google automation has actual create/reschedule/cancel evidence. Owner-reviewed conflict replacement, browser edit fingerprints and tracker consistency checks added. Advanced modules and phase acceptance gates remain incomplete.",
-    "updated_at": "2026-11-05"
+    "note": "Interview and discovery Google lifecycles, current client reply actions, private discovery collection/tentative booking and shared reviewed link outbox have scoped implementation evidence. Live private calendar/booking and no-send mail acceptance are recorded; recipient delivery, attendance and remaining advanced module gates stay open.",
+    "updated_at": "2026-11-06"
   }
 }
