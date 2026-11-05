@@ -1,3 +1,4 @@
+import {resolveInterviewRecoveryDeadlines} from "./interviewRecoveryIncidents";
 import { interviewEditFingerprint } from "../../shared/interviewRevision";
 import { enqueueCalendarSync } from "./calendarAutomation";
 import { isValidTimezone } from "../../shared/dateTime";
@@ -91,6 +92,7 @@ export async function rescheduleInterviewInTransaction(tx:any,ownerId:number,act
     await stopRelatedFollowUps(tx, ownerId, { resourceType: "interview", resourceId: row.id }, "Interview rescheduled; old reminders are invalid.");
     await tx.update(interviews).set({ status: "scheduled", scheduledAt, timezone: input.timezone, durationMinutes: input.durationMinutes, meetingUrl, calendarSequence: row.calendarSequence + 1, calendarStatus: "tentative", rescheduleCount: row.rescheduleCount + 1, reminderAt: new Date(scheduledAt.getTime() - 86400000), reminderSentAt: null }).where(eq(interviews.id, row.id));
     await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "interview.rescheduled", resourceType: "interview", resourceId: row.id, previousState: row.status, nextState: "scheduled", metadata: { calendarSequence: row.calendarSequence + 1 } }, tx);
+    await resolveInterviewRecoveryDeadlines(tx,ownerId,row.id,"Interview schedule changed; earlier recovery escalation is no longer current.");
     await enqueueCalendarSync(tx, ownerId, row.id);
     return { success: true, alreadyCurrent: false, calendarSequence: row.calendarSequence + 1 };
 }
@@ -112,6 +114,7 @@ export async function changeInterviewStateInTransaction(tx: any, ownerId: number
     if (ended || calendarChanged) await stopRelatedFollowUps(tx, ownerId, { resourceType: "interview", resourceId: id }, `Interview state changed to ${state}.`, state === "completed" ? "completed" : "cancelled");
     await tx.update(interviews).set({ status: state, completedAt: state === "completed" ? new Date() : row.completedAt, ...(ended ? { reminderAt: null } : {}), calendarStatus: state === "confirmed" ? "confirmed" : ["cancelled", "reschedule_requested"].includes(state) ? "cancelled" : row.calendarStatus, calendarSequence: row.calendarSequence + (calendarChanged ? 1 : 0) }).where(eq(interviews.id, id));
     await recordAudit({ ownerId, actorType, actorId, action: state === "cancelled" ? "interview.cancelled" : "interview.state_changed", resourceType: "interview", resourceId: id, previousState: row.status, nextState: state }, tx);
+    if(state!=="reschedule_requested")await resolveInterviewRecoveryDeadlines(tx,ownerId,row.id,"Interview state changed; earlier recovery escalation is no longer current.");
     await enqueueCalendarSync(tx, ownerId, row.id);
     return { success: true, alreadyCurrent: false };
 }

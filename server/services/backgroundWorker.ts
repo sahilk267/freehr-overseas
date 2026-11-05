@@ -1,3 +1,4 @@
+import {processDueRecoveryDeadlines} from "./interviewRecoveryDeadline";
 import { and, asc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { workspaceSettings } from "../../drizzle/schema";
@@ -47,6 +48,7 @@ export async function runManagedAutomationCycle(limit = 5) {
       const result = stopped ? { status: "emergency_stopped", processed: 0 } : {
         status: "polled",
         interviews: await processDueInterviewReminders(row.ownerId, Math.min(25, limit)),
+        recoveryDeadlines: await processDueRecoveryDeadlines(row.ownerId, Math.min(25,limit)),
         collections: await processDueInvoiceCollections(row.ownerId, Math.min(25, limit)),
         batch: await processDueAutomationBatch(row.ownerId, limit),
       };

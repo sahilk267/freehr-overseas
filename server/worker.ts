@@ -1,3 +1,4 @@
+import {processDueRecoveryDeadlines} from "./services/interviewRecoveryDeadline";
 import "dotenv/config";
 import { discoverHostingerMailboxes } from "./services/hostingerMail";
 import { invoiceCollectionSettings, invoicePaymentPromises, outreachCampaigns } from "../drizzle/schema";
@@ -28,6 +29,7 @@ export async function runWorker(once = false) {
       const source = await processDueInterviewReminders(undefined, 25);
       console.info("Interview follow-up enrollment", source);
       console.info("Invoice collection evaluation", await processDueInvoiceCollections(undefined, 25));
+      console.info("Interview recovery deadlines",await processDueRecoveryDeadlines(undefined,25));
       lastEnrollment = Date.now();
     }
     const result = await processDueAutomationBatch(undefined, 25);

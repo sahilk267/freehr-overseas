@@ -944,7 +944,7 @@
           "description": "Versioned schedule/RSVP lifecycle, temporary slot holds, reschedule/cancel reconciliation, no-show and alternative-slot recovery.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-05-interview-recovery.md",
-          "implementation_note": "Explicit decline atomically opens a schedule-bound availability recovery pair. Fresh paired responses and Google/internal checks reuse the canonical rescheduler on the same interview ID. Replacement is a single idempotent chain; stale schedule/cancellation, old links, old pending email authority and parallel replacement claims are fenced. Owner-reviewed slot selection and approved email remain required. Actual recipient delivery, verified identity/provider RSVP, unattended slot selection and recovery deadlines/escalations remain pending."
+          "implementation_note": "Explicit decline atomically opens a schedule-bound availability recovery pair. Fresh paired responses and Google/internal checks reuse the canonical rescheduler on the same interview ID. Replacement is a single idempotent chain; stale schedule/cancellation, old links, old pending email authority and parallel replacement claims are fenced. Owner-reviewed slot selection and approved email remain required. Actual recipient delivery, verified identity/provider RSVP and unattended slot selection remain pending. Recovery expiry exceptions now use the shared worker and incident store; positive production elapsed-deadline acceptance remains unverified."
         },
         {
           "id": "M18-F04",
@@ -962,8 +962,8 @@
           "id": "M18-F06",
           "description": "All timer/reminder delivery goes through M06/M05/M07; old schedule version invalidates old reminder attempts.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-01-interview-scheduling.md",
-          "implementation_note": "Scheduling/reminder changes atomically invalidate central follow-up authority. Dispatch also blocks legacy FU18 plans when reminderAt is disabled. No parallel timer/delivery engine added."
+          "evidence_ref": "qa/2026-11-05-recovery-deadlines.md",
+          "implementation_note": "The existing managed/supervised workers close expired recovery capabilities and create one deterministic incident per current recovery request. Pause/emergency-stop and workspace/version fences apply; old ordinary/paused records are filtered before the scan limit. Replacement, rescheduling and cancellation resolve the owned incident. No new timer or sender. Positive production elapsed-deadline acceptance and advanced reminder delivery gates remain pending."
         }
       ],
       "events": "interview.confirmed, interview.rescheduled, interview.completed, feedback.received, interview.no_show",

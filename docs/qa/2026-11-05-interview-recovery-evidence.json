@@ -11,6 +11,54 @@
     "schemaMigrationsAdded": 0
   },
   "live": {
+    "start": {
+      "at": "2026-11-05T01:56:47.616Z",
+      "buildCommit": "896f133e46d2309ccb1901743bf345e483dbed84",
+      "syntheticInterviewCreated": true,
+      "anonymousRecoveryReplacementDenied": "PASS",
+      "mailSent": 0,
+      "guestInvitations": 0
+    },
+    "browser": {
+      "at": "2026-11-05T01:57:15.153Z",
+      "anonymousDeclineToAvailabilityMobile": "PASS",
+      "automaticRecoveryPair": "PASS",
+      "ownerReplacement": "PASS",
+      "oldLinkRevoked": "PASS",
+      "bothResponsesCollected": "PASS",
+      "realGoogleProposal": "PASS",
+      "sameInterviewRescheduled": "PASS",
+      "candidateInterviewCount": 1,
+      "rescheduleCount": 1,
+      "desktopMobileOverflow": false,
+      "runtimeErrors": 0,
+      "transportErrors": 0,
+      "mailSent": 0,
+      "guestInvitations": 0
+    },
+    "finish": {
+      "at": "2026-11-05T01:57:31.659Z",
+      "oldConfirmationLinksDenied": "PASS",
+      "newScheduleRequiresFreshPairedConfirmation": "PASS",
+      "sameInterviewId": true,
+      "rescheduleCount": 1,
+      "mailSent": 0,
+      "guestInvitations": 0
+    },
+    "cleanup": {
+      "at": "2026-11-05T01:57:36.062Z",
+      "candidateWithdrawn": true,
+      "interviewCancelled": true,
+      "reminderDisabled": true,
+      "recoveryLinksRevoked": 4,
+      "bookingReplayCannotRecreate": "PASS",
+      "managedCalendarCancellation": "upserted",
+      "mailSent": 0,
+      "guestInvitations": 0
+    },
+    "status": "verified_assisted_recovery"
+  },
+  "deploymentObservation": {
     "status": "deployment_pending",
     "checkedAt": "2026-11-05T01:11:30.650508+00:00",
     "githubMainApplicationCommit": "2493cb027eb890b3e3bd6f3a080a1c842a645c1b",

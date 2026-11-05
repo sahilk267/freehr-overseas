@@ -1,3 +1,4 @@
+import {resolveRecoveryDeadline} from "./interviewRecoveryIncidents";
 import {assertRecoveryCurrent,matchesRecovery} from './interviewRecovery';
 import {appendWorkflowEvent} from "./workflowStore";
 import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
@@ -125,6 +126,7 @@ export async function restartInterviewRecovery(ownerId:number,actorId:number,inp
   const source=(await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.aggregateId,input.groupId),eq(workflowEvents.eventType,'interview.recovery_requested'))).limit(1))[0];
   await appendWorkflowEvent(tx,ownerId,'interview.recovery_requested',created.groupId,1,{interviewId:interview.id,scheduleFingerprint:source.metadata.scheduleFingerprint});
   await appendWorkflowEvent(tx,ownerId,'interview.recovery_replaced',input.groupId,1,{requestHash,groupId:created.groupId});
+  await resolveRecoveryDeadline(tx,ownerId,input.groupId,'Owner replaced expired recovery links. The replacement has its own deadline.');
   for(const row of old)await tx.update(invites).set({status:'revoked',tokenHash:'',revision:row.revision+1}).where(eq(invites.id,row.id));
   return created;
  });
