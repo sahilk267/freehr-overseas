@@ -10,6 +10,7 @@ W2,M18,Tentative booking from paired responses,verified_live_tentative,qa/2026-1
 W2,M18,Owner-approved availability link email,verified_live_draft_no_send,qa/2026-11-05-availability-email.md,Actual recipient delivery remains unverified
 W1,M25,Private capability quote redaction,verified_live_inbound_no_send,qa/2026-11-05-availability-email.md,Additional encoded formats and retention gates remain pending
 W2,M18,Schedule-bound participant attendance confirmation,verified_live_attestation,qa/2026-11-05-interview-confirmations.md,Identity verification and provider RSVP ingestion remain pending
-W2,M18,Owner-approved interview confirmation email,verified_live_draft_no_send,qa/2026-11-05-interview-confirmations.md,Actual recipient delivery and unattended rescheduling remain unverified
-W2,M18,Decline recovery and bound interview rescheduling,verified_live_assisted_recovery,qa/2026-11-05-interview-recovery.md,Owner-reviewed slot selection and actual recipient delivery remain required
+W2,M18,Owner-approved interview confirmation email,verified_live_draft_no_send,qa/2026-11-05-interview-confirmations.md,Actual recipient delivery and automatic confirmation coordination remain unverified
+W2,M18,Decline recovery and bound interview rescheduling,verified_live_assisted_recovery,qa/2026-11-05-interview-recovery.md,Scoped automatic selection is tracked separately; actual recipient delivery remains unverified
 W2,M18,Recovery expiry and owner exception escalation,verified_live_worker_and_synthetic_ui,qa/2026-11-05-recovery-deadlines.md,Positive elapsed-deadline production acceptance remains unverified
+W2,M18,Scoped automatic recovery slot selection,validated_local,qa/2026-11-05-recovery-auto-selection.md,Live automatic selection and cross-cycle delegation remain unverified

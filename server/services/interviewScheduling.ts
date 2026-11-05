@@ -80,7 +80,7 @@ function checkEditFingerprint(row: any, expected?: string) {
 export async function rescheduleInterview(ownerId: number, actorId: number, input: Slot & { id: string; expectedFingerprint?: string }) {
   return withWorkspaceTransaction(ownerId, tx => rescheduleInterviewInTransaction(tx,ownerId,actorId,input));
 }
-export async function rescheduleInterviewInTransaction(tx:any,ownerId:number,actorId:number,input:Slot & {id:string;expectedFingerprint?:string}) {
+export async function rescheduleInterviewInTransaction(tx:any,ownerId:number,actorId:number|string,input:Slot & {id:string;expectedFingerprint?:string},actorType:"user"|"cron"="user") {
     const row = await ownedInterview(tx, ownerId, input.id);
     checkEditFingerprint(row, input.expectedFingerprint);
     await requireSchedulableCandidate(tx, ownerId, row.candidateId);
@@ -91,7 +91,7 @@ export async function rescheduleInterviewInTransaction(tx:any,ownerId:number,act
     if ((await overlaps(tx, ownerId, row.candidateId, input, row.id)).length) rejectConflict();
     await stopRelatedFollowUps(tx, ownerId, { resourceType: "interview", resourceId: row.id }, "Interview rescheduled; old reminders are invalid.");
     await tx.update(interviews).set({ status: "scheduled", scheduledAt, timezone: input.timezone, durationMinutes: input.durationMinutes, meetingUrl, calendarSequence: row.calendarSequence + 1, calendarStatus: "tentative", rescheduleCount: row.rescheduleCount + 1, reminderAt: new Date(scheduledAt.getTime() - 86400000), reminderSentAt: null }).where(eq(interviews.id, row.id));
-    await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "interview.rescheduled", resourceType: "interview", resourceId: row.id, previousState: row.status, nextState: "scheduled", metadata: { calendarSequence: row.calendarSequence + 1 } }, tx);
+    await recordAudit({ ownerId, actorType, actorId: String(actorId), action: "interview.rescheduled", resourceType: "interview", resourceId: row.id, previousState: row.status, nextState: "scheduled", metadata: { calendarSequence: row.calendarSequence + 1 } }, tx);
     await resolveInterviewRecoveryDeadlines(tx,ownerId,row.id,"Interview schedule changed; earlier recovery escalation is no longer current.");
     await enqueueCalendarSync(tx, ownerId, row.id);
     return { success: true, alreadyCurrent: false, calendarSequence: row.calendarSequence + 1 };
@@ -205,4 +205,10 @@ export async function bookInterviewHold(ownerId: number, actorId: number, input:
 export async function assertRecordedSlotFree(tx:any,ownerId:number,candidateId:string,slot:Slot){
  await rejectHeldSlot(tx,ownerId,candidateId,slot);
  if((await overlaps(tx,ownerId,candidateId,slot)).length)rejectConflict();
+}
+
+/** Shared canonical conflict readers also feed proposals; reservation still occurs only during booking. */
+export async function recordedCandidateBusyWindows(tx:any,ownerId:number,candidateId:string,start:Date,end:Date){
+ const slot={scheduledAt:start,durationMinutes:(end.getTime()-start.getTime())/60000,timezone:'UTC'};
+ return [...await overlaps(tx,ownerId,candidateId,slot),...await holdConflicts(tx,ownerId,candidateId,slot)].map(row=>({start:new Date(row.scheduledAt!),end:new Date(new Date(row.scheduledAt!).getTime()+Math.max(1,row.durationMinutes||45)*60000)}));
 }

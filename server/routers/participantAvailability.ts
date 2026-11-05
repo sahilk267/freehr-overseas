@@ -1,3 +1,5 @@
+import {configureRecoveryAutomation,recoveryAutomationStatus} from "../services/recoveryAutoSelection";
+import {TRPCError} from "@trpc/server";
 import {availabilityMailOptions,prepareAvailabilityEmail} from "../services/availabilityMail";
 import {z} from 'zod';
 import {publicProcedure,protectedProcedure,router} from '../_core/trpc';
@@ -5,7 +7,10 @@ import {restartInterviewRecovery,bookCollectedAvailability,createAvailabilityInv
 const capability=z.object({id:z.string().min(4).max(36),token:z.string().regex(/^[A-Za-z0-9_-]{43}$/)});
 const group=z.object({groupId:z.string().min(4).max(36)});
 function noStore(ctx:any){ctx.res?.setHeader?.('Cache-Control','private, no-store');ctx.res?.setHeader?.('Referrer-Policy','no-referrer');}
+function owner(ctx:any){noStore(ctx);if(ctx.actor.id!==ctx.user.id)throw new TRPCError({code:'FORBIDDEN',message:'Only the owner can authorize automatic selection.'});return ctx.user.id;}
 export const participantAvailabilityRouter=router({
+ automationStatus:protectedProcedure.input(group).query(({ctx,input})=>recoveryAutomationStatus(owner(ctx),input.groupId)),
+ configureAutomation:protectedProcedure.input(group.extend({expectedRevision:z.number().int().nonnegative(),enabled:z.boolean(),durationMinutes:z.number().int().min(15).max(240),bufferMinutes:z.number().int().min(0).max(60),minLeadMinutes:z.number().int().min(15).max(44639),horizonDays:z.number().int().min(1).max(31)})).mutation(({ctx,input})=>configureRecoveryAutomation(owner(ctx),ctx.actor.id,input)),
  restartRecovery:protectedProcedure.input(group.extend({requestKey:z.string().min(8).max(100)})).mutation(({ctx,input})=>{noStore(ctx);return restartInterviewRecovery(ctx.user.id,ctx.actor.id,input);}),
  mailOptions:protectedProcedure.input(z.object({inviteId:z.string().min(4).max(36)})).query(({ctx,input})=>{noStore(ctx);return availabilityMailOptions(ctx.user.id,input.inviteId);}),
  prepareEmail:protectedProcedure.input(z.object({inviteId:z.string().min(4).max(36),conversationId:z.string().min(4).max(36),senderIdentityId:z.string().min(4).max(36)})).mutation(({ctx,input})=>{noStore(ctx);return prepareAvailabilityEmail(ctx.user.id,ctx.actor.id,input);}),

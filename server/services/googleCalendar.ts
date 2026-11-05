@@ -212,3 +212,15 @@ export async function reviewGoogleConflict(ownerId: number, id: string) {
       remote: { summary: String(remote.summary || "").slice(0,1000), status: String(remote.status || ""), start: String(remote.start?.dateTime || remote.start?.date || ""), end: String(remote.end?.dateTime || remote.end?.date || ""), location: String(remote.location || "").slice(0,1000) } };
   });
 }
+
+/** Bounded proposals may add buffers to a 31-day window; keep each provider request within its limit. */
+export async function googleFreeBusyWithBuffers(ownerId:number,start:Date,end:Date){
+ if(!Number.isFinite(start.getTime())||!Number.isFinite(end.getTime())||end<=start||end.getTime()-start.getTime()>32*86400000)throw new TRPCError({code:'BAD_REQUEST',message:'Invalid buffered availability window.'});
+ let cursor=start.getTime(),combined:Awaited<ReturnType<typeof googleFreeBusy>>|undefined;
+ while(cursor<end.getTime()){
+  const until=Math.min(end.getTime(),cursor+31*86400000),part=await googleFreeBusy(ownerId,new Date(cursor),new Date(until));
+  if(combined&&(combined.connectionRevision!==part.connectionRevision||combined.calendarId!==part.calendarId))throw new TRPCError({code:'CONFLICT',message:'Calendar changed during the availability check.'});
+  combined=combined?{...combined,busy:[...combined.busy,...part.busy],checkedAt:new Date(Math.min(new Date(combined.checkedAt).getTime(),new Date(part.checkedAt).getTime()))}:part;cursor=until;
+ }
+ return combined!;
+}

@@ -7,10 +7,10 @@ import {TRPCError} from '@trpc/server';
 import {availabilityInvites as invites,interviews,jobs,workflowEvents,googleCalendarConnections} from '../../drizzle/schema';
 import {createId,recordAudit,requireDb} from '../db';
 import {withWorkspaceTransaction} from './database';
-import {assertRecordedSlotFree,scheduleInterviewInTransaction,rescheduleInterviewInTransaction,requireSchedulableCandidate} from './interviewScheduling';
+import {assertRecordedSlotFree,scheduleInterviewInTransaction,rescheduleInterviewInTransaction,requireSchedulableCandidate,recordedCandidateBusyWindows} from './interviewScheduling';
 import {isValidTimezone} from '../../shared/dateTime';
 import {commonAvailability,type Window} from './availability';
-import {googleFreeBusy} from './googleCalendar';
+import {googleFreeBusyWithBuffers} from './googleCalendar';
 const digest=(v:unknown)=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const denied=()=>new TRPCError({code:'UNAUTHORIZED',message:'Availability link is invalid, expired or revoked.'});
 const safe=(row:typeof invites.$inferSelect)=>{const{tokenHash,requestHash,...value}=row;return {...value,status:!['revoked','booked'].includes(row.status)&&new Date(row.expiresAt).getTime()<=Date.now()?'expired':row.status};};
@@ -60,17 +60,19 @@ export async function publicAvailability(input:{id:string;token:string;expectedR
  });
 }
 export async function revokeAvailability(ownerId:number,actorId:number,groupId:string){return withWorkspaceTransaction(ownerId,async tx=>{const rows=await tx.select().from(invites).where(and(eq(invites.ownerId,ownerId),eq(invites.groupId,groupId)));if(!rows.length)throw new TRPCError({code:'NOT_FOUND'});if(rows.every((r:any)=>r.status==='revoked'))return {revoked:true};for(const row of rows)await tx.update(invites).set({status:'revoked',revision:row.revision+1}).where(eq(invites.id,row.id));await recordAudit({ownerId,actorType:'user',actorId:String(actorId),action:'availability.revoked',resourceType:'availability',resourceId:groupId},tx);return {revoked:true};});}
-export async function proposeCollectedAvailability(ownerId:number,groupId:string,durationMinutes:number,bufferMinutes:number){
- const get=async()=>withWorkspaceTransaction(ownerId,async tx=>{const rows=await tx.select().from(invites).where(and(eq(invites.ownerId,ownerId),eq(invites.groupId,groupId)));if(rows.length!==2||rows.some((r:any)=>r.status!=='submitted'||new Date(r.expiresAt).getTime()<=Date.now()))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Both valid participant responses are required.'});await requireSchedulableCandidate(tx,ownerId,rows[0].candidateId);const recovery=await assertRecoveryCurrent(tx,ownerId,groupId,rows[0].candidateId,rows[0].jobId);return rows.map((r:any)=>({...r,declinedStart:recovery?.scheduledAt?.getTime(),windows:structuredClone(r.windows)}));});
+export type SelectionWindow={start:Date;end:Date};
+const windowHash=(w?:SelectionWindow)=>w?[[w.start.toISOString(),w.end.toISOString()]]:[];
+export async function proposeCollectedAvailability(ownerId:number,groupId:string,durationMinutes:number,bufferMinutes:number,selectionWindow?:SelectionWindow){
+ const get=async()=>withWorkspaceTransaction(ownerId,async tx=>{const rows=await tx.select().from(invites).where(and(eq(invites.ownerId,ownerId),eq(invites.groupId,groupId)));if(rows.length!==2||rows.some((r:any)=>r.status!=='submitted'||new Date(r.expiresAt).getTime()<=Date.now()))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Both valid participant responses are required.'});await requireSchedulableCandidate(tx,ownerId,rows[0].candidateId);const recovery=await assertRecoveryCurrent(tx,ownerId,groupId,rows[0].candidateId,rows[0].jobId);const all=rows.flatMap((r:any)=>r.windows??[]),pad=bufferMinutes*60000,busy=await recordedCandidateBusyWindows(tx,ownerId,rows[0].candidateId,new Date(Math.min(...all.map((w:any)=>new Date(w.start).getTime()))-pad),new Date(Math.max(...all.map((w:any)=>new Date(w.end).getTime()))+pad));return rows.map((r:any)=>({...r,internalBusy:busy,declinedStart:recovery?.scheduledAt?.getTime(),windows:structuredClone(r.windows)}));});
  const rows=await get(),candidate=rows.find((r:any)=>r.participant==='candidate')!,interviewer=rows.find((r:any)=>r.participant==='interviewer')!;
- const windows=(r:any)=>r.windows.map((w:any)=>({start:new Date(w.start),end:new Date(w.end)})) as Window[];
- const input={candidate:windows(candidate),interviewer:windows(interviewer),durationMinutes,bufferMinutes},initial=commonAvailability(input);
+ const windows=(r:any)=>r.windows.map((w:any)=>({start:new Date(Math.max(new Date(w.start).getTime(),selectionWindow?.start.getTime()??-Infinity)),end:new Date(Math.min(new Date(w.end).getTime(),selectionWindow?.end.getTime()??Infinity))})).filter((w:Window)=>w.start<w.end) as Window[];
+ const input={candidate:windows(candidate),interviewer:windows(interviewer),durationMinutes,bufferMinutes},initial=!input.candidate.length||!input.interviewer.length?{slots:[] as Window[],reservation:false,participantAcceptance:false,checkedAt:new Date()}:commonAvailability({...input,busy:rows[0].internalBusy});
  initial.slots=initial.slots.filter(s=>s.start.getTime()!==rows[0].declinedStart);
- const responsesFingerprint=digest([ownerId,groupId,durationMinutes,bufferMinutes,rows.map((r:any)=>[r.id,r.revision]).sort()]);
+ const responsesFingerprint=digest([ownerId,groupId,durationMinutes,bufferMinutes,rows.map((r:any)=>[r.id,r.revision]).sort(),...windowHash(selectionWindow)]);
  if(!initial.slots.length)return {...initial,responsesFingerprint,googleChecked:false,googleConnectionRevision:undefined,googleCheckedAt:undefined};
- const all=[...input.candidate,...input.interviewer],pad=bufferMinutes*60000,busy=await googleFreeBusy(ownerId,new Date(Math.min(...all.map(w=>w.start.getTime()))-pad),new Date(Math.max(...all.map(w=>w.end.getTime()))+pad));
+ const all=[...input.candidate,...input.interviewer],pad=bufferMinutes*60000,busy=await googleFreeBusyWithBuffers(ownerId,new Date(Math.min(...all.map(w=>w.start.getTime()))-pad),new Date(Math.max(...all.map(w=>w.end.getTime()))+pad));
  const latest=await get();if(digest(latest.map((r:any)=>[r.id,r.revision]).sort())!==digest(rows.map((r:any)=>[r.id,r.revision]).sort()))throw new TRPCError({code:'CONFLICT',message:'Participant availability changed during the check. Retry.'});
- const checked=commonAvailability({...input,busy:busy.busy});checked.slots=checked.slots.filter(s=>s.start.getTime()!==rows[0].declinedStart);
+ const checked=commonAvailability({...input,busy:[...busy.busy,...latest[0].internalBusy]});checked.slots=checked.slots.filter(s=>s.start.getTime()!==rows[0].declinedStart);
  return {...checked,responsesFingerprint:digest([responsesFingerprint,busy.connectionRevision,busy.calendarId]),googleChecked:true,googleConnectionRevision:busy.connectionRevision,googleCheckedAt:busy.checkedAt};
 }
 
@@ -83,12 +85,14 @@ async function priorBooking(tx:any,ownerId:number,input:BookingInput){
  return {id:String(prior.metadata.interviewId),alreadyExists:true,participantAcceptance:false};
 }
 const bookingHash=(input:BookingInput)=>digest([input.groupId,new Date(input.scheduledAt).toISOString(),input.durationMinutes,input.bufferMinutes,input.responsesFingerprint,input.meetingUrl??null]);
-export async function bookCollectedAvailability(ownerId:number,actorId:number,input:BookingInput){
- const prior=await withWorkspaceTransaction(ownerId,tx=>priorBooking(tx,ownerId,input));if(prior)return prior;
- const proposed=await proposeCollectedAvailability(ownerId,input.groupId,input.durationMinutes,input.bufferMinutes);
+export type AutomaticBooking={actorId:string;revision:number;selectionWindow:SelectionWindow;validate:(tx:any)=>Promise<void>};
+export async function bookCollectedAvailability(ownerId:number,actorId:number,input:BookingInput,automatic?:AutomaticBooking){
+ const prior=await withWorkspaceTransaction(ownerId,async tx=>{const saved=await priorBooking(tx,ownerId,input);if(!saved&&automatic)await automatic.validate(tx);return saved;});if(prior)return prior;
+ const proposed=await proposeCollectedAvailability(ownerId,input.groupId,input.durationMinutes,input.bufferMinutes,automatic?.selectionWindow);
  if(proposed.responsesFingerprint!==input.responsesFingerprint||!proposed.googleChecked||!proposed.slots.some(s=>s.start.getTime()===input.scheduledAt.getTime()))throw new TRPCError({code:'CONFLICT',message:'Availability or Google busy time changed. Review new proposals before booking.'});
  return withWorkspaceTransaction(ownerId,async tx=>{
   const replay=await priorBooking(tx,ownerId,input);if(replay)return replay;
+  if(automatic)await automatic.validate(tx);
   const rows=await tx.select().from(invites).where(and(eq(invites.ownerId,ownerId),eq(invites.groupId,input.groupId)));
   if(rows.length!==2||rows.some((r:any)=>r.status!=='submitted'||new Date(r.expiresAt).getTime()<=Date.now()))throw new TRPCError({code:'CONFLICT',message:'Participant responses changed or expired during booking.'});
   await requireSchedulableCandidate(tx,ownerId,rows[0].candidateId);
@@ -97,16 +101,16 @@ export async function bookCollectedAvailability(ownerId:number,actorId:number,in
   await assertRecordedSlotFree(tx,ownerId,rows[0].candidateId,{scheduledAt:new Date(input.scheduledAt.getTime()-input.bufferMinutes*60000),durationMinutes:input.durationMinutes+2*input.bufferMinutes,timezone:'UTC'});
   const connection=(await tx.select().from(googleCalendarConnections).where(eq(googleCalendarConnections.ownerId,ownerId)).limit(1))[0];
   if(connection?.status!=='active'||connection.revision!==proposed.googleConnectionRevision||!proposed.googleCheckedAt||Date.now()-new Date(proposed.googleCheckedAt).getTime()>30000)throw new TRPCError({code:'CONFLICT',message:'Calendar connection or availability check changed. Review again.'});
-  const currentResponses=digest([ownerId,input.groupId,input.durationMinutes,input.bufferMinutes,rows.map((r:any)=>[r.id,r.revision]).sort()]);
+  const currentResponses=digest([ownerId,input.groupId,input.durationMinutes,input.bufferMinutes,rows.map((r:any)=>[r.id,r.revision]).sort(),...windowHash(automatic?.selectionWindow)]);
   if(digest([currentResponses,connection.revision,connection.calendarId])!==input.responsesFingerprint)throw new TRPCError({code:'CONFLICT',message:'Responses or selected calendar changed. Review proposals again.'});
   const job=(await tx.select().from(jobs).where(and(eq(jobs.ownerId,ownerId),eq(jobs.id,rows[0].jobId))).limit(1))[0];if(!job)throw new TRPCError({code:'NOT_FOUND'});
   const candidate=rows.find((r:any)=>r.participant==='candidate');
   let saved:{id:string;alreadyExists:boolean};
-  if(recovery){await rescheduleInterviewInTransaction(tx,ownerId,actorId,{id:recovery.id,scheduledAt:input.scheduledAt,durationMinutes:input.durationMinutes,timezone:candidate?.timezone||'UTC',meetingUrl:input.meetingUrl});saved={id:recovery.id,alreadyExists:false};}
+  if(recovery){await rescheduleInterviewInTransaction(tx,ownerId,automatic?.actorId??actorId,{id:recovery.id,scheduledAt:input.scheduledAt,durationMinutes:input.durationMinutes,timezone:candidate?.timezone||'UTC',meetingUrl:input.meetingUrl},automatic?'cron':'user');saved={id:recovery.id,alreadyExists:false};}
   else saved=await scheduleInterviewInTransaction(tx,ownerId,actorId,{candidateId:rows[0].candidateId,companyId:job.companyId,jobId:job.id,scheduledAt:input.scheduledAt,durationMinutes:input.durationMinutes,timezone:candidate?.timezone||'UTC',meetingUrl:input.meetingUrl,requestKey:'availability:'+input.groupId});
-  await appendWorkflowEvent(tx,ownerId,'availability.booked',input.groupId,1,{requestHash:bookingHash(input),interviewId:saved.id,participantAcceptance:false});
+  await appendWorkflowEvent(tx,ownerId,'availability.booked',input.groupId,1,{requestHash:bookingHash(input),interviewId:saved.id,participantAcceptance:false,...(automatic?{execution:'automatic',automationRevision:automatic.revision}:{})});
   for(const row of rows)await tx.update(invites).set({status:'booked',tokenHash:'',revision:row.revision+1}).where(eq(invites.id,row.id));
-  await recordAudit({ownerId,actorType:'user',actorId:String(actorId),action:'availability.booked',resourceType:'availability',resourceId:input.groupId,metadata:{interviewId:saved.id,participantAcceptance:false}},tx);
+  await recordAudit({ownerId,actorType:automatic?'cron':'user',actorId:automatic?.actorId??String(actorId),action:'availability.booked',resourceType:'availability',resourceId:input.groupId,metadata:{interviewId:saved.id,participantAcceptance:false}},tx);
   return {...saved,participantAcceptance:false};
  });
 }
