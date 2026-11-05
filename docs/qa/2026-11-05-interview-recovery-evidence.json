@@ -11,7 +11,14 @@
     "schemaMigrationsAdded": 0
   },
   "live": {
-    "status": "pending",
+    "status": "deployment_pending",
+    "checkedAt": "2026-11-05T01:11:30.650508+00:00",
+    "githubMainApplicationCommit": "2493cb027eb890b3e3bd6f3a080a1c842a645c1b",
+    "servedCommit": "7b733a40097a4c6f0f786d1e41b921903dc74a50",
+    "healthStatus": 200,
+    "newProtectedRouteStatus": 404,
+    "managementBuildLogsAvailable": false,
+    "syntheticRecordsCreated": false,
     "actualRecipientDeliveryVerified": false
   }
 }
