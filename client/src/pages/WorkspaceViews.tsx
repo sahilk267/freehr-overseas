@@ -355,7 +355,7 @@ export function ExceptionsPage() {
                       <div className="flex justify-between gap-3">
                         <div>
                           <p className="font-semibold text-[#8f3021]">{friendly(item.incidentType)}</p>
-                          <p className="mt-1 text-xs text-rose-700">{item.summary}</p>{['interview_recovery_deadline','interview_recovery_auto_review'].includes(item.incidentType)&&<a href="/interviews#participant-availability" className="mt-2 inline-block text-xs underline">Review interview recovery …{item.affectedResourceId?.slice(-6)}</a>}
+                          <p className="mt-1 text-xs text-rose-700">{item.summary}</p>{item.incidentType==='client_discovery_no_slots'&&<a className="mt-2 inline-block text-xs underline" href={`/prospects?discovery=${encodeURIComponent(item.affectedResourceId||"")}#client-reply-actions`}>Review client discovery</a>}{['interview_recovery_deadline','interview_recovery_auto_review'].includes(item.incidentType)&&<a href="/interviews#participant-availability" className="mt-2 inline-block text-xs underline">Review interview recovery …{item.affectedResourceId?.slice(-6)}</a>}
                         </div>
                         <StateBadge value={item.severity} />
                       </div>

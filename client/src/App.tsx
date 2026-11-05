@@ -1,3 +1,4 @@
+import DiscoveryResponsePage from "./pages/DiscoveryResponsePage";
 import InterviewResponsePage from "./pages/InterviewResponsePage";
 import AvailabilityResponsePage from "./pages/AvailabilityResponsePage";
 import { Toaster } from "@/components/ui/sonner";
@@ -36,6 +37,7 @@ const ControlPlane = withDashboard(ControlPlanePage);
 function Router() {
   return <Switch>
     <Route path="/interview-response" component={InterviewResponsePage} />
+    <Route path="/discovery-response" component={DiscoveryResponsePage} />
     <Route path="/availability" component={AvailabilityResponsePage} />
     <Route path="/login" component={OwnerLoginPage} />
     <Route path="/" component={CommandCenter} />

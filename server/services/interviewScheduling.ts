@@ -1,3 +1,4 @@
+import {assertDiscoverySlotFree,recordedDiscoveryBusy} from "./recordedCalendarBusy";
 import {resolveInterviewRecoveryDeadlines} from "./interviewRecoveryIncidents";
 import { interviewEditFingerprint } from "../../shared/interviewRevision";
 import { enqueueCalendarSync } from "./calendarAutomation";
@@ -38,7 +39,8 @@ export async function previewInterviewSlot(ownerId: number, input: Slot & { cand
     if (input.excludeInterviewId && (await ownedInterview(tx, ownerId, input.excludeInterviewId)).candidateId !== input.candidateId) throw missing("Interview for this candidate");
     const rows = await overlaps(tx, ownerId, input.candidateId, input, input.excludeInterviewId);
     const held = await holdConflicts(tx, ownerId, input.candidateId, input);
-    return { heldSlots: held.map(publicHold), hasConflict: rows.length > 0 || held.length > 0, scope: "recorded_candidate_interviews_and_holds" as const, conflicts: rows.map(row => ({ id: row.id, scheduledAt: row.scheduledAt!, durationMinutes: row.durationMinutes, timezone: row.timezone, status: row.status })) };
+    const discoveryBusy=await recordedDiscoveryBusy(tx,ownerId,input.scheduledAt,new Date(input.scheduledAt.getTime()+input.durationMinutes*60000));
+    return { discoveryBusyCount:discoveryBusy.length, heldSlots: held.map(publicHold), hasConflict: rows.length > 0 || held.length > 0 || discoveryBusy.length > 0, scope: "recorded_candidate_interviews_and_holds" as const, conflicts: rows.map(row => ({ id: row.id, scheduledAt: row.scheduledAt!, durationMinutes: row.durationMinutes, timezone: row.timezone, status: row.status })) };
   });
 }
 type ScheduleInput = Slot & { candidateId: string; companyId: string; jobId: string; requestKey?: string };
@@ -145,6 +147,7 @@ async function holdConflicts(tx: any, ownerId: number, candidateId: string, slot
   return rows.filter(row => row.id !== excludeId && new Date(row.expiresAt).getTime() > Date.now() && new Date(row.scheduledAt).getTime() < end && new Date(row.scheduledAt).getTime() + row.durationMinutes * 60000 > start);
 }
 async function rejectHeldSlot(tx: any, ownerId: number, candidateId: string, slot: Slot, excludeId?: string) {
+  await assertDiscoverySlotFree(tx,ownerId,slot.scheduledAt,new Date(slot.scheduledAt.getTime()+slot.durationMinutes*60000));
   if ((await holdConflicts(tx, ownerId, candidateId, slot, excludeId)).length) throw new TRPCError({ code: "CONFLICT", message: "This candidate has an overlapping active internal slot hold. Book through that hold, release it or wait for expiry." });
 }
 async function ownedHold(tx: any, ownerId: number, id: string) {
@@ -210,5 +213,5 @@ export async function assertRecordedSlotFree(tx:any,ownerId:number,candidateId:s
 /** Shared canonical conflict readers also feed proposals; reservation still occurs only during booking. */
 export async function recordedCandidateBusyWindows(tx:any,ownerId:number,candidateId:string,start:Date,end:Date){
  const slot={scheduledAt:start,durationMinutes:(end.getTime()-start.getTime())/60000,timezone:'UTC'};
- return [...await overlaps(tx,ownerId,candidateId,slot),...await holdConflicts(tx,ownerId,candidateId,slot)].map(row=>({start:new Date(row.scheduledAt!),end:new Date(new Date(row.scheduledAt!).getTime()+Math.max(1,row.durationMinutes||45)*60000)}));
+ return [...await recordedDiscoveryBusy(tx,ownerId,start,end),...[...await overlaps(tx,ownerId,candidateId,slot),...await holdConflicts(tx,ownerId,candidateId,slot)].map(row=>({start:new Date(row.scheduledAt!),end:new Date(new Date(row.scheduledAt!).getTime()+Math.max(1,row.durationMinutes||45)*60000)}))];
 }

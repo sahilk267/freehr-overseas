@@ -891,3 +891,19 @@ export const interviewConfirmations = mysqlTable("interviewConfirmations", {
  participant:varchar("participant",{length:20}).notNull(),requestHash:varchar("requestHash",{length:64}).notNull(),scheduleFingerprint:varchar("scheduleFingerprint",{length:64}).notNull(),tokenHash:varchar("tokenHash",{length:64}).notNull(),
  status:varchar("status",{length:24}).notNull().default("pending"),expiresAt:timestamp("expiresAt",{fsp:3}).notNull(),respondedAt:timestamp("respondedAt",{fsp:3}),createdAt,updatedAt,
 },t=>[uniqueIndex("confirmation_group_role_unique").on(t.groupId,t.participant),index("confirmation_owner_interview_idx").on(t.ownerId,t.interviewId)]);
+
+export const clientDiscoveryRequests = mysqlTable("clientDiscoveryRequests", {
+ id:id("id").primaryKey(),ownerId:int("ownerId").notNull().references(()=>users.id),
+ conversationId:id("conversationId").notNull().references(()=>conversations.id),contactId:id("contactId").notNull().references(()=>contacts.id),
+ sourceFingerprint:varchar("sourceFingerprint",{length:64}).notNull(),requestKeyHash:varchar("requestKeyHash",{length:64}).notNull(),requestHash:varchar("requestHash",{length:64}).notNull(),
+ tokenHash:varchar("tokenHash",{length:64}).notNull(),status:varchar("status",{length:24}).notNull().default("pending"),revision:int("revision").notNull().default(1),
+ ownerWindows:json("ownerWindows").$type<Array<{start:string;end:string}>>().notNull(),clientWindows:json("clientWindows").$type<Array<{start:string;end:string}>>(),
+ timezone:varchar("timezone",{length:64}).notNull(),clientTimezone:varchar("clientTimezone",{length:64}),responseHash:varchar("responseHash",{length:64}),
+ durationMinutes:int("durationMinutes").notNull(),bufferMinutes:int("bufferMinutes").notNull(),autoSelect:boolean("autoSelect").notNull().default(false),
+ expiresAt:timestamp("expiresAt",{fsp:3}).notNull(),createdAt,updatedAt,
+},t=>[uniqueIndex("discovery_owner_request_unique").on(t.ownerId,t.requestKeyHash),index("discovery_conversation_status_idx").on(t.ownerId,t.conversationId,t.status)]);
+export const clientDiscoveryMeetings = mysqlTable("clientDiscoveryMeetings", {
+ id:id("id").primaryKey(),ownerId:int("ownerId").notNull().references(()=>users.id),requestId:id("requestId").notNull().references(()=>clientDiscoveryRequests.id),
+ bookingHash:varchar("bookingHash",{length:64}).notNull(),scheduledAt:timestamp("scheduledAt",{fsp:3}).notNull(),durationMinutes:int("durationMinutes").notNull(),bufferMinutes:int("bufferMinutes").notNull(),
+ timezone:varchar("timezone",{length:64}).notNull(),status:varchar("status",{length:24}).notNull().default("tentative"),revision:int("revision").notNull().default(1),createdAt,updatedAt,
+},t=>[uniqueIndex("discovery_request_meeting_unique").on(t.requestId),index("discovery_meeting_owner_time_idx").on(t.ownerId,t.status,t.scheduledAt)]);

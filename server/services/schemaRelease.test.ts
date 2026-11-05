@@ -10,8 +10,8 @@ const applied = migrations.map(m => ({ hash: m.hash, created_at: m.folderMillis 
 
 describe("reviewed schema deployment boundary", () => {
   it("accepts the exact existing baseline, incremental upgrades and a repeated no-op", () => {
-    expect(validateReviewedUpgrade(journal, migrations, applied.slice(0, 15), release)).toBe(8);
-    expect(validateReviewedUpgrade(journal, migrations, applied.slice(0, 17), release)).toBe(6);
+    expect(validateReviewedUpgrade(journal, migrations, applied.slice(0, 15), release)).toBe(9);
+    expect(validateReviewedUpgrade(journal, migrations, applied.slice(0, 17), release)).toBe(7);
     expect(validateReviewedUpgrade(journal, migrations, applied, release)).toBe(0);
   });
   it("rejects empty, older, divergent and unreviewed migration histories", () => {

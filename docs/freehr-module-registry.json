@@ -514,14 +514,14 @@
           "description": "Personalized acquisition campaigns and reply routing; M06 owns cadence, M07 delivery, M08 grounded drafting.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-05-client-reply-triage.md",
-          "implementation_note": "Existing M06/M07 campaigns now share transactional inbound deduplication and monotonic reply assessment. Current client replies support reviewed next actions and immutable recipient-bound approved response drafts; unattended discovery booking, automatic grounded response generation and actual recipient delivery remain pending."
+          "implementation_note": "M06/M07 campaigns share transactional inbound deduplication and current reply assessment. Reviewed next actions and bound outbox drafts are live-verified. Discovery collection and scoped automatic tentative selection are tracked in M10-F04; grounded automatic replies and actual recipient delivery remain pending."
         },
         {
           "id": "M10-F04",
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-05-client-reply-triage.md",
-          "implementation_note": "Latest client reply recommendations and revision-safe owner next-action notes/due dates are implemented. Dedicated client discovery meetings, stakeholder mapping, SLA escalation and complete automatic booking remain pending."
+          "evidence_ref": "qa/2026-11-06-client-discovery.md",
+          "implementation_note": "Current-reply-bound client discovery requests collect private availability and reuse shared slot math, Google free/busy, internal conflict admission and the persistent queue for optional per-request automatic tentative selection. Dedicated client meeting records and ICS cancellation are implemented. Live acceptance follows; delivery/provider event sync, verified attendance, stakeholder mapping and automatic SLA escalation remain pending."
         },
         {
           "id": "M10-F05",

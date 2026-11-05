@@ -1,3 +1,4 @@
+import {ClientDiscoveryPanel} from "./ClientDiscoveryPanel";
 import { useState, useEffect, type FormEvent } from "react";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ function ReplyDetail({ conversationId }: { conversationId: string }) {
       <Button type="submit" disabled={save.isPending} className="justify-self-start">Save next action</Button>
       <p className="text-xs text-slate-500">This records a task for review. Discovery booking and sending a response still require their own completed workflow.</p>
     </form>
+    <ClientDiscoveryPanel key={`discovery:${detail.message.id}:${current?.revision ?? 0}`} conversationId={conversationId} replyRevision={detail.replyRevision} actionRevision={current?.revision ?? 0} canCreate={!detail.blocked && current?.action === "arrange_discovery"} />
     {detail.response && <div className="rounded-lg border p-3 text-sm"><p>Latest response: {detail.response.status.replaceAll("_", " ")}</p><p className="mt-1 break-all text-xs text-slate-500">Approval {detail.response.approvalId}</p>{detail.response.cancellable && <Button type="button" size="sm" variant="outline" disabled={cancel.isPending} className="mt-2" onClick={() => cancel.mutate({ approvalId: detail.response!.approvalId, reason: "Owner cancelled unused client response for revision." })}>Cancel unused response</Button>}</div>}
     {!detail.blocked && current && ["arrange_discovery", "clarify_requirement", "prepare_response"].includes(current.action ?? "") && <ReplyResponseForm key={`response:${detail.message.id}:${current.revision}`} conversationId={conversationId} messageId={detail.message.id} replyRevision={detail.replyRevision} actionRevision={current.revision} />}
   </div>;
@@ -73,13 +75,16 @@ function ReplyDetail({ conversationId }: { conversationId: string }) {
 export function ClientReplyPanel() {
   const { data = [], error } = trpc.recruitment.outreach.list.useQuery({ limit: 100 });
   const [selected, setSelected] = useState("");
+  const requestId = new URLSearchParams(location.search).get("discovery") || "";
+  const linkedRequest = trpc.clientDiscovery.get.useQuery({ requestId }, { enabled: /^[A-Za-z0-9_-]{4,36}$/.test(requestId), retry: false });
+  useEffect(() => { if (linkedRequest.data) { setSelected(linkedRequest.data.conversationId); document.getElementById("client-reply-actions")?.scrollIntoView(); } }, [linkedRequest.data?.conversationId]);
   const clients = data.filter(c => c.contactId && c.companyId && !c.candidateId);
-  return <Card className="border-slate-200 bg-white"><CardContent className="p-5">
+  return <Card id="client-reply-actions" className="border-slate-200 bg-white"><CardContent className="p-5">
     <h2 className="font-semibold text-[#10213d]">Client reply next actions</h2>
     <p className="mt-1 text-sm text-slate-500">Review the latest client response and keep a clear next step for acquisition.</p>
     {error && <p role="alert">{error.message}</p>}
     <Label htmlFor="client-reply-thread" className="mt-4 block">Client conversation</Label>
-    <select id="client-reply-thread" className="mt-1 w-full rounded-md border p-2 text-sm" value={selected} onChange={e => setSelected(e.target.value)}><option value="">Choose a client thread</option>{clients.map(c => <option key={c.id} value={c.id}>Thread {c.id.slice(-6)} · {c.classification?.replaceAll("_", " ") || c.status.replaceAll("_", " ")}</option>)}</select>
+    <select id="client-reply-thread" className="mt-1 w-full rounded-md border p-2 text-sm" value={selected} onChange={e => setSelected(e.target.value)}><option value="">Choose a client thread</option>{selected && !clients.some(c => c.id === selected) && <option value={selected}>Selected client thread</option>}{clients.map(c => <option key={c.id} value={c.id}>Thread {c.id.slice(-6)} · {c.classification?.replaceAll("_", " ") || c.status.replaceAll("_", " ")}</option>)}</select>
     {!clients.length && <p className="mt-3 text-sm text-slate-500">Client contact conversations will appear here when outreach starts.</p>}
     {selected && <ReplyDetail key={selected} conversationId={selected} />}
   </CardContent></Card>;

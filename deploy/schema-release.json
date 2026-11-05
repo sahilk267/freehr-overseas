@@ -2,7 +2,7 @@
   "version": 1,
   "targetDomain": "freelancehr.overseasjob.in",
   "baseline": "0014_promise_baseline_precision",
-  "through": "0022_interview_confirmations",
+  "through": "0023_client_discovery",
   "migrations": [
     {
       "tag": "0015_outreach_campaigns",
@@ -35,6 +35,10 @@
     {
       "tag": "0022_interview_confirmations",
       "sha256": "169b232aa48c9ad86f38485a708bd8a7e79f75b644583d5ee57384ddd7fa970f"
+    },
+    {
+      "tag": "0023_client_discovery",
+      "sha256": "7e424c1794654a90feb76b6c4154f73a4fc353bf3c4954d32140a08c5086f29b"
     }
   ]
 }
