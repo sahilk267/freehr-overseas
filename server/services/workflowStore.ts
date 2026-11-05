@@ -30,11 +30,7 @@ export async function stopFollowUp(tx: any, plan: FollowUpPlan, status: "paused"
   await tx.update(followUpPlans).set({ status, reason, executionMode: "review", nextActionAt: null, revision: plan.revision + 1 }).where(and(eq(followUpPlans.id, plan.id), eq(followUpPlans.ownerId, plan.ownerId)));
   await tx.update(automationGrants).set({ active: false }).where(and(eq(automationGrants.ownerId, plan.ownerId), eq(automationGrants.planId, plan.id)));
   const pending = await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, plan.ownerId), eq(emailDispatches.planId, plan.id), eq(emailDispatches.status, "queued")));
-  for (const dispatch of pending) {
-    await tx.update(emailDispatches).set({ status: "cancelled", lastError: reason }).where(eq(emailDispatches.id, dispatch.id));
-    await tx.update(messages).set({ status: "cancelled" }).where(and(eq(messages.ownerId, plan.ownerId), eq(messages.id, dispatch.messageId), eq(messages.status, "approval_pending")));
-    await tx.update(approvals).set({ status: "cancelled" }).where(and(eq(approvals.id, dispatch.approvalId), inArray(approvals.status, ["pending", "approved"])));
-  }
+  for (const dispatch of pending) await cancelUnusedEmailDispatch(tx,plan.ownerId,dispatch,reason);
   const timerKeys = [`followup:${plan.id}:${plan.revision}:${plan.stepIndex}`, ...pending.map((dispatch: typeof emailDispatches.$inferSelect) => `email_dispatch:${dispatch.id}`)];
   await tx.update(automationQueue).set({ status: "cancelled", lockToken: null, lockedAt: null, lastError: reason }).where(and(eq(automationQueue.ownerId, plan.ownerId), inArray(automationQueue.idempotencyKey, timerKeys), inArray(automationQueue.status, ["queued", "retryable_failed"])));
   await appendWorkflowEvent(tx, plan.ownerId, `followup.${status}`, plan.id, plan.revision + 1, { reason });
@@ -51,4 +47,16 @@ export function followUpEnrollmentKey(plan: Pick<FollowUpPlan, "ownerId" | "scen
 
 export async function recordFollowUpDefinition(tx: any, plan: FollowUpPlan, actorId?: number, reason?: string) {
   await appendWorkflowEvent(tx, plan.ownerId, "followup.definition_recorded", plan.id, plan.revision, { actorId: actorId ?? null, reason: reason ?? "Recorded existing sequence definition", definition: { objective: plan.objective, recipient: plan.recipient, scenarioId: plan.scenarioId, senderIdentityId: plan.senderIdentityId, resourceType: plan.resourceType, resourceId: plan.resourceId, resourceFingerprint: plan.resourceFingerprint, steps: plan.steps, timezone: plan.timezone, businessDaysOnly: plan.businessDaysOnly, responseWindowMinutes: plan.responseWindowMinutes, deadlineAt: plan.deadlineAt.toISOString() } });
+}
+
+/** Cancel unused authority only; attempted/unknown deliveries stay available for reconciliation. */
+export async function cancelUnusedEmailDispatch(tx:any,ownerId:number,dispatch:any,reason:string){
+ if(dispatch.ownerId!==ownerId||dispatch.status!=="queued"||dispatch.claimedAt)return false;
+ const approval=(await tx.select().from(approvals).where(and(eq(approvals.ownerId,ownerId),eq(approvals.id,dispatch.approvalId))).limit(1))[0];
+ if(!approval||approval.actionedAt||!["pending","approved"].includes(approval.status))return false;
+ await tx.update(emailDispatches).set({status:"cancelled",lastError:reason}).where(and(eq(emailDispatches.ownerId,ownerId),eq(emailDispatches.id,dispatch.id)));
+ await tx.update(approvals).set({status:"cancelled"}).where(and(eq(approvals.ownerId,ownerId),eq(approvals.id,approval.id)));
+ await tx.update(messages).set({status:"cancelled"}).where(and(eq(messages.ownerId,ownerId),eq(messages.id,dispatch.messageId),eq(messages.status,"approval_pending")));
+ await tx.update(automationQueue).set({status:"cancelled",lockToken:null,lockedAt:null,lastError:reason}).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.idempotencyKey,`email_dispatch:${dispatch.id}`),inArray(automationQueue.status,["queued","retryable_failed","blocked"])));
+ return true;
 }

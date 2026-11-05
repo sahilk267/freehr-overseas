@@ -348,7 +348,8 @@
           "id": "M07-F02",
           "description": "One dispatch gateway for outreach, follow-ups, interview reminders, profile shares, offers and invoices; no direct provider sends in domain workers.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
+          "implementation_note": "One shared dispatch gateway serves campaigns, follow-ups and purpose-bound interview/confirmation/discovery links. Discovery adds no provider sender or timer; real recipient delivery acceptance and remaining channels remain pending."
         },
         {
           "id": "M07-F03",
@@ -520,8 +521,8 @@
           "id": "M10-F04",
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-06-client-discovery.md",
-          "implementation_note": "Live-verified current-reply-bound discovery requests collect private client availability and reuse shared slot math, real Google free/busy, internal conflict admission and the persistent worker for scoped automatic tentative selection. Dedicated client meeting records, owner-reviewed booking, replay/cancellation and ICS are verified; synthetic cleanup passed. Link delivery, Google event sync, verified attendance, stakeholder mapping and automatic SLA escalation remain pending."
+          "evidence_ref": "qa/2026-11-06-discovery-link-email.md",
+          "implementation_note": "Private collection and scoped automatic/manual tentative booking are live-verified. Owner-reviewed discovery-link email now reuses the shared HMAC envelope and outbox with current-source/recipient/permission guards and cancellation. Link email live no-send acceptance follows; real delivery, delegated sending, Google event sync, verified attendance, stakeholder mapping and SLA escalation remain pending."
         },
         {
           "id": "M10-F05",

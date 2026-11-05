@@ -13,9 +13,10 @@ const calendar=vi.hoisted(()=>vi.fn());
 vi.mock("./googleCalendar",async original=>({...await original(),googleFreeBusyWithBuffers:calendar}));
 const free=()=>({calendarId:"primary",connectionRevision:1,checkedAt:new Date(),busy:[]});
 beforeEach(()=>calendar.mockReset().mockImplementation(async()=>free()));
-afterEach(()=>vi.restoreAllMocks());
+const managedOwners:number[]=[];
+afterEach(async()=>{vi.restoreAllMocks();const db=await dbModule.requireDb();for(const ownerId of managedOwners.splice(0))await db.update(workspaceSettings).set({backgroundEnabled:false}).where(eq(workspaceSettings.ownerId,ownerId));});
 async function fixture(autoSelect=false){
- const f=await followupFixture();
+ const f=await followupFixture();managedOwners.push(f.ownerId);
  await f.db.insert(connections).values({id:createId("gcal_"),ownerId:f.ownerId,status:"active",revision:1,calendarId:"primary"});
  await f.db.update(workspaceSettings).set({backgroundEnabled:true}).where(eq(workspaceSettings.ownerId,f.ownerId));
  const reply=await receiveReply(f.ownerId,{conversationId:f.clientConversationId,body:"Can we discuss hiring requirements next week?",source:"synthetic_test"});

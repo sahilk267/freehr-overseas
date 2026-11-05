@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { automationQueue, clientDiscoveryRequests as requests, clientDiscoveryMeetings as meetings, contacts, conversations, googleCalendarConnections, incidents, suppressionList, workspaceSettings, workflowEvents } from "../../drizzle/schema";
+import { automationQueue, emailDispatches, clientDiscoveryRequests as requests, clientDiscoveryMeetings as meetings, contacts, conversations, googleCalendarConnections, incidents, suppressionList, workspaceSettings, workflowEvents } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit, requireDb } from "../db";
 import { isValidTimezone } from "../../shared/dateTime";
 import { commonAvailability, normalizeAvailabilityWindows, type Window } from "./availability";
@@ -11,7 +11,7 @@ import { withWorkspaceTransaction } from "./database";
 import { googleFreeBusyWithBuffers } from "./googleCalendar";
 import { recordedOwnerBusy } from "./recordedCalendarBusy";
 import { clientReplyCase } from "./replyTriage";
-import { appendWorkflowEvent, workflowHash } from "./workflowStore";
+import { appendWorkflowEvent, cancelUnusedEmailDispatch, workflowHash } from "./workflowStore";
 const fail=(message:string,code:"CONFLICT"|"PRECONDITION_FAILED"|"BAD_REQUEST"="PRECONDITION_FAILED")=>new TRPCError({code,message});
 const tokenHash=(token:string)=>createHash("sha256").update(token).digest("hex");
 const safe=(row:typeof requests.$inferSelect)=>{const{tokenHash,requestHash,requestKeyHash,responseHash,sourceFingerprint,...r}=row;return {...r,status:["pending","responded"].includes(r.status)&&new Date(r.expiresAt)<=new Date()?"expired":r.status};};
@@ -123,6 +123,8 @@ export async function bookDiscovery(ownerId:number,actorId:number|string,input:{
 export async function cancelDiscovery(ownerId:number,actorId:number,input:{requestId:string;expectedRevision:number}){
  return withWorkspaceTransaction(ownerId,async tx=>{const r=await owned(tx,ownerId,input.requestId);if(r.status==="cancelled")return {alreadyCancelled:true};if(r.revision!==input.expectedRevision)throw fail("Discovery changed. Reload before cancelling.","CONFLICT");
   await tx.update(requests).set({status:"cancelled",tokenHash:"",revision:r.revision+1}).where(and(eq(requests.ownerId,ownerId),eq(requests.id,r.id)));
+  const prepared=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,"discovery.email_requested"),eq(workflowEvents.aggregateId,r.id)));
+  for(const e of prepared){const dispatch=(await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId,ownerId),eq(emailDispatches.approvalId,String(e.metadata?.approvalId)))).limit(1))[0];if(dispatch)await cancelUnusedEmailDispatch(tx,ownerId,dispatch,"Client discovery request cancelled.");}
   const m=(await tx.select().from(meetings).where(and(eq(meetings.ownerId,ownerId),eq(meetings.requestId,r.id))).limit(1))[0];if(m)await tx.update(meetings).set({status:"cancelled",revision:m.revision+1}).where(and(eq(meetings.ownerId,ownerId),eq(meetings.id,m.id)));
   await tx.update(automationQueue).set({status:"cancelled",lockToken:null,lockedAt:null}).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.idempotencyKey,`discovery_select:${r.id}:${r.revision}`),inArray(automationQueue.status,["queued","retryable_failed"])));
   await tx.update(incidents).set({status:"resolved",resolvedAt:new Date(),containmentNotes:"Owner cancelled this discovery request."}).where(and(eq(incidents.ownerId,ownerId),eq(incidents.incidentType,"client_discovery_no_slots"),eq(incidents.affectedResourceId,r.id),inArray(incidents.status,["detected","triaged","contained","investigated"])));
@@ -140,4 +142,20 @@ export async function executeDiscoverySelection(ownerId:number,payload:any){
 }
 export async function discoveryIcs(ownerId:number,meetingId:string){
  return withWorkspaceTransaction(ownerId,async tx=>{const m=(await tx.select().from(meetings).where(and(eq(meetings.ownerId,ownerId),eq(meetings.id,meetingId))).limit(1))[0];if(!m)throw new TRPCError({code:"NOT_FOUND"});return {ics:createInterviewIcs({uid:`discovery-${m.id}@freelancehr.overseasjob.in`,sequence:m.revision,start:new Date(m.scheduledAt),end:new Date(new Date(m.scheduledAt).getTime()+m.durationMinutes*60000),summary:"Client hiring discovery",description:"Tentative discovery reservation. Availability submission is not verified attendance or commercial acceptance.",status:m.status==="cancelled"?"CANCELLED":"TENTATIVE"})};});
+}
+
+/** Adapter for the shared private-link outbox; no second sender or token store. */
+export async function pendingDiscoveryForMail(tx:any,ownerId:number,id:string,now=new Date()){
+ const r=await currentRequest(tx,ownerId,id);
+ if(r.status!=="pending"||new Date(r.expiresAt)<=now)throw fail("Discovery request is expired, cancelled, submitted or booked.");
+ return {...r,groupId:r.id,participant:"client",mailPurpose:"client_discovery" as const};
+}
+export async function discoveryMailRecipient(tx:any,ownerId:number,row:{id:string;conversationId:string;contactId:string},conversationId:string,now=new Date()){
+ const current=await pendingDiscoveryForMail(tx,ownerId,row.id,now);
+ if(current.conversationId!==conversationId||current.contactId!==row.contactId)throw fail("Discovery email must use the request's current client conversation.");
+ const c=(await tx.select().from(conversations).where(and(eq(conversations.ownerId,ownerId),eq(conversations.id,conversationId))).limit(1))[0];
+ if(c?.channel!=="email"||["closed","archived","opted_out"].includes(c.status))throw fail("An active client email conversation is required.");
+ const contact=(await tx.select().from(contacts).where(and(eq(contacts.ownerId,ownerId),eq(contacts.id,current.contactId))).limit(1))[0];
+ if(!contact?.email||!await hasClientCommunicationPermission(tx,ownerId,current.contactId,now)||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email))throw fail("Current client email and communication permission are required.");
+ return contact.email.trim().toLowerCase() as string;
 }
