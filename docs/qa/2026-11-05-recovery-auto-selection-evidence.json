@@ -25,6 +25,48 @@
     }
   },
   "live": {
+    "status": "verified_live_scoped_automatic",
+    "start": {
+      "at": "2026-11-05T06:00:06.137Z",
+      "buildCommit": "1e0196b64f7281cee8765aeb7338b71fb3fa4c67",
+      "perRequestDefaultOff": "PASS",
+      "anonymousAuthorizationDenied": "PASS",
+      "syntheticRecipientOnly": true,
+      "persistentWorkerDatabase": true,
+      "workerHeartbeatRecent": true,
+      "mailSent": 0,
+      "guestInvitations": 0
+    },
+    "browser": {
+      "at": "2026-11-05T06:01:51.781Z",
+      "ownerPolicyUiDesktopMobile": "PASS",
+      "bothAnonymousResponses": "PASS",
+      "managedQueueSelectedWithoutManualBooking": "PASS",
+      "sameInterviewId": true,
+      "candidateInterviewCount": 1,
+      "rescheduleCount": 1,
+      "bookingState": "tentative",
+      "participantAcceptance": false,
+      "capabilitiesClosed": "PASS",
+      "runtimeErrors": 0,
+      "transportErrors": 0,
+      "mailSent": 0,
+      "guestInvitations": 0
+    },
+    "cleanup": {
+      "at": "2026-11-05T06:02:18.025Z",
+      "policyDisabled": true,
+      "interviewCancelled": true,
+      "reminderDisabled": true,
+      "candidateWithdrawn": true,
+      "recoveryLinksRevoked": 4,
+      "calendarCancellation": "upserted",
+      "mailSent": 0,
+      "guestInvitations": 0
+    },
+    "actualRecipientDeliveryVerified": false
+  },
+  "deploymentObservation": {
     "status": "deployment_not_updated",
     "checkedAt": "2026-11-05T03:57:45.543886+00:00",
     "githubMainApplicationCommit": "f8e861318abd942f2d980f1169ffe1d48ac284f1",
