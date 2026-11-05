@@ -1,19 +1,17 @@
+import { receiveReply } from "./replyTriage";
 import {redactAvailabilityLinks} from "./privateLinkRedaction";
-import { stopOwnerFollowUps } from "./followupEvents";
 import { timingSafeEqual } from "node:crypto";
 import { and, desc, eq, inArray, or } from "drizzle-orm";
 import {
-  automationQueue,
   candidates,
   contacts,
   conversations,
   incidents,
   messages,
-  suppressionList,
 } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit, requireDb } from "../db";
 import { resolvePrimaryOwner } from "./primaryOwner";
-import { detectOptOut, normalizeMessageRef } from "./hostingerMail";
+import { normalizeMessageRef } from "./hostingerMail";
 
 type UnknownRecord = Record<string, unknown>;
 const asRecord = (value: unknown): UnknownRecord =>
@@ -377,93 +375,12 @@ export async function processHostingerMailWebhook(input: { authorization?: strin
     return { statusCode: 202, body: { status: "routed_to_exception", reason: "unmatched" } };
   }
 
-  const optedOut = detectOptOut(event.text);
-  const messageId = createId("msg_");
-  await db
-    .insert(messages)
-    .values({
-      id: messageId,
-      conversationId: matchedParent.conversationId,
-      ownerId: owner.id,
-      direction: "inbound",
-      status: "received",
-      subject: event.subject,
-      body: event.text,
-      providerMessageId: event.providerMessageId,
-      messageId: event.providerMessageId,
-      inReplyTo: event.inReplyTo ?? null,
-      references: event.references.length > 0 ? event.references : null,
-      idempotencyKey: `hostinger:event:${event.providerMessageId}`,
-      aiGenerated: false,
-      deliveredAt: new Date(),
-    })
-    .onDuplicateKeyUpdate({ set: { deliveredAt: new Date() } });
-
-  if (optedOut) {
-    await db
-      .insert(suppressionList)
-      .values({
-        id: createId("sup_"),
-        ownerId: owner.id,
-        channel: "email",
-        valueHash: hashContactValue(event.sender),
-        reason: "Hostinger inbound opt-out detected",
-        source: "hostinger_mail_webhook",
-      })
-      .onDuplicateKeyUpdate({
-        set: {
-          active: true,
-          reason: "Hostinger inbound opt-out detected",
-          source: "hostinger_mail_webhook",
-        },
-      });
-  }
-
-  await db
-    .update(conversations)
-    .set({
-      status: optedOut ? "opted_out" : "reply_received",
-      classification: optedOut ? "stop_contact" : null,
-      lastMessageAt: new Date(),
-    })
-    .where(eq(conversations.id, matchedParent.conversationId));
-
-  await stopOwnerFollowUps(owner.id, optedOut ? { recipientHash: hashContactValue(event.sender) } : { conversationId: matchedParent.conversationId }, optedOut ? "cancelled" : "paused", optedOut ? "Recipient opted out." : "Recipient replied; review before resuming.");
-
-  if (!optedOut) {
-    await db
-      .insert(automationQueue)
-      .values({
-        id: createId("q_"),
-        ownerId: owner.id,
-        jobType: "classify_reply",
-        status: "queued",
-        payload: {
-          conversationId: matchedParent.conversationId,
-          messageId,
-          sender: event.sender,
-          subject: event.subject,
-          body: event.text,
-          source: "hostinger_mail_webhook",
-        },
-        priority: 30,
-        scheduledAt: new Date(),
-        maxAttempts: 3,
-        idempotencyKey: `classify_reply:${event.providerMessageId}`,
-      })
-      .onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
-  }
-
-  await recordAudit({
-    ownerId: owner.id,
-    actorType: "provider",
-    actorId: "hostinger_mail_api",
-    action: optedOut ? "email.webhook_opt_out" : "email.webhook_classification_queued",
-    resourceType: "conversation",
-    resourceId: matchedParent.conversationId,
-    nextState: optedOut ? "opted_out" : "reply_received",
-    metadata: { messageId, providerMessageId: event.providerMessageId },
+  const { messageId, optedOut } = await receiveReply(owner.id, {
+    conversationId: matchedParent.conversationId, body: event.text, subject: event.subject,
+    sender: event.sender, providerMessageId: event.providerMessageId, inReplyTo: event.inReplyTo,
+    references: event.references, source: "hostinger_mail_webhook",
   });
+  await recordAudit({ ownerId: owner.id, actorType: "provider", actorId: "hostinger_mail_api", action: optedOut ? "email.webhook_opt_out" : "email.webhook_classification_queued", resourceType: "conversation", resourceId: matchedParent.conversationId, nextState: optedOut ? "opted_out" : "reply_received", metadata: { messageId, providerMessageId: event.providerMessageId } });
 
   return {
     statusCode: 202,

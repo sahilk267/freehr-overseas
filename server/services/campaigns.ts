@@ -1,3 +1,4 @@
+import { hasClientCommunicationPermission } from "./communicationPermission";
 import { campaignInput } from "../validators/campaigns";
 import { and, asc, desc, eq, inArray, isNull, lte, or } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -73,10 +74,10 @@ async function recipientSnapshot(tx: any, campaign: Campaign, recipientId: strin
   else if (person.deletedAt || person.withdrawnAt || person.doNotContactAt || person.optedOutAt || ["deleted", "deletion_pending", "withdrawn", "do_not_contact"].includes(person.profileState)) reason = "Recipient is withdrawn, erased or opted out.";
   const permissionRows = campaign.audienceType === "candidate"
     ? await tx.select().from(consents).where(and(eq(consents.ownerId, ownerId), eq(consents.candidateId, recipientId), eq(consents.status, "granted"), eq(consents.consentType, "recruitment_communication")))
-    : await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId, ownerId), eq(workflowEvents.aggregateId, recipientId), eq(workflowEvents.eventType, "communication.permission_recorded"))).orderBy(desc(workflowEvents.revision)).limit(1);
+    : [];
   const now = new Date();
   if (!reason && campaign.audienceType === "candidate" && !permissionRows.some((p: any) => !p.jobId && (!p.expiresAt || p.expiresAt > now))) reason = "Current unscoped recruitment communication permission is required.";
-  if (!reason && campaign.audienceType === "contact" && (!["granted", "permitted", "consented"].includes(person.contactPermission) || (permissionRows[0]?.metadata?.expiresAt && new Date(permissionRows[0].metadata.expiresAt) <= now))) reason = "Documented contact permission is missing or expired.";
+  if (!reason && campaign.audienceType === "contact" && !await hasClientCommunicationPermission(tx, ownerId, recipientId, now)) reason = "Documented contact permission is missing or expired.";
   const recipientHash = email ? hashContactValue(email) : "";
   if (!reason && (await tx.select().from(suppressionList).where(and(eq(suppressionList.ownerId, ownerId), eq(suppressionList.valueHash, recipientHash), eq(suppressionList.active, true))).limit(1)).length) reason = "Recipient is suppressed.";
   const conflicts = recipientHash ? await tx.select().from(followUpPlans).where(and(eq(followUpPlans.ownerId, ownerId), eq(followUpPlans.recipientHash, recipientHash), inArray(followUpPlans.status, activePlans))).limit(1) : [];

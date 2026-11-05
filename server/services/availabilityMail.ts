@@ -1,3 +1,4 @@
+import {hasClientCommunicationPermission} from './communicationPermission';
 import {assertRecoveryCurrent} from './interviewRecovery';
 import {pendingConfirmationForMail} from "./interviewConfirmations";
 import {randomBytes} from 'node:crypto';
@@ -24,7 +25,7 @@ async function recipient(tx:any,ownerId:number,row:any,conversationId:string,now
   if(!candidate?.email||!(await hasCandidateCommunicationPermission(tx,ownerId,row.candidateId,row.jobId,['recruitment_communication','interview_processing'],now)))throw fail('Current interview/recruitment communication permission and candidate email are required.');address=candidate.email;
  }else{
   const contact=c.contactId?(await tx.select().from(contacts).where(and(eq(contacts.ownerId,ownerId),eq(contacts.id,c.contactId))).limit(1))[0]:null;
-  if(c.companyId!==job.companyId||c.candidateId||!contact?.email||contact.companyId!==job.companyId||contact.optedOutAt||!['permitted','granted','consented'].includes(contact.contactPermission))throw fail('Interviewer availability requires a permitted contact from this client.');address=contact.email;
+  if(c.companyId!==job.companyId||c.candidateId||!contact?.email||contact.companyId!==job.companyId||!await hasClientCommunicationPermission(tx,ownerId,contact.id,now))throw fail('Interviewer availability requires a permitted contact from this client.');address=contact.email;
  }
  address=address.trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(address))throw fail('Recipient address must be valid.');
  if((await tx.select().from(suppressionList).where(and(eq(suppressionList.ownerId,ownerId),eq(suppressionList.channel,'email'),eq(suppressionList.valueHash,hashContactValue(address)),eq(suppressionList.active,true)))).length)throw fail('Recipient is suppressed.');return address;

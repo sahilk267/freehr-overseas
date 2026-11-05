@@ -513,13 +513,15 @@
           "id": "M10-F03",
           "description": "Personalized acquisition campaigns and reply routing; M06 owns cadence, M07 delivery, M08 grounded drafting.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-01-w4-automation.md",
-          "implementation_note": "Reviewed acquisition/talent campaign audiences and exact sequences use M06/M07, with bounded grants and reply/opt-out stops; discovery/reply-to-booking automation remains pending."
+          "evidence_ref": "qa/2026-11-05-client-reply-triage.md",
+          "implementation_note": "Existing M06/M07 campaigns now share transactional inbound deduplication and monotonic reply assessment. Current client replies support reviewed next actions and immutable recipient-bound approved response drafts; unattended discovery booking, automatic grounded response generation and actual recipient delivery remain pending."
         },
         {
           "id": "M10-F04",
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-05-client-reply-triage.md",
+          "implementation_note": "Latest client reply recommendations and revision-safe owner next-action notes/due dates are implemented. Dedicated client discovery meetings, stakeholder mapping, SLA escalation and complete automatic booking remain pending."
         },
         {
           "id": "M10-F05",

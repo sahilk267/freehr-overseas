@@ -4,7 +4,8 @@ const inserts: Array<{ table: unknown; values: Record<string, unknown> }> = [];
 const audits: Array<Record<string, unknown>> = [];
 let matched = true;
 
-vi.mock("./followupEvents", () => ({ stopOwnerFollowUps: vi.fn() }));
+const receive = vi.hoisted(() => vi.fn(async () => ({ messageId: "received-message", optedOut: false })));
+vi.mock("./replyTriage", () => ({ receiveReply: receive }));
 
 vi.mock("../db", () => ({
   createId: (prefix = "") => `${prefix}test-id`,
@@ -23,14 +24,14 @@ vi.mock("../_core/env", () => ({ ENV: { ownerOpenId: "owner" } }));
 const { processHostingerMailWebhook } = await import("./hostingerWebhook");
 
 describe("Hostinger Mail webhook persistence", () => {
-  beforeEach(() => { inserts.length = 0; audits.length = 0; matched = true; process.env.HOSTINGER_MAIL_WEBHOOK_SECRET = "unit-secret"; });
+  beforeEach(() => { inserts.length = 0; audits.length = 0; receive.mockClear(); matched = true; process.env.HOSTINGER_MAIL_WEBHOOK_SECRET = "unit-secret"; });
 
   const payload = { event: "message.received", data: { message: { id: "provider-reply-1", from: "candidate@example.test", subject: "Re: Role", text: "I am interested", inReplyTo: "<outbound-message@example.test>", references: ["<older-message@example.test>"] } } };
 
   it("queues controlled reply classification and records an audit event for a matched thread", async () => {
     const result = await processHostingerMailWebhook({ authorization: "Bearer unit-secret", body: payload });
     expect(result).toMatchObject({ statusCode: 202, body: { status: "classification_queued", conversationId: "conversation-1" } });
-    expect(inserts.some(entry => entry.values.jobType === "classify_reply" && entry.values.idempotencyKey === "classify_reply:provider-reply-1")).toBe(true);
+    expect(receive).toHaveBeenCalledWith(7, expect.objectContaining({ conversationId: "conversation-1", providerMessageId: "provider-reply-1", body: "I am interested", sender: "candidate@example.test", source: "hostinger_mail_webhook" }));
     expect(audits.some(entry => entry.action === "email.webhook_classification_queued" && entry.resourceId === "conversation-1")).toBe(true);
   });
 
@@ -39,7 +40,7 @@ describe("Hostinger Mail webhook persistence", () => {
     const result = await processHostingerMailWebhook({ authorization: "Bearer unit-secret", body: payload });
     expect(result).toMatchObject({ statusCode: 202, body: { status: "routed_to_exception" } });
     expect(inserts.some(entry => entry.values.incidentType === "hostinger_mail_unmatched_event")).toBe(true);
-    expect(inserts.some(entry => entry.values.jobType === "classify_reply")).toBe(false);
+    expect(receive).not.toHaveBeenCalled();
     expect(audits.some(entry => entry.action === "email.webhook_unmatched")).toBe(true);
   });
 });

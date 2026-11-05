@@ -1,3 +1,5 @@
+import {validateReplyEmail} from "./replyMail";
+import type {ReplyMailScope} from "./replyMailScope";
 import {materializeAvailabilityEmail} from "./availabilityMail";
 import type {AvailabilityMailScope} from "./availabilityMailScope";
 import { and, eq, gte, isNull } from "drizzle-orm";
@@ -27,11 +29,11 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
     const approval = (await lockedSelect(tx.select().from(approvals).where(and(eq(approvals.ownerId, ownerId), eq(approvals.actionType, "email_send"), eq(approvals.resourceId, messageId ?? ""), ...(dispatch ? [eq(approvals.id, dispatch.approvalId)] : []))).limit(1)))[0];
     if (!message || !approval || approval.status !== "approved") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A current approved sender and approved email action are required." });
     if (approval.actionedAt || message.status === "sent" || (dispatch && dispatch.status !== "queued")) throw new TRPCError({ code: "CONFLICT", message: "This email approval has already been consumed or cancelled; reconcile before retrying." });
-    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope };
+    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope; replyScope?:ReplyMailScope };
     if (!payload?.senderIdentityId || !payload?.recipient) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Approved email action is missing sender or recipient payload." });
     if (input.senderIdentityId && input.senderIdentityId !== payload.senderIdentityId) throw new TRPCError({ code: "BAD_REQUEST", message: "Supplied sender identity does not match the approved payload." });
     if (input.recipient && input.recipient.trim().toLowerCase() !== payload.recipient.trim().toLowerCase()) throw new TRPCError({ code: "BAD_REQUEST", message: "Supplied recipient does not match the approved payload." });
-    if (payload.contentHash !== emailContentHash({ senderIdentityId: payload.senderIdentityId, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink })) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Email content changed or has no bound authorization; request a new approval." });
+    if (payload.contentHash !== emailContentHash({ senderIdentityId: payload.senderIdentityId, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink, replyScope:payload.replyScope })) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Email content changed or has no bound authorization; request a new approval." });
     const identity = (await lockedSelect(tx.select().from(emailIdentities).where(and(eq(emailIdentities.id, payload.senderIdentityId), eq(emailIdentities.ownerId, ownerId))).limit(1)))[0];
     if (!identity || identity.status !== "active") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A current approved sender is required." });
     if (payload.senderAddress !== identity.email || payload.senderPurpose !== identity.purpose) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Sender changed; request a new email approval." });
@@ -83,6 +85,7 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
       if (plan) { await stopFollowUp(tx, plan, "blocked", "Sending mailbox does not match a configured transport; no delivery was attempted."); return { status: "blocked", reason: "Configure and verify the sending mailbox before resuming." }; }
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The sending mailbox is not configured; no delivery was attempted." });
     }
+    await validateReplyEmail(tx, ownerId, payload, message, now);
     const deliveryBody=await materializeAvailabilityEmail(tx,ownerId,payload,message,now);
     const claimed = await tx.update(approvals).set({ actionedAt: now }).where(and(eq(approvals.id, approval.id), eq(approvals.ownerId, ownerId), eq(approvals.status, "approved"), isNull(approvals.actionedAt)));
     if (!claimed[0]?.affectedRows) throw new TRPCError({ code: "CONFLICT", message: "This email approval has already been consumed." });

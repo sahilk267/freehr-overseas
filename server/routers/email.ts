@@ -1,5 +1,5 @@
+import { receiveReply } from "../services/replyTriage";
 import {redactAvailabilityLinks} from "../services/privateLinkRedaction";
-import { stopOwnerFollowUps } from "../services/followupEvents";
 import { discoverHostingerMailboxes } from "../services/hostingerMail";
 import { deliverApprovedEmail } from "../services/emailDelivery";
 import { TRPCError } from "@trpc/server";
@@ -7,7 +7,7 @@ import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { approvals, conversations, emailIdentities, incidents, messages, suppressionList } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit, requireDb } from "../db";
-import { detectOptOut, getHostingerMailApiStatus, isApprovedSenderAddress, normalizeMessageRef, verifyHostingerMailApi, EMAIL_PURPOSES } from "../services/hostingerMail";
+import { getHostingerMailApiStatus, isApprovedSenderAddress, normalizeMessageRef, verifyHostingerMailApi, EMAIL_PURPOSES } from "../services/hostingerMail";
 import { protectedProcedure, router } from "../_core/trpc";
 import { emailContentHash } from "../services/emailAuthorization";
 
@@ -84,13 +84,7 @@ export const emailRouter = router({
     record: protectedProcedure.input(z.object({ conversationId: z.string().min(4), sender: z.string().email(), subject: z.string().max(255).optional(), body: z.string().trim().min(1).max(12000), providerMessageId: z.string().max(255).optional() })).mutation(async ({ ctx, input }) => {
       const db = await requireDb(); const conversation = (await db.select().from(conversations).where(and(eq(conversations.id, input.conversationId), eq(conversations.ownerId, ctx.user.id))).limit(1))[0];
       if (!conversation) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation was not found." });
-      const id = createId("msg_"); const optedOut = detectOptOut(redactAvailabilityLinks(input.body));
-      await db.insert(messages).values({ id, conversationId: conversation.id, ownerId: ctx.user.id, direction: "inbound", status: "received", subject: input.subject?redactAvailabilityLinks(input.subject):input.subject, body: redactAvailabilityLinks(input.body), providerMessageId: input.providerMessageId, idempotencyKey: `inbound:${input.providerMessageId ?? id}`, aiGenerated: false, deliveredAt: new Date() });
-      if (optedOut) await db.insert(suppressionList).values({ id: createId("sup_"), ownerId: ctx.user.id, channel: "email", valueHash: hashContactValue(input.sender), reason: "Inbound opt-out detected", source: "inbound_mail" }).onDuplicateKeyUpdate({ set: { active: true, reason: "Inbound opt-out detected", source: "inbound_mail" } });
-      await db.update(conversations).set({ status: optedOut ? "opted_out" : "reply_received", classification: optedOut ? "stop_contact" : null, lastMessageAt: new Date() }).where(eq(conversations.id, conversation.id));
-      await stopOwnerFollowUps(ctx.user.id, optedOut ? { recipientHash: hashContactValue(input.sender) } : { conversationId: conversation.id }, optedOut ? "cancelled" : "paused", optedOut ? "Recipient opted out." : "Recipient replied; review before resuming.");
-      await recordAudit({ ownerId: ctx.user.id, actorType: "provider", actorId: "inbound_mail", action: optedOut ? "email.opt_out_detected" : "email.inbound_recorded", resourceType: "conversation", resourceId: conversation.id, nextState: optedOut ? "opted_out" : "reply_received", metadata: { messageId: id } });
-      return { messageId: id, optedOut };
+      return receiveReply(ctx.user.id, { ...input, conversationId: conversation.id, source: "inbound_mail" });
     }),
     recordByThread: protectedProcedure.input(z.object({ sender: z.string().email(), subject: z.string().max(255).optional(), body: z.string().trim().min(1).max(12000), providerMessageId: z.string().min(3).max(255), inReplyTo: z.string().max(255).optional(), references: z.array(z.string().max(255)).max(20).default([]) })).mutation(async ({ ctx, input }) => {
       const db = await requireDb();
@@ -198,13 +192,8 @@ export const emailRouter = router({
         await recordAudit({ ownerId: ctx.user.id, actorType: "provider", actorId: "inbound_mail", action: "email.inbound_unmatched", resourceType: "email", resourceId: input.providerMessageId, metadata: { incidentId } });
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Inbound mail could not be matched and has been routed to the exception center." });
       }
-      const id = createId("msg_"); const optedOut = detectOptOut(redactAvailabilityLinks(input.body));
-      await db.insert(messages).values({ id, conversationId: parent.conversationId, ownerId: ctx.user.id, direction: "inbound", status: "received", subject: input.subject?redactAvailabilityLinks(input.subject):input.subject, body: redactAvailabilityLinks(input.body), providerMessageId: input.providerMessageId, idempotencyKey: `inbound:${input.providerMessageId}`, aiGenerated: false, deliveredAt: new Date() });
-      if (optedOut) await db.insert(suppressionList).values({ id: createId("sup_"), ownerId: ctx.user.id, channel: "email", valueHash: hashContactValue(input.sender), reason: "Inbound opt-out detected", source: "inbound_mail" }).onDuplicateKeyUpdate({ set: { active: true, reason: "Inbound opt-out detected", source: "inbound_mail" } });
-      await db.update(conversations).set({ status: optedOut ? "opted_out" : "reply_received", classification: optedOut ? "stop_contact" : null, lastMessageAt: new Date() }).where(eq(conversations.id, parent.conversationId));
-      await stopOwnerFollowUps(ctx.user.id, optedOut ? { recipientHash: hashContactValue(input.sender) } : { conversationId: parent.conversationId }, optedOut ? "cancelled" : "paused", optedOut ? "Recipient opted out." : "Recipient replied; review before resuming.");
-      await recordAudit({ ownerId: ctx.user.id, actorType: "provider", actorId: "inbound_mail", action: optedOut ? "email.opt_out_detected" : "email.inbound_thread_matched", resourceType: "conversation", resourceId: parent.conversationId, nextState: optedOut ? "opted_out" : "reply_received", metadata: { messageId: id, parentMessageId: parent.id } });
-      return { messageId: id, conversationId: parent.conversationId, optedOut };
+      const result = await receiveReply(ctx.user.id, { ...input, conversationId: parent.conversationId, source: "inbound_mail" });
+      return { ...result, conversationId: parent.conversationId };
     }),
     messages: protectedProcedure.input(z.object({ conversationId: z.string().min(4), limit: z.number().int().min(1).max(100).default(50) })).query(async ({ ctx, input }) => {
       const db = await requireDb(); const conversation = (await db.select().from(conversations).where(and(eq(conversations.id, input.conversationId), eq(conversations.ownerId, ctx.user.id))).limit(1))[0];

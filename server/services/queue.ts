@@ -1,3 +1,4 @@
+import { assessReply, type ReplyAssessment } from "./replyTriage";
 import {executeRecoveryAutoSelection} from "./recoveryAutoSelection";
 import { TRPCError } from "@trpc/server";
 import { executeCalendarSync } from "./calendarAutomation";
@@ -121,79 +122,8 @@ export async function handleAiTaskResult(
       });
     }
   } else if (job.jobType === "classify_reply") {
-    const conversationId = payload.conversationId ? String(payload.conversationId) : null;
-    const classificationData = result as {
-      classification?: string;
-      confidence?: number;
-      rationale?: string;
-      nextAction?: string;
-    };
-
-    if (conversationId && classificationData?.classification) {
-      const isOptOut =
-        classificationData.nextAction === "stop_contact" ||
-        classificationData.classification === "opt_out";
-
-      await db
-        .update(conversations)
-        .set({
-          classification: classificationData.classification,
-          status: isOptOut ? "opted_out" : undefined,
-          updatedAt: new Date(),
-        })
-        .where(and(eq(conversations.id, conversationId), eq(conversations.ownerId, ownerId)));
-
-      if (isOptOut) {
-        if (payload.sender) {
-          await db
-            .insert(suppressionList)
-            .values({
-              id: createId("sup_"),
-              ownerId,
-              channel: "email",
-              valueHash: hashContactValue(String(payload.sender)),
-              reason: "AI classified opt-out",
-              source: "ai_classify_reply",
-            })
-            .onDuplicateKeyUpdate({
-              set: { active: true, reason: "AI classified opt-out" },
-            });
-        }
-        const conv = (
-          await db
-            .select()
-            .from(conversations)
-            .where(and(eq(conversations.id, conversationId), eq(conversations.ownerId, ownerId)))
-            .limit(1)
-        )[0];
-        if (conv?.contactId) {
-          await db
-            .update(contacts)
-            .set({ contactPermission: "opted_out", optedOutAt: new Date(), updatedAt: new Date() })
-            .where(eq(contacts.id, conv.contactId));
-        }
-        if (conv?.candidateId) {
-          await db
-            .update(candidates)
-            .set({ doNotContactAt: new Date(), updatedAt: new Date() })
-            .where(eq(candidates.id, conv.candidateId));
-        }
-      }
-
-      await recordAudit({
-        ownerId,
-        actorType: "ai",
-        actorId: selectedModel,
-        action: "outreach.reply_classified",
-        resourceType: "conversation",
-        resourceId: conversationId,
-        metadata: {
-          classification: classificationData.classification,
-          confidence: classificationData.confidence,
-          isOptOut,
-        },
-      });
-    }
+    const assessment = result as ReplyAssessment;
+    if (assessment?.classification) await assessReply(ownerId, payload, assessment, selectedModel);
   } else if (job.jobType === "score_match") {
     const candidateId = payload.candidateId ? String(payload.candidateId) : null;
     const jobId = payload.jobId ? String(payload.jobId) : null;

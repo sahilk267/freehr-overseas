@@ -1,3 +1,5 @@
+import {validateReplyEmail} from "./replyMail";
+import type {ReplyMailScope} from "./replyMailScope";
 import {materializeAvailabilityEmail,revokePreparedPrivateLink} from "./availabilityMail";
 import type {AvailabilityMailScope} from "./availabilityMailScope";
 import { stopFollowUp } from "./workflowStore";
@@ -100,13 +102,14 @@ export async function applySideEffect(
   // Approval authorizes the immutable message record; it never sends an email.
   if (approval.actionType === "email_send") {
     const message = (await db.select().from(messages).where(and(eq(messages.id, approval.resourceId), eq(messages.ownerId, approval.ownerId))).limit(1))[0];
-    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope } | null;
+    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope; replyScope?:ReplyMailScope } | null;
     const identity = payload?.senderIdentityId ? (await db.select().from(emailIdentities).where(and(eq(emailIdentities.id, payload.senderIdentityId), eq(emailIdentities.ownerId, approval.ownerId))).limit(1))[0] : null;
     if (!message || message.status !== "approval_pending" || !identity || identity.status !== "active" || !payload?.recipient) throw new Error("Email authorization is stale or incomplete.");
     if (payload.senderAddress !== identity.email || payload.senderPurpose !== identity.purpose) throw new Error("Sender identity changed; a new approval is required.");
-    if (payload.contentHash !== emailContentHash({ senderIdentityId: identity.id, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink })) throw new Error("Email content changed; a new approval is required.");
+    if (payload.contentHash !== emailContentHash({ senderIdentityId: identity.id, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink, replyScope:payload.replyScope })) throw new Error("Email content changed; a new approval is required.");
     const suppressed = (await db.select().from(suppressionList).where(and(eq(suppressionList.ownerId, approval.ownerId), eq(suppressionList.valueHash, hashContactValue(payload.recipient)), eq(suppressionList.active, true))).limit(1))[0];
     if (suppressed) throw new Error("Email recipient is suppressed.");
+    await validateReplyEmail(db, approval.ownerId, payload, message, decidedAt);
     await materializeAvailabilityEmail(db,approval.ownerId,payload,message,decidedAt);
     const dispatch = (await db.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, approval.ownerId), eq(emailDispatches.approvalId, approval.id))).limit(1))[0];
     if (dispatch) {
@@ -364,6 +367,10 @@ export async function applyApprovalDecision(
     if (decision === "approved") {
       await applySideEffect(tx, current, decidedAt, decidedById);
     } else if (current.actionType === "email_send") {
+      if ((current.payload as {replyScope?:ReplyMailScope}|null)?.replyScope) {
+        await tx.update(emailDispatches).set({status:"cancelled",lastError:"Owner rejected client response."}).where(and(eq(emailDispatches.ownerId,current.ownerId),eq(emailDispatches.approvalId,current.id),eq(emailDispatches.status,"queued")));
+        await tx.update(messages).set({status:"cancelled"}).where(and(eq(messages.ownerId,current.ownerId),eq(messages.id,current.resourceId),eq(messages.status,"approval_pending")));
+      }
       const privateLink=(current.payload as {privateLink?:AvailabilityMailScope}|null)?.privateLink;
       if(privateLink){
         await tx.update(emailDispatches).set({status:"cancelled",lastError:"Owner rejected private link delivery."}).where(and(eq(emailDispatches.ownerId,current.ownerId),eq(emailDispatches.approvalId,current.id)));

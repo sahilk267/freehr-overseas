@@ -1,3 +1,5 @@
+import { prepareReplyEmail } from "../services/replyMail";
+import { clientReplyCase, receiveReply, recordReplyAction, REPLY_ACTIONS } from "../services/replyTriage";
 import {redactAvailabilityLinks} from "../services/privateLinkRedaction";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
@@ -30,14 +32,11 @@ export const outreachRouter = router({
     const db = await requireDb();
     const conversation = (await db.select().from(conversations).where(and(eq(conversations.id, input.conversationId), eq(conversations.ownerId, ctx.user.id))).limit(1))[0];
     if (!conversation) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation was not found." });
-    const messageId = createId("msg_");
-    const queueId = createId("que_");
-    await db.insert(messages).values({ id: messageId, conversationId: conversation.id, ownerId: ctx.user.id, direction: "inbound", status: "received", body: messageText, idempotencyKey: `inbound:${messageId}`, aiGenerated: false, deliveredAt: new Date() });
-    await db.insert(automationQueue).values({ id: queueId, ownerId: ctx.user.id, jobType: "classify_reply", payload: { conversationId: conversation.id, messageId, messageText: messageText, instruction: "Classify only. If the message asks to stop contact, recommend stop_contact." }, idempotencyKey: `classify_reply:${messageId}` });
-    await db.update(conversations).set({ status: "reply_received", lastMessageAt: new Date() }).where(eq(conversations.id, conversation.id));
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "outreach.reply_queued_for_classification", resourceType: "conversation", resourceId: conversation.id, nextState: "reply_received", metadata: { queueId } });
-    return { messageId, queueId };
+    return receiveReply(ctx.user.id, { conversationId: conversation.id, body: messageText, source: "owner_recorded_reply" });
   }),
+  prepareReplyEmail: protectedProcedure.input(z.object({ conversationId: z.string().min(4), messageId: z.string().min(4), replyRevision: z.number().int().positive(), actionRevision: z.number().int().positive(), senderIdentityId: z.string().min(4), subject: z.string().trim().min(1).max(255), body: z.string().trim().min(8).max(11500) })).mutation(({ ctx, input }) => prepareReplyEmail(ctx.user.id, input)),
+  replyCase: protectedProcedure.input(z.object({ conversationId: z.string().min(4) })).query(async ({ ctx, input }) => clientReplyCase(await requireDb(), ctx.user.id, input.conversationId)),
+  recordReplyAction: protectedProcedure.input(z.object({ conversationId: z.string().min(4), messageId: z.string().min(4), replyRevision: z.number().int().positive(), expectedActionRevision: z.number().int().min(0), action: z.enum(REPLY_ACTIONS), notes: z.string().trim().min(8).max(2000), dueAt: z.coerce.date().optional() })).mutation(({ ctx, input }) => recordReplyAction(ctx.user.id, input)),
   list: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(100).default(50) }).default({ limit: 50 })).query(async ({ ctx, input }) => {
     const db = await requireDb();
     return db.select().from(conversations).where(eq(conversations.ownerId, ctx.user.id)).orderBy(desc(conversations.updatedAt)).limit(input.limit);
