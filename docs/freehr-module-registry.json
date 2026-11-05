@@ -521,7 +521,7 @@
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-06-client-discovery.md",
-          "implementation_note": "Current-reply-bound client discovery requests collect private availability and reuse shared slot math, Google free/busy, internal conflict admission and the persistent queue for optional per-request automatic tentative selection. Dedicated client meeting records and ICS cancellation are implemented. Live acceptance follows; delivery/provider event sync, verified attendance, stakeholder mapping and automatic SLA escalation remain pending."
+          "implementation_note": "Live-verified current-reply-bound discovery requests collect private client availability and reuse shared slot math, real Google free/busy, internal conflict admission and the persistent worker for scoped automatic tentative selection. Dedicated client meeting records, owner-reviewed booking, replay/cancellation and ICS are verified; synthetic cleanup passed. Link delivery, Google event sync, verified attendance, stakeholder mapping and automatic SLA escalation remain pending."
         },
         {
           "id": "M10-F05",

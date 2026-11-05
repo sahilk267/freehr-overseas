@@ -1,0 +1,161 @@
+{
+  "scope": "Synthetic client discovery collection, scoped automatic and manual tentative booking",
+  "client_timezone": "Asia/Calcutta",
+  "client_date": "2026-11-06",
+  "local_validation": {
+    "unit_passed": 647,
+    "unit_skipped": 48,
+    "mysql_passed": 377,
+    "mysql_files": 23,
+    "types": "PASS",
+    "tracker": "PASS",
+    "build": "PASS",
+    "hostinger_entry_checks": 4
+  },
+  "upgrade_rehearsal": {
+    "baselineEntries": 23,
+    "finalEntries": 24,
+    "concurrentAndRepeatedUpgrade": "PASS",
+    "existingPhoneHashesAndSuppressionsPreserved": "PASS",
+    "existingContactsAndPermissionsPreserved": "PASS",
+    "existingCompaniesPreserved": "PASS",
+    "noActiveCalendarCreated": "PASS",
+    "noHoldSeeded": "PASS",
+    "noAvailabilityLinksSeeded": "PASS",
+    "noDiscoveryRequestsSeeded": "PASS",
+    "noDiscoveryMeetingsSeeded": "PASS",
+    "defaultBackgroundDisabled": "PASS",
+    "changedManifestRejected": "PASS"
+  },
+  "live": {
+    "checkedAt": "2026-11-05T21:07:59.113Z",
+    "tests": [
+      {
+        "name": "owner UI authorizes one private automatic discovery request",
+        "status": "PASS"
+      },
+      {
+        "name": "anonymous caller cannot read owner discovery history",
+        "status": "PASS"
+      },
+      {
+        "name": "anonymous mobile client submits availability and fragment is scrubbed",
+        "status": "PASS"
+      },
+      {
+        "name": "actual managed worker chooses a fresh Google-checked tentative meeting",
+        "status": "PASS"
+      },
+      {
+        "name": "booked client capability closes without claiming attendance or sending an invite",
+        "status": "PASS"
+      },
+      {
+        "name": "owner deep link opens the correct booked client request at desktop and mobile widths",
+        "status": "PASS"
+      },
+      {
+        "name": "owner UI cancellation revokes the reservation and advances ICS cancellation",
+        "status": "PASS"
+      },
+      {
+        "name": "manual Google-checked booking reuses exact retry and cannot recreate a cancelled meeting",
+        "status": "PASS"
+      },
+      {
+        "name": "new client reply invalidates unconsumed discovery capability",
+        "status": "PASS"
+      }
+    ],
+    "noRecipientMailSent": true,
+    "noGoogleEventWrite": true,
+    "noGuestInvitations": true,
+    "buildCommit": "864858a1496340f1b4a900fee060e8252c0cc1da",
+    "automaticBooking": {
+      "requestId": "dcr_2gReRJygpzNl8_GpAxBF",
+      "meetingId": "dcm_60SoRWEl2zXbZXcUlJ51",
+      "status": "tentative",
+      "scheduledAt": "2026-11-07T21:10:00.000Z",
+      "googleChecked": true,
+      "manualBookingCommandUsed": false,
+      "queueStatus": "completed"
+    },
+    "runtimeErrors": [],
+    "transportErrors": []
+  },
+  "cleanup": {
+    "checkedAt": "2026-11-05T21:09:36.819Z",
+    "tests": [
+      {
+        "name": "all synthetic discovery requests and meetings cancelled",
+        "status": "PASS"
+      },
+      {
+        "name": "opt-out cancels the review chase and prevents future synthetic contact",
+        "status": "PASS"
+      },
+      {
+        "name": "review campaign cancelled and synthetic company suppressed",
+        "status": "PASS"
+      }
+    ],
+    "noRecipientMailSent": true,
+    "noGoogleEventWrite": true,
+    "noGuestInvitations": true,
+    "requests": [
+      {
+        "id": "dcr_o_N6rkjDFPJGdyYsF0Dq",
+        "status": "cancelled",
+        "meeting": null
+      },
+      {
+        "id": "dcr_oI2etTXu5U-KNVDEitGT",
+        "status": "cancelled",
+        "meeting": {
+          "id": "dcm_15aK5kwyF2NPQ7rIk9eV",
+          "status": "cancelled"
+        }
+      },
+      {
+        "id": "dcr_2gReRJygpzNl8_GpAxBF",
+        "status": "cancelled",
+        "meeting": {
+          "id": "dcm_60SoRWEl2zXbZXcUlJ51",
+          "status": "cancelled"
+        }
+      }
+    ],
+    "worker": {
+      "enabled": true,
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "emergencyStop": false,
+      "lastError": null
+    },
+    "buildCommit": "864858a1496340f1b4a900fee060e8252c0cc1da",
+    "health": "ok"
+  },
+  "screenshots": [
+    {
+      "name": "public-mobile.png",
+      "sha256": "032f8df231722bb790056f33aa1e2caab5b70d8aba9e03ddb7d33f183ad8da81",
+      "stored": "local QA workspace artifact"
+    },
+    {
+      "name": "owner-desktop.png",
+      "sha256": "e321dcd0bf7b3140c97ec4735a1c7456252e650fa62eee45595ed7bf62ae1a6a",
+      "stored": "local QA workspace artifact"
+    },
+    {
+      "name": "owner-mobile.png",
+      "sha256": "ec69d2b28acb6bbd757dcb6c0330e00239716439a78e3f5323851c4393e5d9b9",
+      "stored": "local QA workspace artifact"
+    }
+  ],
+  "limitations": [
+    "Discovery booking is an internal tentative reservation with ICS export",
+    "No discovery Google event creation, invitations or link email delivery",
+    "Capability possession does not verify client identity or attendance",
+    "External calendar change reconciliation, discovery reminder adapter and automatic request-expiry SLA remain pending"
+  ]
+}
