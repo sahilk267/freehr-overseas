@@ -245,7 +245,7 @@ async function reviewResourceConflict(ownerId:number,id:string,resource:Calendar
     const latest = await withWorkspaceTransaction(ownerId, tx => resourceSnapshot(tx, ownerId, id, resource));
     if (latest.previewHash !== s.previewHash) throw new CalendarFailure(resource==="interview"?"interview_changed":"meeting_changed");
     return { previewHash: s.previewHash, approvedExternalReviewHash: externalReviewKey(s.previewHash, remote), saved: s.event,
-      remote: { summary: String(remote.summary || "").slice(0,1000), status: String(remote.status || ""), start: String(remote.start?.dateTime || remote.start?.date || ""), end: String(remote.end?.dateTime || remote.end?.date || ""), location: String(remote.location || "").slice(0,1000) } };
+      remote: { summary: String(remote.summary || "").slice(0,1000), status: String(remote.status || ""), start: String(remote.start?.dateTime || remote.start?.date || ""), end: String(remote.end?.dateTime || remote.end?.date || ""), location: String(remote.location || "").slice(0,1000), ...(resource==="client_discovery"?{visibility:String(remote.visibility||"default"),attendeeCount:Array.isArray(remote.attendees)?remote.attendees.length:0,remindersEnabled:Boolean(remote.reminders?.useDefault||remote.reminders?.overrides?.length)}:{}) } };
   });
 }
 
