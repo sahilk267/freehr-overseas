@@ -1,0 +1,17 @@
+{
+  "local": {
+    "testsPassed": 577,
+    "testsSkipped": 37,
+    "mysqlTestsPassed": 296,
+    "mysqlTestFiles": 18,
+    "typescript": "PASS",
+    "tracker": "PASS",
+    "productionBuild": "PASS",
+    "hostingEntryChecks": 4,
+    "schemaMigrationsAdded": 0
+  },
+  "live": {
+    "status": "pending",
+    "actualRecipientDeliveryVerified": false
+  }
+}

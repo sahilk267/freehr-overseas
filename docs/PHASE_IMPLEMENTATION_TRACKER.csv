@@ -11,3 +11,4 @@ W2,M18,Owner-approved availability link email,verified_live_draft_no_send,qa/202
 W1,M25,Private capability quote redaction,verified_live_inbound_no_send,qa/2026-11-05-availability-email.md,Additional encoded formats and retention gates remain pending
 W2,M18,Schedule-bound participant attendance confirmation,verified_live_attestation,qa/2026-11-05-interview-confirmations.md,Identity verification and provider RSVP ingestion remain pending
 W2,M18,Owner-approved interview confirmation email,verified_live_draft_no_send,qa/2026-11-05-interview-confirmations.md,Actual recipient delivery and unattended rescheduling remain unverified
+W2,M18,Decline recovery and bound interview rescheduling,implemented_local_verification,qa/2026-11-05-interview-recovery.md,Owner-reviewed slot selection and actual recipient delivery remain required

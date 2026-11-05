@@ -77,13 +77,15 @@ function checkEditFingerprint(row: any, expected?: string) {
   if (expected && interviewEditFingerprint(row) !== expected) throw new TRPCError({code:"CONFLICT",message:"This interview changed since you opened it. Reload and review the current schedule before editing."});
 }
 export async function rescheduleInterview(ownerId: number, actorId: number, input: Slot & { id: string; expectedFingerprint?: string }) {
-  const result = await withWorkspaceTransaction(ownerId, async tx => {
+  return withWorkspaceTransaction(ownerId, tx => rescheduleInterviewInTransaction(tx,ownerId,actorId,input));
+}
+export async function rescheduleInterviewInTransaction(tx:any,ownerId:number,actorId:number,input:Slot & {id:string;expectedFingerprint?:string}) {
     const row = await ownedInterview(tx, ownerId, input.id);
     checkEditFingerprint(row, input.expectedFingerprint);
     await requireSchedulableCandidate(tx, ownerId, row.candidateId);
     assertTransition("interview", row.status, "reschedule_requested");
     const scheduledAt = instant(input.scheduledAt), meetingUrl = input.meetingUrl === undefined ? row.meetingUrl : input.meetingUrl;
-    if (row.scheduledAt?.getTime() === scheduledAt.getTime() && row.durationMinutes === input.durationMinutes && row.timezone === input.timezone && row.meetingUrl === meetingUrl) return { success: true, alreadyCurrent: true, calendarSequence: row.calendarSequence };
+    if (["scheduled", "confirmed", "reminder_sent"].includes(row.status) && row.calendarStatus !== "cancelled" && row.scheduledAt?.getTime() === scheduledAt.getTime() && row.durationMinutes === input.durationMinutes && row.timezone === input.timezone && row.meetingUrl === meetingUrl) return { success: true, alreadyCurrent: true, calendarSequence: row.calendarSequence };
     await rejectHeldSlot(tx, ownerId, row.candidateId, input);
     if ((await overlaps(tx, ownerId, row.candidateId, input, row.id)).length) rejectConflict();
     await stopRelatedFollowUps(tx, ownerId, { resourceType: "interview", resourceId: row.id }, "Interview rescheduled; old reminders are invalid.");
@@ -91,8 +93,6 @@ export async function rescheduleInterview(ownerId: number, actorId: number, inpu
     await recordAudit({ ownerId, actorType: "user", actorId: String(actorId), action: "interview.rescheduled", resourceType: "interview", resourceId: row.id, previousState: row.status, nextState: "scheduled", metadata: { calendarSequence: row.calendarSequence + 1 } }, tx);
     await enqueueCalendarSync(tx, ownerId, row.id);
     return { success: true, alreadyCurrent: false, calendarSequence: row.calendarSequence + 1 };
-  });
-  return result;
 }
 export async function changeInterviewState(ownerId: number, actorId: number, id: string, state: string, expectedFingerprint?: string) {
   return withWorkspaceTransaction(ownerId, tx => changeInterviewStateInTransaction(tx, ownerId, String(actorId), id, state, expectedFingerprint));

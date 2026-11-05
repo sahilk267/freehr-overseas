@@ -1,3 +1,7 @@
+import {confirmationScheduleFingerprint} from './interviewScheduleIdentity';
+export {confirmationScheduleFingerprint} from './interviewScheduleIdentity';
+import {createAvailabilityInvitesInTransaction} from './participantAvailability';
+import {appendWorkflowEvent} from './workflowStore';
 import {createHash,randomBytes,timingSafeEqual} from 'node:crypto';
 import {and,desc,eq} from 'drizzle-orm';
 import {TRPCError} from '@trpc/server';
@@ -7,8 +11,7 @@ import {withWorkspaceTransaction} from './database';
 import {changeInterviewStateInTransaction,requireSchedulableCandidate} from './interviewScheduling';
 const digest=(v:unknown)=>createHash('sha256').update(JSON.stringify(v)).digest('hex');
 const denied=()=>new TRPCError({code:'UNAUTHORIZED',message:'Interview response link is invalid, expired or unavailable.'});
-/** Reminder edits do not change the appointment. The monotonic counter prevents away/back revival. */
-export function confirmationScheduleFingerprint(row:typeof interviews.$inferSelect){return digest([row.id,row.candidateId,row.companyId,row.jobId,row.scheduledAt?.toISOString(),row.durationMinutes,row.timezone,row.meetingUrl??null,row.rescheduleCount]);}
+
 async function owned(tx:any,ownerId:number,id:string){const row=(await tx.select().from(interviews).where(and(eq(interviews.ownerId,ownerId),eq(interviews.id,id))).limit(1))[0] as typeof interviews.$inferSelect;if(!row)throw new TRPCError({code:'NOT_FOUND',message:'Interview not found.'});return row;}
 const current=(r:typeof links.$inferSelect,i:typeof interviews.$inferSelect)=>!!i.scheduledAt&&i.scheduledAt.getTime()>Date.now()&&['scheduled','confirmed','reschedule_requested'].includes(i.status)&&(i.calendarStatus!=='cancelled'||i.status==='reschedule_requested')&&confirmationScheduleFingerprint(i)===r.scheduleFingerprint;
 export async function listInterviewConfirmations(ownerId:number,interviewId:string){return withWorkspaceTransaction(ownerId,async tx=>{const i=await owned(tx,ownerId,interviewId),rows:typeof links.$inferSelect[]=await tx.select().from(links).where(and(eq(links.ownerId,ownerId),eq(links.interviewId,interviewId))).orderBy(desc(links.createdAt),desc(links.id)).limit(50);return rows.map(r=>({id:r.id,groupId:r.groupId,participant:r.participant,status:r.status==='revoked'?'revoked':!current(r,i)?'stale':r.expiresAt.getTime()<=Date.now()?'expired':r.status,expiresAt:r.expiresAt,respondedAt:r.respondedAt}));});}
@@ -35,6 +38,7 @@ export async function publicInterviewConfirmation(input:{id:string;token:string;
  return withWorkspaceTransaction(hint.ownerId,async tx=>{
   const r=await authenticate(tx,input.id,input.token),i=await owned(tx,r.ownerId,r.interviewId);
   await requireSchedulableCandidate(tx,r.ownerId,i.candidateId);if(!current(r,i))throw denied();
+  let recoveryFragment:string|undefined;
   if(input.decision){
    if(r.status!=='pending'){if(r.status!==input.decision)throw new TRPCError({code:'CONFLICT',message:'Your answer is already recorded. Contact the recruiter to change it.'});}
    else {
@@ -43,13 +47,17 @@ export async function publicInterviewConfirmation(input:{id:string;token:string;
     const pair:typeof links.$inferSelect[]=await tx.select().from(links).where(and(eq(links.ownerId,r.ownerId),eq(links.groupId,r.groupId)));
     if(input.decision==='declined'){
      await changeInterviewStateInTransaction(tx,r.ownerId,r.id,i.id,'reschedule_requested',undefined,'provider');
+     const recovery=await createAvailabilityInvitesInTransaction(tx,r.ownerId,r.id,{candidateId:i.candidateId,jobId:i.jobId,requestKey:`interview-recovery:${i.id}:${i.rescheduleCount}`,expiresHours:48},'provider');
+     if(recovery.alreadyExists)throw new TRPCError({code:'CONFLICT',message:'Recovery request identity already exists. Contact the recruiter.'});
+     await appendWorkflowEvent(tx,r.ownerId,'interview.recovery_requested',recovery.groupId,1,{interviewId:i.id,scheduleFingerprint:confirmationScheduleFingerprint(i)});
+     recoveryFragment=recovery.links.find(l=>l.participant===r.participant)?.fragment;
      for(const other of pair.filter(x=>x.status==='pending'))await tx.update(links).set({status:'revoked',tokenHash:''}).where(eq(links.id,other.id));
     }else if(pair.length===2&&pair.every(x=>x.status==='confirmed'&&x.scheduleFingerprint===r.scheduleFingerprint))await changeInterviewStateInTransaction(tx,r.ownerId,r.id,i.id,'confirmed',undefined,'provider');
     await recordAudit({ownerId:r.ownerId,actorType:'provider',actorId:r.id,action:'interview.participant_responded',resourceType:'interview',resourceId:i.id,metadata:{groupId:r.groupId,participant:r.participant,decision:input.decision,identityVerified:false}},tx);
     r.status=input.decision;
    }
   }
-  return {participant:r.participant,status:r.status,scheduledAt:i.scheduledAt!,timezone:i.timezone,durationMinutes:i.durationMinutes,interviewStatus:(await owned(tx,r.ownerId,i.id)).status,identityVerified:false as const};
+  return {participant:r.participant,status:r.status,scheduledAt:i.scheduledAt!,timezone:i.timezone,durationMinutes:i.durationMinutes,interviewStatus:(await owned(tx,r.ownerId,i.id)).status,identityVerified:false as const,...(recoveryFragment?{recoveryFragment}: {})};
  });
 }
 

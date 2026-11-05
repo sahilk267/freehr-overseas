@@ -943,8 +943,8 @@
           "id": "M18-F03",
           "description": "Versioned schedule/RSVP lifecycle, temporary slot holds, reschedule/cancel reconciliation, no-show and alternative-slot recovery.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-05-interview-confirmations.md",
-          "implementation_note": "Schedule-bound candidate/interviewer capabilities record explicit attendance attestations. Both responses atomically use the canonical confirmed transition; decline requests rescheduling, cancels the old calendar occurrence and stops old reminders. Reminder edits preserve links; actual schedule changes invalidate them, including away/back changes. Identity verification, provider RSVP ingestion, actual confirmation email delivery and unattended recovery remain pending; legacy manual transitions remain supported."
+          "evidence_ref": "qa/2026-11-05-interview-recovery.md",
+          "implementation_note": "Explicit decline atomically opens a schedule-bound availability recovery pair. Fresh paired responses and Google/internal checks reuse the canonical rescheduler on the same interview ID. Replacement is a single idempotent chain; stale schedule/cancellation, old links, old pending email authority and parallel replacement claims are fenced. Owner-reviewed slot selection and approved email remain required. Actual recipient delivery, verified identity/provider RSVP, unattended slot selection and recovery deadlines/escalations remain pending."
         },
         {
           "id": "M18-F04",
