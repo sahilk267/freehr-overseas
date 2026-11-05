@@ -148,6 +148,7 @@ export async function discoveryIcs(ownerId:number,meetingId:string){
 export async function pendingDiscoveryForMail(tx:any,ownerId:number,id:string,now=new Date()){
  const r=await currentRequest(tx,ownerId,id);
  if(r.status!=="pending"||new Date(r.expiresAt)<=now)throw fail("Discovery request is expired, cancelled, submitted or booked.");
+ if(!commonAvailability({candidate:asWindows(r.ownerWindows),interviewer:asWindows(r.ownerWindows),durationMinutes:r.durationMinutes,bufferMinutes:r.bufferMinutes,now:new Date(now.getTime()+15*60000)}).slots.length)throw fail("No future recruiter window remains for this discovery email.");
  return {...r,groupId:r.id,participant:"client",mailPurpose:"client_discovery" as const};
 }
 export async function discoveryMailRecipient(tx:any,ownerId:number,row:{id:string;conversationId:string;contactId:string},conversationId:string,now=new Date()){

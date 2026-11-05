@@ -1,0 +1,113 @@
+{
+  "scope": "Owner-reviewed discovery private-link draft, replay and no-send cancellation",
+  "client_date": "2026-11-06",
+  "client_timezone": "Asia/Calcutta",
+  "local_validation": {
+    "unit_passed": 662,
+    "unit_skipped": 49,
+    "mysql_passed": 393,
+    "mysql_files": 24,
+    "types": "PASS",
+    "build": "PASS",
+    "tracker": "PASS",
+    "hostinger_entry_checks": 4
+  },
+  "live": {
+    "checkedAt": "2026-11-05T21:47:09.959Z",
+    "tests": [
+      {
+        "name": "owner UI creates a draft bound to the canonical client recipient",
+        "status": "PASS"
+      },
+      {
+        "name": "manual capability replaced and anonymous owner-mail options denied",
+        "status": "PASS"
+      },
+      {
+        "name": "exact preparation retry reuses the same message and approval",
+        "status": "PASS"
+      },
+      {
+        "name": "mobile email form fits the viewport without duplicate controls",
+        "status": "PASS"
+      },
+      {
+        "name": "request cancellation closes unused mail authority in the shared outbox",
+        "status": "PASS"
+      },
+      {
+        "name": "owner rejection cancels the prepared private request and draft",
+        "status": "PASS"
+      },
+      {
+        "name": "new client reply invalidates a pending discovery email approval",
+        "status": "PASS"
+      }
+    ],
+    "noRecipientMailApproved": true,
+    "noRecipientMailSent": true,
+    "buildCommit": "ce1f3afa7b38f4283eaf03053ee67c0f841bf3a9",
+    "runtimeErrors": [],
+    "transportErrors": []
+  },
+  "cleanup": {
+    "checkedAt": "2026-11-05T21:49:31.375Z",
+    "tests": [
+      {
+        "name": "all discovery email drafts closed without approval consumption or sending",
+        "status": "PASS"
+      },
+      {
+        "name": "private requests cancelled and no discovery meeting created",
+        "status": "PASS"
+      },
+      {
+        "name": "synthetic contact opted out and chase plus campaign cancelled",
+        "status": "PASS"
+      }
+    ],
+    "noRecipientMailApproved": true,
+    "noRecipientMailSent": true,
+    "requests": [
+      {
+        "id": "dcr_5tQUgwEejQWQDlOYVjMm",
+        "status": "cancelled"
+      },
+      {
+        "id": "dcr_H2zJM_VwQwSSv6qxINjA",
+        "status": "cancelled"
+      },
+      {
+        "id": "dcr_v0BWo4SbmMA3FIanadHi",
+        "status": "cancelled"
+      }
+    ],
+    "worker": {
+      "enabled": true,
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "emergencyStop": false,
+      "lastError": null
+    },
+    "health": "ok",
+    "buildCommit": "ce1f3afa7b38f4283eaf03053ee67c0f841bf3a9"
+  },
+  "screenshots": [
+    {
+      "name": "owner-desktop.png",
+      "sha256": "11407ee033f9292ee61b74d970b63228f9673b01311f726bf0eca950005679ea",
+      "stored": "local QA workspace artifact"
+    },
+    {
+      "name": "owner-mobile.png",
+      "sha256": "76c0aaf2717c756c6af5ac5de54fee56ecb6de6803df214c1404d1f1e993b4c2",
+      "stored": "local QA workspace artifact"
+    }
+  ],
+  "limitations": [
+    "No actual recipient email successfully approved or sent during QA",
+    "Materialized provider submission, unknown-outcome behavior and approved-but-unused cancellation are covered with mocks and local SQL",
+    "Elapsed recruiter-window guard is locally verified; positive elapsed-time production acceptance not claimed",
+    "Delegated unattended sending, actual recipient delivery, Google event sync, attendance and SLA remain pending"
+  ]
+}

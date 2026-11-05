@@ -522,7 +522,7 @@
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-06-discovery-link-email.md",
-          "implementation_note": "Private collection and scoped automatic/manual tentative booking are live-verified. Owner-reviewed discovery-link email now reuses the shared HMAC envelope and outbox with current-source/recipient/permission guards and cancellation. Link email live no-send acceptance follows; real delivery, delegated sending, Google event sync, verified attendance, stakeholder mapping and SLA escalation remain pending."
+          "implementation_note": "Private collection and scoped automatic/manual tentative booking are live-verified. Owner-reviewed discovery-link email now passes live no-send preparation/replay, manual-token replacement, rejection/cancellation and stale-source denial through the shared private outbox. Real delivery, delegated sending, Google event sync, verified attendance, stakeholder mapping and automatic SLA escalation remain pending."
         },
         {
           "id": "M10-F05",

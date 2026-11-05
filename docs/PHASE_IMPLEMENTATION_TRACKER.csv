@@ -16,7 +16,7 @@ W2,M18,Recovery expiry and owner exception escalation,verified_live_worker_and_s
 W2,M18,Scoped automatic recovery slot selection,verified_live_scoped_automatic,qa/2026-11-05-recovery-auto-selection.md,Cross-cycle delegation and actual recipient delivery remain unverified
 W4,M10,Current client reply assessment and reviewed next action,verified_live_reply_and_owner_task,qa/2026-11-05-client-reply-triage.md,Discovery booking is tracked separately below; automatic SLA escalation remains pending
 W4,M10,Reply-bound response through shared approved outbox,verified_live_draft_no_send,qa/2026-11-05-client-reply-triage.md,Actual recipient delivery and grounded automatic response generation remain unverified
-W4,M10,Current-reply-bound client discovery availability,verified_live_private_collection,qa/2026-11-06-client-discovery.md,Link delivery and verified participant identity remain pending
+W4,M10,Current-reply-bound client discovery availability,verified_live_private_collection,qa/2026-11-06-client-discovery.md,Owner-reviewed link email is tracked below; actual delivery and verified identity remain pending
 W4,M10,Scoped automatic tentative client discovery booking,verified_live_scoped_automatic_and_manual,qa/2026-11-06-client-discovery.md,Provider event sync and invitations and attendance confirmation and SLA escalation remain pending
 W2,M18,Shared owner discovery and interview reservation exclusion,validated_local_and_live_booking,qa/2026-11-06-client-discovery.md,External calendar change reconciliation beyond fresh admission checks remains pending
-W4,M07,Owner-reviewed private discovery link email,validated_local_live_pending,qa/2026-11-06-discovery-link-email.md,Actual recipient delivery and delegated unattended sending remain pending
+W4,M07,Owner-reviewed private discovery link email,verified_live_draft_no_send,qa/2026-11-06-discovery-link-email.md,Actual recipient delivery and delegated unattended sending remain pending
