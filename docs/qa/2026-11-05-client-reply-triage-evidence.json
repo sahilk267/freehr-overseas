@@ -1,0 +1,155 @@
+{
+  "scope": "Synthetic client reply triage, owner actions and no-send outbox verification",
+  "local_validation": {
+    "unit_passed": 627,
+    "unit_skipped": 45,
+    "mysql_passed": 354,
+    "mysql_files": 22,
+    "types": "PASS",
+    "tracker": "PASS",
+    "build": "PASS",
+    "hostinger_entry_checks": 4
+  },
+  "initial_browser_findings": [
+    {
+      "issue": "Task and response siblings used identical React keys and duplicated the task form after updates",
+      "fixed_in": "86e74ab",
+      "retested": "PASS"
+    },
+    {
+      "issue": "Approval badge group shrink produced mobile page overflow",
+      "fixed_in": "86e74ab",
+      "retested": "PASS"
+    }
+  ],
+  "live_api_core": {
+    "checkedAt": "2026-11-05T19:19:13.630Z",
+    "tests": [
+      {
+        "name": "one current receipt and exact duplicate reuse",
+        "status": "PASS"
+      },
+      {
+        "name": "existing review chase paused without any delivery",
+        "status": "PASS"
+      },
+      {
+        "name": "anonymous caller denied",
+        "status": "PASS"
+      },
+      {
+        "name": "owner next-action exact retry and changed stale intent denial",
+        "status": "PASS"
+      },
+      {
+        "name": "one pending immutable response without any approval or send",
+        "status": "PASS"
+      },
+      {
+        "name": "new reply invalidates stale draft and stale task",
+        "status": "PASS"
+      },
+      {
+        "name": "stale unapproved draft safely rejected for cleanup",
+        "status": "PASS"
+      }
+    ],
+    "noRecipientMailApproved": true,
+    "buildCommit": "19847f2b05af76c7e5b68a16d3bb355447a34ed8"
+  },
+  "live_browser_final": {
+    "checkedAt": "2026-11-05T19:25:56.613Z",
+    "tests": [
+      {
+        "name": "pending response status survives reload and owner can cancel unused authority",
+        "status": "PASS"
+      },
+      {
+        "name": "revision save and refreshed UI retain exactly one next-action form",
+        "status": "PASS"
+      },
+      {
+        "name": "reviewed replacement draft remains pending and does not duplicate task forms",
+        "status": "PASS"
+      },
+      {
+        "name": "mobile form fits viewport and approval badge groups do not overflow the page",
+        "status": "PASS"
+      },
+      {
+        "name": "managed worker recorded a bound current reply assessment",
+        "status": "PASS"
+      },
+      {
+        "name": "replacement unused response cancelled in owner UI",
+        "status": "PASS"
+      }
+    ],
+    "screenshots": [
+      "desktop-final.png",
+      "mobile-final.png"
+    ],
+    "noRecipientMailApproved": true,
+    "buildCommit": "86e74ab857fbb93693d4e9973d59f5f1bed85288",
+    "managedAssessment": {
+      "present": true,
+      "applied": true,
+      "recommendation": "clarify_requirement",
+      "model": "nvidia/nemotron-3.5-super-vl:free"
+    },
+    "runtimeErrors": 0,
+    "transportErrors": []
+  },
+  "cleanup": {
+    "checkedAt": "2026-11-05T19:26:27.799Z",
+    "tests": [
+      {
+        "name": "all synthetic response drafts are cancelled or rejected and never sent",
+        "status": "PASS"
+      },
+      {
+        "name": "opt-out closes current task and cancels the existing chase",
+        "status": "PASS"
+      },
+      {
+        "name": "synthetic campaign cancelled and company suppressed",
+        "status": "PASS"
+      },
+      {
+        "name": "positive replies do not silently reinstate client contact",
+        "status": "PASS"
+      }
+    ],
+    "noRecipientMailApproved": true,
+    "noRecipientMailSent": true,
+    "worker": {
+      "enabled": true,
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "emergencyStop": false,
+      "lastError": null
+    },
+    "buildCommit": "86e74ab857fbb93693d4e9973d59f5f1bed85288",
+    "health": "ok",
+    "finalizedAt": "2026-11-05T19:27:07.642Z"
+  },
+  "screenshots": [
+    {
+      "name": "desktop-final.png",
+      "sha256": "6d6ab9f4cd77f676e65521f108476c4931c3b526919c85ae149da53e84978798",
+      "stored": "local QA workspace artifact"
+    },
+    {
+      "name": "mobile-final.png",
+      "sha256": "bbced1afd02880d67863b234608c1bf3d4e13bba6863b783de79737aeab57530",
+      "stored": "local QA workspace artifact"
+    }
+  ],
+  "limitations": [
+    "No external recipient email successfully approved or sent",
+    "Provider send behavior covered with mocks and local SQL only",
+    "Live receipt exercised owner inbound endpoint; actual provider push delivery not claimed",
+    "Live unused cancellation exercised pending drafts; approved-but-unused behavior covered by SQL regression",
+    "Discovery booking and SLA escalation remain pending"
+  ]
+}
