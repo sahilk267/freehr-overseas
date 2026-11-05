@@ -18,6 +18,7 @@ function ReplyResponseForm({ conversationId, messageId, replyRevision, actionRev
     try {
       await prepare.mutateAsync({ conversationId, messageId, replyRevision, actionRevision, senderIdentityId: String(form.get("senderIdentityId")), subject: String(form.get("subject")), body: String(form.get("body")) });
       await utils.operations.approvals.list.invalidate();
+      await utils.recruitment.outreach.replyCase.invalidate({ conversationId });
     } catch { /* Shared app mutation handler displays errors. */ }
   };
   return <form onSubmit={submit} className="grid gap-3 rounded-lg border p-3">
@@ -34,6 +35,7 @@ function ReplyDetail({ conversationId }: { conversationId: string }) {
   const utils = trpc.useUtils();
   const query = trpc.recruitment.outreach.replyCase.useQuery({ conversationId });
   const save = trpc.recruitment.outreach.recordReplyAction.useMutation({ onSuccess: async () => { await utils.recruitment.outreach.replyCase.invalidate({ conversationId }); toast.success("Next action recorded."); } });
+  const cancel = trpc.recruitment.outreach.cancelReplyEmail.useMutation({ onSuccess: async () => { await utils.recruitment.outreach.replyCase.invalidate({ conversationId }); await utils.operations.approvals.list.invalidate(); toast.success("Unused response cancelled."); } });
   const [action, setAction] = useState<keyof typeof labels | "">("");
   const detail = query.data;
   useEffect(() => setAction(""), [detail?.message?.id, detail?.action?.revision]);
@@ -57,14 +59,15 @@ function ReplyDetail({ conversationId }: { conversationId: string }) {
     <p className="text-sm">Suggested next action: <strong>{labels[detail.recommendation]}</strong></p>
     {!detail.assessment && !detail.blocked && <p className="text-xs text-slate-500">Reply assessment is pending. You can review and record the next action now.</p>}
     {detail.blocked && <p role="status" className="text-sm text-red-700">Contact is blocked. A reply or task note does not restore contact permission.</p>}
-    <form onSubmit={submit} className="grid gap-3" key={`${detail.message.id}:${current?.revision ?? 0}`}>
+    <form onSubmit={submit} className="grid gap-3" key={`action:${detail.message.id}:${current?.revision ?? 0}`}>
       <div><Label htmlFor="reply-next-action">Next action</Label><select id="reply-next-action" className="mt-1 w-full rounded-md border p-2 text-sm" value={selectedAction} disabled={detail.blocked} onChange={e => setAction(e.target.value as keyof typeof labels)}>{Object.entries(labels).filter(([key]) => detail.blocked || key !== "stop_contact").map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div>
       <div><Label htmlFor="reply-action-notes">Action notes</Label><Textarea id="reply-action-notes" name="notes" required minLength={8} maxLength={2000} defaultValue={current?.notes ?? ""} placeholder="Record what needs to happen and any client context." /></div>
       <div><Label htmlFor="reply-due-at">Due at (your local time, optional)</Label><Input id="reply-due-at" name="dueAt" type="datetime-local" defaultValue={current?.dueAt ? new Date(new Date(current.dueAt).getTime() - new Date(current.dueAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""} /></div>
       <Button type="submit" disabled={save.isPending} className="justify-self-start">Save next action</Button>
       <p className="text-xs text-slate-500">This records a task for review. Discovery booking and sending a response still require their own completed workflow.</p>
     </form>
-    {!detail.blocked && current && ["arrange_discovery", "clarify_requirement", "prepare_response"].includes(current.action ?? "") && <ReplyResponseForm key={`${detail.message.id}:${current.revision}`} conversationId={conversationId} messageId={detail.message.id} replyRevision={detail.replyRevision} actionRevision={current.revision} />}
+    {detail.response && <div className="rounded-lg border p-3 text-sm"><p>Latest response: {detail.response.status.replaceAll("_", " ")}</p><p className="mt-1 break-all text-xs text-slate-500">Approval {detail.response.approvalId}</p>{detail.response.cancellable && <Button type="button" size="sm" variant="outline" disabled={cancel.isPending} className="mt-2" onClick={() => cancel.mutate({ approvalId: detail.response!.approvalId, reason: "Owner cancelled unused client response for revision." })}>Cancel unused response</Button>}</div>}
+    {!detail.blocked && current && ["arrange_discovery", "clarify_requirement", "prepare_response"].includes(current.action ?? "") && <ReplyResponseForm key={`response:${detail.message.id}:${current.revision}`} conversationId={conversationId} messageId={detail.message.id} replyRevision={detail.replyRevision} actionRevision={current.revision} />}
   </div>;
 }
 export function ClientReplyPanel() {

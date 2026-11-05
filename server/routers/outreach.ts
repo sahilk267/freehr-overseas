@@ -1,4 +1,4 @@
-import { prepareReplyEmail } from "../services/replyMail";
+import { cancelReplyEmail, prepareReplyEmail } from "../services/replyMail";
 import { clientReplyCase, receiveReply, recordReplyAction, REPLY_ACTIONS } from "../services/replyTriage";
 import {redactAvailabilityLinks} from "../services/privateLinkRedaction";
 import { TRPCError } from "@trpc/server";
@@ -34,6 +34,7 @@ export const outreachRouter = router({
     if (!conversation) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation was not found." });
     return receiveReply(ctx.user.id, { conversationId: conversation.id, body: messageText, source: "owner_recorded_reply" });
   }),
+  cancelReplyEmail: protectedProcedure.input(z.object({ approvalId: z.string().min(4), reason: z.string().trim().min(8).max(500) })).mutation(({ ctx, input }) => cancelReplyEmail(ctx.user.id, input.approvalId, input.reason)),
   prepareReplyEmail: protectedProcedure.input(z.object({ conversationId: z.string().min(4), messageId: z.string().min(4), replyRevision: z.number().int().positive(), actionRevision: z.number().int().positive(), senderIdentityId: z.string().min(4), subject: z.string().trim().min(1).max(255), body: z.string().trim().min(8).max(11500) })).mutation(({ ctx, input }) => prepareReplyEmail(ctx.user.id, input)),
   replyCase: protectedProcedure.input(z.object({ conversationId: z.string().min(4) })).query(async ({ ctx, input }) => clientReplyCase(await requireDb(), ctx.user.id, input.conversationId)),
   recordReplyAction: protectedProcedure.input(z.object({ conversationId: z.string().min(4), messageId: z.string().min(4), replyRevision: z.number().int().positive(), expectedActionRevision: z.number().int().min(0), action: z.enum(REPLY_ACTIONS), notes: z.string().trim().min(8).max(2000), dueAt: z.coerce.date().optional() })).mutation(({ ctx, input }) => recordReplyAction(ctx.user.id, input)),

@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
-import { and, eq } from "drizzle-orm";
-import { approvals, contacts, conversations, emailDispatches, emailIdentities, messages, suppressionList, workflowEvents } from "../../drizzle/schema";
+import { and, eq, inArray } from "drizzle-orm";
+import { approvals, automationQueue, contacts, conversations, emailDispatches, emailIdentities, messages, suppressionList, workflowEvents } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit } from "../db";
 import { hasClientCommunicationPermission } from "./communicationPermission";
 import { withWorkspaceTransaction } from "./database";
@@ -65,5 +65,23 @@ export async function prepareReplyEmail(ownerId: number, input: { conversationId
     await appendWorkflowEvent(tx, ownerId, "outreach.reply_email_prepared", input.messageId, input.actionRevision, { messageId, approvalId, requestHash });
     await recordAudit({ ownerId, actorType: "user", actorId: String(ownerId), action: "outreach.reply_email_prepared", resourceType: "message", resourceId: messageId, metadata: { approvalId, inboundMessageId: input.messageId, actionRevision: input.actionRevision } }, tx);
     return { messageId, approvalId, alreadyExists: false };
+  });
+}
+
+/** Revoke only unused reply authority; an in-flight/unknown/sent attempt needs reconciliation. */
+export async function cancelReplyEmail(ownerId: number, approvalId: string, reason: string) {
+  return withWorkspaceTransaction(ownerId, async tx => {
+    const approval = (await tx.select().from(approvals).where(and(eq(approvals.ownerId, ownerId), eq(approvals.id, approvalId), eq(approvals.actionType, "email_send"))).limit(1))[0];
+    if (!(approval?.payload as { replyScope?: ReplyMailScope } | null)?.replyScope) throw new TRPCError({ code: "NOT_FOUND", message: "Client response approval was not found." });
+    const dispatch = (await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, ownerId), eq(emailDispatches.approvalId, approvalId))).limit(1))[0];
+    if (approval.status === "cancelled" && dispatch?.status === "cancelled" && !dispatch.claimedAt) return { alreadyCancelled: true };
+    if (approval.actionedAt || !["pending", "approved"].includes(approval.status) || !dispatch || dispatch.status !== "queued" || dispatch.claimedAt) throw fail("This response has been consumed or attempted; reconcile delivery before taking another action.");
+    await tx.update(approvals).set({ status: "cancelled" }).where(and(eq(approvals.ownerId, ownerId), eq(approvals.id, approvalId)));
+    await tx.update(emailDispatches).set({ status: "cancelled", lastError: reason }).where(and(eq(emailDispatches.ownerId, ownerId), eq(emailDispatches.id, dispatch.id)));
+    await tx.update(messages).set({ status: "cancelled" }).where(and(eq(messages.ownerId, ownerId), eq(messages.id, approval.resourceId)));
+    await tx.update(automationQueue).set({ status: "cancelled", lockToken: null, lockedAt: null, lastError: reason }).where(and(eq(automationQueue.ownerId, ownerId), eq(automationQueue.idempotencyKey, `email_dispatch:${dispatch.id}`), inArray(automationQueue.status, ["queued", "retryable_failed", "blocked"])));
+    await appendWorkflowEvent(tx, ownerId, "outreach.reply_email_cancelled", approvalId, 1, { reason, messageId: approval.resourceId });
+    await recordAudit({ ownerId, actorType: "user", actorId: String(ownerId), action: "outreach.reply_email_cancelled", resourceType: "message", resourceId: approval.resourceId, metadata: { approvalId, reason } }, tx);
+    return { alreadyCancelled: false };
   });
 }

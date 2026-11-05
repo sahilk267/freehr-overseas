@@ -1,5 +1,5 @@
-import {and,eq} from 'drizzle-orm';
-import {consents} from '../../drizzle/schema';
+import {and,desc,eq} from 'drizzle-orm';
+import {consents,contacts,workflowEvents} from '../../drizzle/schema';
 import {lockedSelect} from './database';
 export async function hasCandidateCommunicationPermission(tx:any,ownerId:number,candidateId:string,jobId:string|null|undefined,allowedTypes:readonly string[],now=new Date()){
  const grants=await lockedSelect(tx.select().from(consents).where(and(eq(consents.ownerId,ownerId),eq(consents.candidateId,candidateId),eq(consents.status,'granted'))));
@@ -8,8 +8,6 @@ export async function hasCandidateCommunicationPermission(tx:any,ownerId:number,
 
 /** Shared contact permission and latest recorded expiry gate for campaigns and transactional replies. */
 export async function hasClientCommunicationPermission(tx: any, ownerId: number, contactId: string, now = new Date()) {
- const { contacts, workflowEvents } = await import('../../drizzle/schema');
- const { desc } = await import('drizzle-orm');
  const contact = (await tx.select().from(contacts).where(and(eq(contacts.ownerId, ownerId), eq(contacts.id, contactId))).limit(1))[0];
  if (!contact || contact.optedOutAt || !['granted', 'permitted', 'consented'].includes(contact.contactPermission)) return false;
  const permission = (await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId, ownerId), eq(workflowEvents.eventType, 'communication.permission_recorded'), eq(workflowEvents.aggregateId, contactId))).orderBy(desc(workflowEvents.revision)).limit(1))[0];

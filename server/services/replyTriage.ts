@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
-import { automationQueue, candidates, companies, contacts, conversations, messages, suppressionList, workflowEvents } from "../../drizzle/schema";
+import { approvals, automationQueue, candidates, companies, contacts, conversations, emailDispatches, messages, suppressionList, workflowEvents } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit } from "../db";
 import { withWorkspaceTransaction } from "./database";
 import { stopRelatedFollowUps } from "./followups";
@@ -116,9 +116,13 @@ export async function clientReplyCase(db: any, ownerId: number, conversationId: 
   if (message && cursor.metadata.bodyHash !== workflowHash(message.body)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Reply evidence changed; review the inbox record before acting." });
   const assessment = message ? (await events(db, ownerId, "outreach.reply_assessed", message.id))[0] : null;
   const action = message ? (await events(db, ownerId, "outreach.reply_action", message.id))[0] : null;
+  const responseEvent = message ? (await events(db, ownerId, "outreach.reply_email_prepared", message.id))[0] : null;
+  const responseApproval = responseEvent ? (await db.select().from(approvals).where(and(eq(approvals.ownerId, ownerId), eq(approvals.id, String(responseEvent.metadata.approvalId)))).limit(1))[0] : null;
+  const responseDispatch = responseApproval ? (await db.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, ownerId), eq(emailDispatches.approvalId, responseApproval.id))).limit(1))[0] : null;
+  const response = responseApproval ? { approvalId: responseApproval.id as string, status: responseApproval.status as string, actionRevision: responseEvent.revision as number, cancellable: !responseApproval.actionedAt && ["pending", "approved"].includes(responseApproval.status) && responseDispatch?.status === "queued" && !responseDispatch.claimedAt } : null;
   const blocked = conversation.status === "opted_out" || Boolean(contact.optedOutAt) || contact.contactPermission === "opted_out";
   const recommendation = blocked ? "stop_contact" : assessment?.metadata.applied && assessment.metadata.bodyHash === cursor?.metadata.bodyHash ? assessment.metadata.recommendation as ReplyAction : "review_reply";
-  return { conversationId, companyName: company.name as string, contactName: contact.name as string, message: message ? { id: message.id as string, body: message.body as string, subject: message.subject as string | null } : null, replyRevision: cursor?.revision as number ?? 0, assessment: assessment?.metadata ?? null, recommendation, blocked, action: action ? { revision: action.revision as number, ...action.metadata } : null };
+  return { response, conversationId, companyName: company.name as string, contactName: contact.name as string, message: message ? { id: message.id as string, body: message.body as string, subject: message.subject as string | null } : null, replyRevision: cursor?.revision as number ?? 0, assessment: assessment?.metadata ?? null, recommendation, blocked, action: action ? { revision: action.revision as number, ...action.metadata } : null };
 }
 
 export async function recordReplyAction(ownerId: number, input: { conversationId: string; messageId: string; replyRevision: number; expectedActionRevision: number; action: ReplyAction; notes: string; dueAt?: Date }) {

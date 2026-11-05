@@ -101,4 +101,22 @@ describe("current-reply-bound client response using the existing approval and di
     await expect(f.caller.recruitment.outreach.prepareReplyEmail({ ...f.input, actionRevision: 2 })).rejects.toThrow(/previous response/);
     expect(send).toHaveBeenCalledTimes(1);
   });
+  it("can revoke approved but unused authority, cancel its queue and replace only after an explicit task revision", async () => {
+    const f = await fixture(), draft = await f.prepare(); await f.approve(draft.approvalId);
+    const cancelInput = { approvalId: draft.approvalId, reason: "Owner requested a revised client response" };
+    expect(await f.caller.recruitment.outreach.cancelReplyEmail(cancelInput)).toMatchObject({ alreadyCancelled: false });
+    expect(await f.caller.recruitment.outreach.cancelReplyEmail(cancelInput)).toMatchObject({ alreadyCancelled: true });
+    await expect(deliverApprovedEmail(f.ownerId, { messageId: draft.messageId })).rejects.toThrow();
+    await f.caller.recruitment.outreach.recordReplyAction({ ...f.actionInput, expectedActionRevision: 1, notes: "Revised next action after cancelling unused authority" });
+    expect(await f.caller.recruitment.outreach.prepareReplyEmail({ ...f.input, actionRevision: 2 })).toMatchObject({ alreadyExists: false });
+    expect(send).not.toHaveBeenCalled();
+  });
+  it("cannot cancel attempted or unknown authority, and denies unrelated owners", async () => {
+    const f = await fixture(), draft = await f.prepare(), other = await followupFixture();
+    await expect(other.caller.recruitment.outreach.cancelReplyEmail({ approvalId: draft.approvalId, reason: "Unrelated owner cancellation" })).rejects.toThrow(/not found/);
+    await f.db.update(emailDispatches).set({ status: "reconciliation_required", claimedAt: new Date() }).where(eq(emailDispatches.messageId, draft.messageId));
+    await expect(f.caller.recruitment.outreach.cancelReplyEmail({ approvalId: draft.approvalId, reason: "Invalid unknown outcome cancellation" })).rejects.toThrow(/consumed or attempted/);
+    expect((await f.caller.recruitment.outreach.replyCase({ conversationId: f.clientConversationId })).response?.cancellable).toBe(false);
+  });
+
 });
