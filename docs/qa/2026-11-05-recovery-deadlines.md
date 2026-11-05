@@ -11,3 +11,5 @@ Local validation: 584 tests pass (40 skipped), 306 real-MySQL regressions pass i
 The preceding assisted recovery flow is live-verified separately in [its report](2026-11-05-interview-recovery.md). Owner-reviewed slot selection, recipient delivery, verified identity/provider RSVP and unattended rescheduling remain pending. M18 remains implementing.
 
 TypeScript, tracker consistency, production build and all four hosting entry smokes pass. Live worker and synthetic UI checks remain pending at this commit; no elapsed-deadline production success is claimed.
+
+Application `ab3bf4d` is live. The managed worker’s recent persisted heartbeat includes the actual recovery-deadline source result. Desktop/mobile Exception Center checks passed using an explicitly manual synthetic incident, and its link reached the existing recovery panel. The fixture incident was resolved and removed from open exceptions; no email or invitations were sent. This verifies the deployed worker integration and UI navigation, not a positive elapsed-deadline production case. [Sanitized evidence](2026-11-05-recovery-deadlines-evidence.json).

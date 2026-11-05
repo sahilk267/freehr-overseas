@@ -372,3 +372,5 @@ Recovery deployment follow-up: `896f133` is now live and the complete assisted r
 ## W2 recovery deadline exceptions — 5 November 2026
 
 [Deadline implementation](qa/2026-11-05-recovery-deadlines.md) adds expiry evaluation to the existing managed and supervised workers. Current expired recovery closes its links and creates one existing-format owner incident atomically; pause/stop, identity/version and bounded-scan filters apply. Replacement or schedule/state changes resolve the old incident. 584 tests and 306 SQL regressions pass. Positive production elapsed-deadline acceptance remains unverified; no new sender/timer is introduced.
+
+Final deadline checkpoint: `ab3bf4d` is live. Managed heartbeat source results and synthetic incident navigation passed at desktop/mobile widths. The manual UI-only incident was resolved; positive production elapsed-deadline acceptance remains unverified. Full assisted recovery is separately live-verified under `896f133`. Current local validation is 584 tests and 306 MySQL regressions, with types/tracker/build/entry checks passing. No mail or invitations were sent; advanced module/phase gates remain open.

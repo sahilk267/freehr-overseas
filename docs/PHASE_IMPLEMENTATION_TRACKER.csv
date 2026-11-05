@@ -12,4 +12,4 @@ W1,M25,Private capability quote redaction,verified_live_inbound_no_send,qa/2026-
 W2,M18,Schedule-bound participant attendance confirmation,verified_live_attestation,qa/2026-11-05-interview-confirmations.md,Identity verification and provider RSVP ingestion remain pending
 W2,M18,Owner-approved interview confirmation email,verified_live_draft_no_send,qa/2026-11-05-interview-confirmations.md,Actual recipient delivery and unattended rescheduling remain unverified
 W2,M18,Decline recovery and bound interview rescheduling,verified_live_assisted_recovery,qa/2026-11-05-interview-recovery.md,Owner-reviewed slot selection and actual recipient delivery remain required
-W2,M18,Recovery expiry and owner exception escalation,validated_local,qa/2026-11-05-recovery-deadlines.md,Positive elapsed-deadline production acceptance remains unverified
+W2,M18,Recovery expiry and owner exception escalation,verified_live_worker_and_synthetic_ui,qa/2026-11-05-recovery-deadlines.md,Positive elapsed-deadline production acceptance remains unverified

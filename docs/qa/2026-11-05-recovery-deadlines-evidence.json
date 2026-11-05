@@ -11,7 +11,31 @@
     "newMigrations": 0
   },
   "live": {
-    "status": "pending",
+    "status": "verified_live_worker_and_synthetic_ui",
+    "checks": {
+      "at": "2026-11-05T02:09:07.793Z",
+      "buildCommit": "ab3bf4d09ec2c7c8a5fe36ea64099b2b6251b8a8",
+      "managedWorkerHeartbeat": "PASS",
+      "observedDeadlineSource": {
+        "scanned": 0,
+        "escalated": 0,
+        "skipped": 0
+      },
+      "syntheticIncidentNavigation": "PASS",
+      "desktopMobileOverflow": false,
+      "runtimeErrors": 0,
+      "transportErrors": 0,
+      "manualIncidentFixture": true,
+      "positiveProductionExpiryVerified": false,
+      "realEmailsSent": 0,
+      "guestInvitations": 0
+    },
+    "cleanup": {
+      "at": "2026-11-05T02:09:08.534Z",
+      "syntheticIncidentResolved": true,
+      "realEmailsSent": 0,
+      "positiveProductionExpiryVerified": false
+    },
     "positiveProductionExpiryVerified": false
   }
 }
