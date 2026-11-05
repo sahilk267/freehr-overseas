@@ -1,3 +1,5 @@
+import {configureDiscoveryCalendar,discoveryCalendarStatus} from "../services/discoveryCalendarAutomation";
+import {previewGoogleDiscovery,syncGoogleDiscovery,reviewGoogleDiscoveryConflict} from "../services/googleCalendar";
 import {availabilityMailOptions,prepareAvailabilityEmail} from "../services/availabilityMail";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
@@ -9,7 +11,12 @@ function owner(ctx:any){headers(ctx);if(ctx.actor.id!==ctx.user.id)throw new TRP
 export const clientDiscoveryRouter=router({
  mailOptions:protectedProcedure.input(z.object({requestId:id})).query(({ctx,input})=>availabilityMailOptions(owner(ctx),input.requestId,"client_discovery")),
  prepareEmail:protectedProcedure.input(z.object({requestId:id,senderIdentityId:id})).mutation(async({ctx,input})=>{const ownerId=owner(ctx),r=await getDiscoveryRequest(ownerId,input.requestId);return prepareAvailabilityEmail(ownerId,ctx.actor.id,{inviteId:r.id,conversationId:r.conversationId,senderIdentityId:input.senderIdentityId},"client_discovery");}),
- create:protectedProcedure.input(z.object({conversationId:id,replyRevision:z.number().int().positive(),actionRevision:z.number().int().positive(),requestKey:z.string().min(8).max(100),ownerWindows:z.array(window).min(1).max(20),timezone:z.string().min(2).max(64),durationMinutes:z.number().int().min(15).max(120),bufferMinutes:z.number().int().min(0).max(60).default(15),expiresHours:z.number().int().min(1).max(168).default(48),autoSelect:z.boolean().default(false)})).mutation(({ctx,input})=>createDiscoveryRequest(owner(ctx),ctx.actor.id,input)),
+ create:protectedProcedure.input(z.object({conversationId:id,replyRevision:z.number().int().positive(),actionRevision:z.number().int().positive(),requestKey:z.string().min(8).max(100),ownerWindows:z.array(window).min(1).max(20),timezone:z.string().min(2).max(64),durationMinutes:z.number().int().min(15).max(120),bufferMinutes:z.number().int().min(0).max(60).default(15),expiresHours:z.number().int().min(1).max(168).default(48),autoSelect:z.boolean().default(false),syncGoogleCalendar:z.boolean().default(false)})).mutation(({ctx,input})=>createDiscoveryRequest(owner(ctx),ctx.actor.id,input)),
+ calendarStatus:protectedProcedure.input(z.object({meetingId:id})).query(({ctx,input})=>discoveryCalendarStatus(owner(ctx),input.meetingId)),
+ configureCalendar:protectedProcedure.input(z.object({meetingId:id,expectedRevision:z.number().int().nonnegative(),enabled:z.boolean(),previewHash:z.string().length(64).optional()})).mutation(({ctx,input})=>configureDiscoveryCalendar(owner(ctx),ctx.actor.id,input)),
+ calendarPreview:protectedProcedure.input(z.object({meetingId:id})).query(({ctx,input})=>previewGoogleDiscovery(owner(ctx),input.meetingId)),
+ reviewCalendarConflict:protectedProcedure.input(z.object({meetingId:id})).query(({ctx,input})=>reviewGoogleDiscoveryConflict(owner(ctx),input.meetingId)),
+ syncCalendar:protectedProcedure.input(z.object({meetingId:id,previewHash:z.string().length(64),approvedExternalReviewHash:z.string().length(64).optional()})).mutation(({ctx,input})=>syncGoogleDiscovery(owner(ctx),input.meetingId,input.previewHash,undefined,"manual",input.approvedExternalReviewHash)),
  get:protectedProcedure.input(z.object({requestId:id})).query(({ctx,input})=>getDiscoveryRequest(owner(ctx),input.requestId)),
  list:protectedProcedure.input(z.object({conversationId:id})).query(({ctx,input})=>listDiscoveryRequests(owner(ctx),input.conversationId)),
  propose:protectedProcedure.input(z.object({requestId:id})).query(({ctx,input})=>proposeDiscovery(owner(ctx),input.requestId)),

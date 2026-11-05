@@ -521,8 +521,8 @@
           "id": "M10-F04",
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-06-discovery-link-email.md",
-          "implementation_note": "Private collection and scoped automatic/manual tentative booking are live-verified. Owner-reviewed discovery-link email now passes live no-send preparation/replay, manual-token replacement, rejection/cancellation and stale-source denial through the shared private outbox. Real delivery, delegated sending, Google event sync, verified attendance, stakeholder mapping and automatic SLA escalation remain pending."
+          "evidence_ref": "qa/2026-11-06-discovery-google-calendar.md",
+          "implementation_note": "Private availability, automatic/manual tentative booking and owner-reviewed discovery mail are verified. Optional request/per-meeting Google mirroring now reuses the shared event engine and worker with distinct identity, ETag review, default-off scoped authority and no guest/reminder emails. Live provider acceptance follows; real mail delivery, attendance, stakeholder mapping and SLA escalation remain pending."
         },
         {
           "id": "M10-F05",
@@ -939,8 +939,8 @@
           "id": "M18-F02",
           "description": "Google/Microsoft free-busy/event sync, meeting creation, ICS fallback, scoped subscription tokens and revocation.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-05-phase-batches.md",
-          "implementation_note": "Actual Google automation lifecycle verified; exact-version owner review can replace external edits. Automatic overrides remain forbidden. Bidirectional ingestion, RSVP, Microsoft, Meet and participant negotiation remain pending."
+          "evidence_ref": "qa/2026-11-06-discovery-google-calendar.md",
+          "implementation_note": "Existing interview Google lifecycle and exact-version external review remain supported. Discovery adds a scoped resource adapter to the same provider engine/worker with private tentative create/cancel, connection/version fences and observed creation identity. Live discovery provider acceptance follows; bidirectional ingestion, RSVP, Microsoft and Meet remain pending."
         },
         {
           "id": "M18-F03",

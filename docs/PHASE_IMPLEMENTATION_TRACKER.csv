@@ -20,3 +20,5 @@ W4,M10,Current-reply-bound client discovery availability,verified_live_private_c
 W4,M10,Scoped automatic tentative client discovery booking,verified_live_scoped_automatic_and_manual,qa/2026-11-06-client-discovery.md,Provider event sync and invitations and attendance confirmation and SLA escalation remain pending
 W2,M18,Shared owner discovery and interview reservation exclusion,validated_local_and_live_booking,qa/2026-11-06-client-discovery.md,External calendar change reconciliation beyond fresh admission checks remains pending
 W4,M07,Owner-reviewed private discovery link email,verified_live_draft_no_send,qa/2026-11-06-discovery-link-email.md,Actual recipient delivery and delegated unattended sending remain pending
+W4,M18,Scoped discovery Google event create and cancel,validated_local_live_pending,qa/2026-11-06-discovery-google-calendar.md,Provider RSVP and bidirectional ingestion and cross-calendar cleanup remain pending
+W4,M10,Explicit discovery calendar grant on booking requests,validated_local_live_pending,qa/2026-11-06-discovery-google-calendar.md,Participant attendance and reminders and SLA escalation remain pending

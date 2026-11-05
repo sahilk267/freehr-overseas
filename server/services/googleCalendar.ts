@@ -1,8 +1,9 @@
+import {appendWorkflowEvent} from "./workflowStore";
 import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes } from "node:crypto";
 import { parse as parseCookies } from "cookie";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { googleCalendarConnections as connections, googleCalendarOAuthStates as states, googleCalendarEventBindings as bindings, interviews } from "../../drizzle/schema";
+import { googleCalendarConnections as connections, googleCalendarOAuthStates as states, googleCalendarEventBindings as bindings, interviews, clientDiscoveryMeetings, clientDiscoveryRequests, workflowEvents } from "../../drizzle/schema";
 import { createId, requireDb, recordAudit } from "../db";
 import { withWorkspaceTransaction, lockedSelect } from "./database";
 import { isValidTimezone } from "../../shared/dateTime";
@@ -156,27 +157,55 @@ export async function googleInterviewSnapshot(tx: any, ownerId: number, id: stri
   const event = { summary: `FreelanceHR interview ${id.slice(-6)}`, location: interview.meetingUrl || "", start: { dateTime: new Date(interview.scheduledAt).toISOString(), timeZone: interview.timezone }, end: { dateTime: new Date(new Date(interview.scheduledAt).getTime() + (interview.durationMinutes ?? 45) * 60000).toISOString(), timeZone: interview.timezone }, status: interview.status === "cancelled" || interview.calendarStatus === "cancelled" ? "cancelled" : interview.calendarStatus === "confirmed" ? "confirmed" : "tentative", extendedProperties: { private: { freehrBinding: binding, freehrSequence: String(interview.calendarSequence ?? 0) } } };
   return { connection: row, binding, eventId: `fh${binding}`, interviewId: id, event, previewHash: hash(JSON.stringify([row.revision, binding, event])) };
 }
+type CalendarResource="interview"|"client_discovery";
+export async function googleDiscoverySnapshot(tx:any,ownerId:number,id:string){
+ const row=await connection(tx,ownerId),meeting=(await tx.select().from(clientDiscoveryMeetings).where(and(eq(clientDiscoveryMeetings.ownerId,ownerId),eq(clientDiscoveryMeetings.id,id))).limit(1))[0];
+ if(!meeting)throw new TRPCError({code:"NOT_FOUND",message:"An owned client discovery meeting is required."});
+ if(!row||row.status!=="active"||!row.accountHash)throw new CalendarFailure("calendar_not_connected");
+ const requestRow=(await tx.select().from(clientDiscoveryRequests).where(and(eq(clientDiscoveryRequests.ownerId,ownerId),eq(clientDiscoveryRequests.id,meeting.requestId))).limit(1))[0];
+ const start=new Date(meeting.scheduledAt);
+ if(!requestRow||!["tentative","cancelled"].includes(meeting.status)||!Number.isFinite(start.getTime())||!Number.isInteger(meeting.durationMinutes)||meeting.durationMinutes<15||meeting.durationMinutes>120||!isValidTimezone(meeting.timezone))throw new TRPCError({code:"PRECONDITION_FAILED",message:"Review the saved client discovery meeting before syncing."});
+ const binding=hash(JSON.stringify([row.id,row.accountHash,row.calendarId,"client_discovery",id]));
+ const event={summary:`FreelanceHR discovery ${id.slice(-6)}`,location:"",visibility:"private",reminders:{useDefault:false},start:{dateTime:start.toISOString(),timeZone:meeting.timezone},end:{dateTime:new Date(start.getTime()+meeting.durationMinutes*60000).toISOString(),timeZone:meeting.timezone},status:meeting.status==="cancelled"?"cancelled":"tentative",extendedProperties:{private:{freehrBinding:binding,freehrSequence:String(meeting.revision),freehrResource:"client_discovery"}}};
+ return {connection:row,binding,eventId:`fh${binding}`,meetingId:id,event,previewHash:hash(JSON.stringify([row.revision,binding,event]))};
+}
+type CalendarSnapshot=Pick<Awaited<ReturnType<typeof googleInterviewSnapshot>>,"connection"|"binding"|"eventId"|"event"|"previewHash">;
+const resourceSnapshot=(tx:any,ownerId:number,id:string,resource:CalendarResource):Promise<CalendarSnapshot>=>resource==="client_discovery"?googleDiscoverySnapshot(tx,ownerId,id):googleInterviewSnapshot(tx,ownerId,id);
+async function readResourceBinding(tx:any,ownerId:number,binding:string,resource:CalendarResource){
+ if(resource==="interview")return (await tx.select().from(bindings).where(and(eq(bindings.ownerId,ownerId),eq(bindings.id,binding))).limit(1))[0];
+ const event=(await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,"google_calendar.discovery_bound"),eq(workflowEvents.aggregateId,binding))).orderBy(desc(workflowEvents.revision)).limit(1))[0];
+ return event?{...event.metadata,revision:event.revision}:undefined;
+}
+export async function previewGoogleDiscovery(ownerId:number,id:string){return withWorkspaceTransaction(ownerId,async tx=>{const s=await googleDiscoverySnapshot(tx,ownerId,id);return {meetingId:id,previewHash:s.previewHash,calendarId:s.connection.calendarId,accountEmail:s.connection.accountEmail,event:s.event,invitationsSent:false,mode:"owner_review"};});}
+export async function syncGoogleDiscovery(ownerId:number,id:string,previewHash:string,automationGuard:()=>Promise<void>=async()=>{},execution:"manual"|"automatic"="manual",approvedExternalReviewHash?:string){return syncGoogleResource(ownerId,id,previewHash,automationGuard,execution,approvedExternalReviewHash,"client_discovery");}
 export async function previewGoogleInterview(ownerId: number, id: string) { return withWorkspaceTransaction(ownerId, async tx => { const s = await googleInterviewSnapshot(tx, ownerId, id); return { interviewId: id, previewHash: s.previewHash, calendarId: s.connection.calendarId, accountEmail: s.connection.accountEmail, event: s.event, invitationsSent: false, mode: "owner_review" }; }); }
-export async function syncGoogleInterview(ownerId: number, id: string, previewHash: string, automationGuard: () => Promise<void> = async () => {}, execution: "manual" | "automatic" = "manual", approvedExternalReviewHash?: string) {
+export async function syncGoogleInterview(ownerId: number, id: string, previewHash: string, automationGuard: () => Promise<void> = async () => {}, execution: "manual" | "automatic" = "manual", approvedExternalReviewHash?: string) { return syncGoogleResource(ownerId,id,previewHash,automationGuard,execution,approvedExternalReviewHash,"interview"); }
+function sameOwnedEvent(expected:any,remote:any){return expected.summary===remote.summary&&(expected.location||"")===(remote.location||"")&&Date.parse(expected.start.dateTime)===Date.parse(remote.start?.dateTime)&&Date.parse(expected.end.dateTime)===Date.parse(remote.end?.dateTime)&&expected.status===remote.status&&expected.visibility===remote.visibility&&remote.reminders?.useDefault===false&&!(remote.reminders?.overrides?.length)&&expected.extendedProperties.private.freehrSequence===remote.extendedProperties?.private?.freehrSequence;}
+async function syncGoogleResource(ownerId:number,id:string,previewHash:string,automationGuard:()=>Promise<void>,execution:"manual"|"automatic",approvedExternalReviewHash:string|undefined,resource:CalendarResource) {
   return withCalendar(ownerId, async (row, access, guard) => {
     await automationGuard();
-    const s = await withWorkspaceTransaction(ownerId, tx => googleInterviewSnapshot(tx, ownerId, id));
-    if (s.previewHash !== previewHash || s.connection.revision !== row.revision) throw new TRPCError({ code: "CONFLICT", message: "Interview or calendar changed. Review a fresh event preview." });
+    const s = await withWorkspaceTransaction(ownerId, tx => resourceSnapshot(tx, ownerId, id, resource));
+    if (s.previewHash !== previewHash || s.connection.revision !== row.revision) throw new TRPCError({ code: "CONFLICT", message: resource==="interview"?"Interview or calendar changed. Review a fresh event preview.":"Discovery meeting or calendar changed. Review a fresh event preview." });
     await providerBusy(row, access, new Date(s.event.start.dateTime), new Date(s.event.end.dateTime));
     await guard();
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(row.calendarId)}/events`, headers = { Authorization: `Bearer ${access}`, "Content-Type": "application/json" };
-    const stillCurrent = async () => { await automationGuard(); await guard(); const current = await withWorkspaceTransaction(ownerId, tx => googleInterviewSnapshot(tx, ownerId, id)); if (current.previewHash !== previewHash) throw new CalendarFailure("interview_changed"); };
+    const stillCurrent = async () => { await automationGuard(); await guard(); const current = await withWorkspaceTransaction(ownerId, tx => resourceSnapshot(tx, ownerId, id, resource)); if (current.previewHash !== previewHash) throw new CalendarFailure(resource==="interview"?"interview_changed":"meeting_changed"); };
     let remote = await request(`${url}/${s.eventId}`, { headers }, [404]);
     let data: any = remote.status === 404 ? null : await remote.json();
     if (data?.status === "cancelled" && s.event.status === "cancelled") { await stillCurrent(); return { synced: true, action: "already_cancelled", invitationsSent: false }; }
     if (data && data.extendedProperties?.private?.freehrBinding !== s.binding) throw new CalendarFailure("event_identity_conflict");
     await stillCurrent();
     if (!data && s.event.status === "cancelled") return { synced: true, action: "no_external_event", invitationsSent: false };
-    if (!data) { remote = await request(`${url}?sendUpdates=none`, { method: "POST", headers, body: JSON.stringify({ ...s.event, id: s.eventId }) }, [409]); if (remote.status === 409) data = await (await request(`${url}/${s.eventId}`, { headers })).json(); else data = await remote.json(); }
+    if (!data) { remote = await request(`${url}?sendUpdates=none`, { method: "POST", headers, body: JSON.stringify({ ...s.event, id: s.eventId }) }, [409]); if (remote.status === 409) data = await (await request(`${url}/${s.eventId}`, { headers })).json(); else {data = await remote.json();
+      if(resource==="client_discovery"&&data?.id===s.eventId&&data.extendedProperties?.private?.freehrBinding===s.binding&&typeof data.etag==="string"&&data.etag.length<=512){
+        await withWorkspaceTransaction(ownerId,async tx=>{const current=await connection(tx,ownerId);if(current?.leaseToken!==row.leaseToken||current.revision!==row.revision)throw new CalendarFailure("connection_changed");const latest=await googleDiscoverySnapshot(tx,ownerId,id),prior=await readResourceBinding(tx,ownerId,s.binding,resource);await appendWorkflowEvent(tx,ownerId,"google_calendar.discovery_bound",s.binding,(prior?.revision??0)+1,{connectionId:row.id,meetingId:id,eventId:s.eventId,syncedFingerprint:previewHash,providerEtag:data.etag,lastSyncedAt:new Date().toISOString(),lastErrorCode:latest.previewHash===previewHash?null:"meeting_changed_after_creation",observation:"creation_accepted"});});
+      }
+    } }
     if (data?.extendedProperties?.private?.freehrBinding !== s.binding || (typeof data?.etag !== "string" || !data.etag || data.etag.length > 512)) throw new CalendarFailure("event_identity_conflict");
     const previousBinding = await withWorkspaceTransaction(ownerId, async tx =>
-      (await tx.select().from(bindings).where(and(eq(bindings.ownerId, ownerId), eq(bindings.id, s.binding))).limit(1))[0]);
+      readResourceBinding(tx,ownerId,s.binding,resource));
     if (approvedExternalReviewHash && (execution !== "manual" || approvedExternalReviewHash !== externalReviewKey(s.previewHash, data))) throw new CalendarFailure("external_review_changed");
+    if(resource==="client_discovery"&&!previousBinding?.providerEtag&&!approvedExternalReviewHash&&!sameOwnedEvent(s.event,data))throw new CalendarFailure("external_event_changed");
     if (previousBinding?.providerEtag && previousBinding.providerEtag !== data.etag && !approvedExternalReviewHash) throw new CalendarFailure("external_event_changed");
     await stillCurrent();
     const patched = await request(`${url}/${s.eventId}?sendUpdates=none`, { method: "PATCH", headers: { ...headers, "If-Match": data.etag }, body: JSON.stringify(s.event) }, [412]);
@@ -185,29 +214,36 @@ export async function syncGoogleInterview(ownerId: number, id: string, previewHa
     if (saved.id !== s.eventId || (s.event.status === "cancelled" ? saved.status !== "cancelled" : saved.extendedProperties?.private?.freehrBinding !== s.binding || typeof saved.etag !== "string" || saved.etag.length > 512)) throw new CalendarFailure("invalid_provider_response");
     await automationGuard();
     const currentAfterWrite = await withWorkspaceTransaction(ownerId, async tx => {
-      const current = await connection(tx, ownerId), latest = await googleInterviewSnapshot(tx, ownerId, id);
+      const current = await connection(tx, ownerId), latest = await resourceSnapshot(tx, ownerId, id, resource);
       if (current?.leaseToken !== row.leaseToken || current?.revision !== row.revision || !current?.leaseUntil || new Date(current.leaseUntil).getTime() <= Date.now()) throw new CalendarFailure("connection_changed");
       const values = { ownerId, connectionId: row.id, interviewId: id, eventId: s.eventId, syncedFingerprint: previewHash, providerEtag: saved.etag || null, lastSyncedAt: new Date(), lastErrorCode: latest.previewHash === previewHash ? null : "interview_changed_after_write" };
-      const prior = (await tx.select().from(bindings).where(eq(bindings.id, s.binding)).limit(1))[0];
-      if (prior) await tx.update(bindings).set(values).where(eq(bindings.id, s.binding)); else await tx.insert(bindings).values({ id: s.binding, ...values });
-      await recordAudit({ ownerId, actorType: execution === "automatic" ? "system" : "user", actorId: execution === "automatic" ? undefined : String(ownerId), action: "google_calendar.event_synced", resourceType: "interview", resourceId: id, metadata: { execution, externalChangeReviewed: Boolean(approvedExternalReviewHash), current: latest.previewHash === previewHash, invitationsSent: false } }, tx);
+      if(resource==="interview"){
+        const prior = (await tx.select().from(bindings).where(eq(bindings.id, s.binding)).limit(1))[0];
+        if (prior) await tx.update(bindings).set(values).where(eq(bindings.id, s.binding)); else await tx.insert(bindings).values({ id: s.binding, ...values });
+      }else{
+        const prior=await readResourceBinding(tx,ownerId,s.binding,resource);
+        await appendWorkflowEvent(tx,ownerId,"google_calendar.discovery_bound",s.binding,(prior?.revision??0)+1,{connectionId:row.id,meetingId:id,eventId:s.eventId,syncedFingerprint:previewHash,providerEtag:saved.etag||null,lastSyncedAt:new Date().toISOString(),lastErrorCode:latest.previewHash===previewHash?null:"meeting_changed_after_write"});
+      }
+      await recordAudit({ ownerId, actorType: execution === "automatic" ? "system" : "user", actorId: execution === "automatic" ? undefined : String(ownerId), action: "google_calendar.event_synced", resourceType: resource, resourceId: id, metadata: { execution, externalChangeReviewed: Boolean(approvedExternalReviewHash), current: latest.previewHash === previewHash, invitationsSent: false } }, tx);
       return latest.previewHash === previewHash;
     });
-    if (!currentAfterWrite) throw new CalendarFailure("interview_changed_after_write");
+    if (!currentAfterWrite) throw new CalendarFailure(resource==="interview"?"interview_changed_after_write":"meeting_changed_after_write");
     return { synced: true, action: "upserted", invitationsSent: false };
   });
 }
 
 function externalReviewKey(previewHash: string, remote: any) { return hash(JSON.stringify([previewHash, remote.id, remote.etag])); }
-export async function reviewGoogleConflict(ownerId: number, id: string) {
+export async function reviewGoogleConflict(ownerId:number,id:string){return reviewResourceConflict(ownerId,id,"interview");}
+export async function reviewGoogleDiscoveryConflict(ownerId:number,id:string){return reviewResourceConflict(ownerId,id,"client_discovery");}
+async function reviewResourceConflict(ownerId:number,id:string,resource:CalendarResource) {
   return withCalendar(ownerId, async (row, access, guard) => {
-    const s = await withWorkspaceTransaction(ownerId, tx => googleInterviewSnapshot(tx, ownerId, id));
+    const s = await withWorkspaceTransaction(ownerId, tx => resourceSnapshot(tx, ownerId, id, resource));
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(row.calendarId)}/events/${s.eventId}`;
     const remote = await (await request(url, { headers: { Authorization: `Bearer ${access}` } })).json() as any;
     if (remote.id !== s.eventId || remote.extendedProperties?.private?.freehrBinding !== s.binding || typeof remote.etag !== "string" || remote.etag.length > 512) throw new CalendarFailure("event_identity_conflict");
     await guard();
-    const latest = await withWorkspaceTransaction(ownerId, tx => googleInterviewSnapshot(tx, ownerId, id));
-    if (latest.previewHash !== s.previewHash) throw new CalendarFailure("interview_changed");
+    const latest = await withWorkspaceTransaction(ownerId, tx => resourceSnapshot(tx, ownerId, id, resource));
+    if (latest.previewHash !== s.previewHash) throw new CalendarFailure(resource==="interview"?"interview_changed":"meeting_changed");
     return { previewHash: s.previewHash, approvedExternalReviewHash: externalReviewKey(s.previewHash, remote), saved: s.event,
       remote: { summary: String(remote.summary || "").slice(0,1000), status: String(remote.status || ""), start: String(remote.start?.dateTime || remote.start?.date || ""), end: String(remote.end?.dateTime || remote.end?.date || ""), location: String(remote.location || "").slice(0,1000) } };
   });

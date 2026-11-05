@@ -1,3 +1,4 @@
+import {executeDiscoveryCalendarSync} from "./discoveryCalendarAutomation";
 import { and, desc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
 import { automationQueue, googleCalendarConnections, workspaceSettings } from "../../drizzle/schema";
@@ -19,7 +20,7 @@ export async function calendarAutomationStatus(ownerId: number) {
   return { enabled: policy.enabled && connection?.status === "active" && connection.revision === policy.connectionRevision,
     revision: policy.revision, workerEnabled: Boolean(workspace?.backgroundEnabled), emergencyStop: Boolean(workspace?.emergencyStop),
     needsReenable: policy.enabled && (connection?.status !== "active" || connection?.revision !== policy.connectionRevision),
-    jobs: jobs.map(j=>({id:j.id,status:j.status,attempts:j.attempts,scheduledAt:j.scheduledAt,lastError:j.lastError,outcome:(j.result as {status?:string;synced?:boolean}|null)?.status === "cancelled" ? "cancelled" : (j.result as {synced?:boolean}|null)?.synced ? "synced" : null})),
+    jobs: jobs.filter(j=>(j.payload as {resourceType?:string}|null)?.resourceType!=="client_discovery").map(j=>({id:j.id,status:j.status,attempts:j.attempts,scheduledAt:j.scheduledAt,lastError:j.lastError,outcome:(j.result as {status?:string;synced?:boolean}|null)?.status === "cancelled" ? "cancelled" : (j.result as {synced?:boolean}|null)?.synced ? "synced" : null})),
     scope:"future_saved_interview_changes", invitationsSent:false };
 }
 export async function configureCalendarAutomation(ownerId:number, actorId:number, enabled:boolean, expectedRevision:number) {
@@ -43,6 +44,7 @@ export async function enqueueCalendarSync(tx:any,ownerId:number,interviewId:stri
   await tx.insert(automationQueue).values({id:createId("que_"),ownerId,jobType:"google_calendar_sync",status:"queued",priority:15,attempts:0,maxAttempts:5,scheduledAt:new Date(),idempotencyKey:key,payload:{interviewId,previewHash:snapshot.previewHash,revision:policy.revision}});
 }
 export async function executeCalendarSync(ownerId:number,payload:any) {
+  if(payload?.resourceType==="client_discovery")return executeDiscoveryCalendarSync(ownerId,payload);
   const guard=async()=>{
     const {workspace,connection,policy}=await context(await requireDb(),ownerId);
     if(!policy.enabled || policy.revision!==payload.revision || !workspace?.backgroundEnabled || workspace?.emergencyStop || connection?.status!=="active" || connection.revision!==policy.connectionRevision) throw new TRPCError({code:"PRECONDITION_FAILED",message:"Calendar automation authority changed; task cancelled."});

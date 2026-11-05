@@ -1,3 +1,4 @@
+import {authorizeDiscoveryRequestCalendar,inheritDiscoveryCalendarPolicy,enqueueDiscoveryCalendarSync} from "./discoveryCalendarAutomation";
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -34,11 +35,11 @@ async function currentRequest(tx:any,ownerId:number,id:string){
  const r=await owned(tx,ownerId,id);if(!["pending","responded"].includes(r.status)||new Date(r.expiresAt)<=new Date())throw fail("Discovery request is closed or expired.");
  const source=await currentSource(tx,ownerId,r.conversationId);if(source.fingerprint!==r.sourceFingerprint||source.contactId!==r.contactId)throw fail("Client reply, next action or recipient changed. Create a fresh discovery request.","CONFLICT");return r;
 }
-export async function createDiscoveryRequest(ownerId:number,actorId:number,input:{conversationId:string;replyRevision:number;actionRevision:number;requestKey:string;ownerWindows:Window[];timezone:string;durationMinutes:number;bufferMinutes:number;expiresHours:number;autoSelect:boolean}){
+export async function createDiscoveryRequest(ownerId:number,actorId:number,input:{conversationId:string;replyRevision:number;actionRevision:number;requestKey:string;ownerWindows:Window[];timezone:string;durationMinutes:number;bufferMinutes:number;expiresHours:number;autoSelect:boolean;syncGoogleCalendar?:boolean}){
  const normalized=normalizeAvailabilityWindows(input.ownerWindows).map(w=>({start:new Date(w.start).toISOString(),end:new Date(w.end).toISOString()}));
  if(!isValidTimezone(input.timezone))throw fail("Select a valid timezone.","BAD_REQUEST");
  commonAvailability({candidate:input.ownerWindows,interviewer:input.ownerWindows,durationMinutes:input.durationMinutes,bufferMinutes:input.bufferMinutes});
- const requestKeyHash=workflowHash(input.requestKey),requestHash=workflowHash({...input,requestKey:undefined,ownerWindows:normalized});
+ const requestKeyHash=workflowHash(input.requestKey),requestHash=workflowHash({...input,requestKey:undefined,syncGoogleCalendar:input.syncGoogleCalendar?true:undefined,ownerWindows:normalized});
  return withWorkspaceTransaction(ownerId,async tx=>{
   const prior=(await tx.select().from(requests).where(and(eq(requests.ownerId,ownerId),eq(requests.requestKeyHash,requestKeyHash))).limit(1))[0];
   if(prior){if(prior.requestHash!==requestHash)throw fail("This request key already belongs to different discovery details.","CONFLICT");return {request:safe(prior),token:null,alreadyExists:true};}
@@ -52,6 +53,7 @@ export async function createDiscoveryRequest(ownerId:number,actorId:number,input
   }
   const id=createId("dcr_"),token=randomBytes(32).toString("base64url");
   await tx.insert(requests).values({id,ownerId,conversationId:input.conversationId,contactId:source.contactId,sourceFingerprint:source.fingerprint,requestKeyHash,requestHash,tokenHash:tokenHash(token),status:"pending",revision:1,ownerWindows:normalized,timezone:input.timezone,durationMinutes:input.durationMinutes,bufferMinutes:input.bufferMinutes,autoSelect:input.autoSelect,expiresAt:new Date(Date.now()+input.expiresHours*3600000)});
+  if(input.syncGoogleCalendar)await authorizeDiscoveryRequestCalendar(tx,ownerId,id,actorId);
   await recordAudit({ownerId,actorType:"user",actorId:String(actorId),action:"discovery.request_created",resourceType:"client_discovery",resourceId:id,metadata:{conversationId:input.conversationId,autoSelect:input.autoSelect}},tx);
   return {request:safe(await owned(tx,ownerId,id)),token,alreadyExists:false};
  });
@@ -115,6 +117,7 @@ export async function bookDiscovery(ownerId:number,actorId:number|string,input:{
   if((await recordedOwnerBusy(tx,ownerId,start,end)).length)throw fail("This time now conflicts with another recorded meeting or hold.","CONFLICT");
   const id=createId("dcm_");await tx.insert(meetings).values({id,ownerId,requestId:r.id,bookingHash,scheduledAt:input.scheduledAt,durationMinutes:r.durationMinutes,bufferMinutes:r.bufferMinutes,timezone:r.clientTimezone||r.timezone,status:"tentative",revision:1});
   await tx.update(requests).set({status:"booked",revision:r.revision+1,tokenHash:""}).where(and(eq(requests.ownerId,ownerId),eq(requests.id,r.id)));
+  await inheritDiscoveryCalendarPolicy(tx,ownerId,r.id,id);
   await appendWorkflowEvent(tx,ownerId,"discovery.booked",r.id,1,{meetingId:id,automatic,participantAcceptance:false,googleConnectionRevision:connection.revision});
   await recordAudit({ownerId,actorType:automatic?"cron":"user",actorId:String(actorId),action:"discovery.booked",resourceType:"client_discovery",resourceId:r.id,metadata:{meetingId:id,participantAcceptance:false}},tx);
   return {id,status:"tentative",alreadyExists:false,participantAcceptance:false};
@@ -126,6 +129,7 @@ export async function cancelDiscovery(ownerId:number,actorId:number,input:{reque
   const prepared=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,"discovery.email_requested"),eq(workflowEvents.aggregateId,r.id)));
   for(const e of prepared){const dispatch=(await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId,ownerId),eq(emailDispatches.approvalId,String(e.metadata?.approvalId)))).limit(1))[0];if(dispatch)await cancelUnusedEmailDispatch(tx,ownerId,dispatch,"Client discovery request cancelled.");}
   const m=(await tx.select().from(meetings).where(and(eq(meetings.ownerId,ownerId),eq(meetings.requestId,r.id))).limit(1))[0];if(m)await tx.update(meetings).set({status:"cancelled",revision:m.revision+1}).where(and(eq(meetings.ownerId,ownerId),eq(meetings.id,m.id)));
+  if(m)await enqueueDiscoveryCalendarSync(tx,ownerId,m.id);
   await tx.update(automationQueue).set({status:"cancelled",lockToken:null,lockedAt:null}).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.idempotencyKey,`discovery_select:${r.id}:${r.revision}`),inArray(automationQueue.status,["queued","retryable_failed"])));
   await tx.update(incidents).set({status:"resolved",resolvedAt:new Date(),containmentNotes:"Owner cancelled this discovery request."}).where(and(eq(incidents.ownerId,ownerId),eq(incidents.incidentType,"client_discovery_no_slots"),eq(incidents.affectedResourceId,r.id),inArray(incidents.status,["detected","triaged","contained","investigated"])));
   await recordAudit({ownerId,actorType:"user",actorId:String(actorId),action:"discovery.cancelled",resourceType:"client_discovery",resourceId:r.id},tx);return {alreadyCancelled:false};
