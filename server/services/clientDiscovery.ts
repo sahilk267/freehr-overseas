@@ -11,7 +11,7 @@ import { hasClientCommunicationPermission } from "./communicationPermission";
 import { withWorkspaceTransaction } from "./database";
 import { googleFreeBusyWithBuffers } from "./googleCalendar";
 import { recordedOwnerBusy } from "./recordedCalendarBusy";
-import { clientReplyCase } from "./replyTriage";
+import { finishReplyAction, clientReplyCase } from "./replyTriage";
 import { appendWorkflowEvent, cancelUnusedEmailDispatch, workflowHash } from "./workflowStore";
 const fail=(message:string,code:"CONFLICT"|"PRECONDITION_FAILED"|"BAD_REQUEST"="PRECONDITION_FAILED")=>new TRPCError({code,message});
 const tokenHash=(token:string)=>createHash("sha256").update(token).digest("hex");
@@ -25,11 +25,11 @@ function windows(values:Window[],now=new Date()){
 async function currentSource(tx:any,ownerId:number,conversationId:string){
  const d=await clientReplyCase(tx,ownerId,conversationId),c=(await tx.select().from(conversations).where(and(eq(conversations.ownerId,ownerId),eq(conversations.id,conversationId))).limit(1))[0];
  const action=d.action as {action?:string;revision:number}|null;
- if(d.blocked||!d.message||action?.action!=="arrange_discovery"||!c?.contactId||!await hasClientCommunicationPermission(tx,ownerId,c.contactId))throw fail("A current permitted client reply and reviewed discovery next action are required.");
+ if(d.blocked||d.completion||!d.message||action?.action!=="arrange_discovery"||!c?.contactId||!await hasClientCommunicationPermission(tx,ownerId,c.contactId))throw fail("A current permitted client reply and reviewed discovery next action are required.");
  const contact=(await tx.select().from(contacts).where(and(eq(contacts.ownerId,ownerId),eq(contacts.id,c.contactId))).limit(1))[0];
  if(!contact?.email)throw fail("Client contact email is unavailable.");
  const blocked=(await tx.select().from(suppressionList).where(and(eq(suppressionList.ownerId,ownerId),eq(suppressionList.channel,"email"),eq(suppressionList.valueHash,hashContactValue(contact.email)),eq(suppressionList.active,true))).limit(1))[0];if(blocked)throw fail("Client contact is suppressed.");
- return {fingerprint:workflowHash([conversationId,c.contactId,contact.email.trim().toLowerCase(),d.message.id,d.replyRevision,action.revision,workflowHash(d.message.body)]),contactId:c.contactId,replyRevision:d.replyRevision,actionRevision:action.revision,companyName:d.companyName};
+ return {fingerprint:workflowHash([conversationId,c.contactId,contact.email.trim().toLowerCase(),d.message.id,d.replyRevision,action.revision,workflowHash(d.message.body)]),contactId:c.contactId,replyRevision:d.replyRevision,actionRevision:action.revision,messageId:d.message.id,companyName:d.companyName};
 }
 async function currentRequest(tx:any,ownerId:number,id:string){
  const r=await owned(tx,ownerId,id);if(!["pending","responded"].includes(r.status)||new Date(r.expiresAt)<=new Date())throw fail("Discovery request is closed or expired.");
@@ -139,6 +139,8 @@ export async function bookDiscovery(ownerId:number,actorId:number|string,input:{
   await resolveDiscoveryIncidents(tx,ownerId,r.id,"A tentative discovery meeting was booked.");
   await inheritDiscoveryCalendarPolicy(tx,ownerId,r.id,id);
   await appendWorkflowEvent(tx,ownerId,"discovery.booked",r.id,1,{meetingId:id,automatic,participantAcceptance:false,googleConnectionRevision:connection.revision});
+  const source=await currentSource(tx,ownerId,r.conversationId);
+  await finishReplyAction(tx,ownerId,{conversationId:r.conversationId,messageId:source.messageId,replyRevision:source.replyRevision,actionRevision:source.actionRevision},{kind:"discovery_booked",reason:"A tentative discovery meeting was booked; attendance is not confirmed.",resourceId:id});
   await recordAudit({ownerId,actorType:automatic?"cron":"user",actorId:String(actorId),action:"discovery.booked",resourceType:"client_discovery",resourceId:r.id,metadata:{meetingId:id,participantAcceptance:false}},tx);
   return {id,status:"tentative",alreadyExists:false,participantAcceptance:false};
  });

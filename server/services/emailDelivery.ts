@@ -1,4 +1,4 @@
-import {validateReplyEmail} from "./replyMail";
+import {completeAcceptedReply,validateReplyEmail} from "./replyMail";
 import type {ReplyMailScope} from "./replyMailScope";
 import {materializeAvailabilityEmail} from "./availabilityMail";
 import type {AvailabilityMailScope} from "./availabilityMailScope";
@@ -91,17 +91,19 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
     if (!claimed[0]?.affectedRows) throw new TRPCError({ code: "CONFLICT", message: "This email approval has already been consumed." });
     await tx.update(emailDispatches).set({ status: "dispatching", claimedAt: now }).where(eq(emailDispatches.id, dispatch.id));
     await appendWorkflowEvent(tx, ownerId, "email.dispatch_claimed", dispatch.id, 1, { messageId: message.id, approvalId: approval.id });
-    return { status: "claimed", dispatch, message, identity, deliveryBody, recipient: payload.recipient };
+    return { status: "claimed", dispatch, message, identity, deliveryBody, recipient: payload.recipient, replyScope:payload.replyScope };
   });
   if (claim.status !== "claimed") return { success: false, ...claim };
   try {
     const receipt = await sendViaHostingerMailApi({ purpose: claim.identity.purpose, to: claim.recipient, displayName: claim.identity.displayName, subject: claim.message.subject ?? "", text: claim.deliveryBody, messageId: claim.message.id });
     const acceptedAt = new Date();
     await db.transaction(async (tx: any) => {
+      await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId,ownerId)).limit(1));
       await tx.update(messages).set({ status: "sent", providerMessageId: receipt.providerMessageId, providerUid: receipt.providerUid, providerFolder: receipt.providerFolder, messageId: receipt.messageId, inReplyTo: receipt.inReplyTo, sentAt: acceptedAt }).where(eq(messages.id, claim.message.id));
       await tx.update(emailDispatches).set({ status: "sent", completedAt: acceptedAt }).where(eq(emailDispatches.id, claim.dispatch.id));
       await advanceFollowUp(tx, claim.dispatch, acceptedAt);
       await appendWorkflowEvent(tx, ownerId, "email.provider_accepted", claim.dispatch.id, 1, { messageId: claim.message.id, providerMessageId: receipt.providerMessageId });
+      if(claim.replyScope)await completeAcceptedReply(tx,ownerId,{recipient:claim.recipient,replyScope:claim.replyScope},claim.message);
     });
     await recordAudit({ ownerId, actorType: "system", action: "email.sent", resourceType: "message", resourceId: claim.message.id, metadata: { dispatchId: claim.dispatch.id, providerMessageId: receipt.providerMessageId } }).catch(() => {});
     return { success: true, status: "sent", providerMessageId: receipt.providerMessageId, dispatchId: claim.dispatch.id };

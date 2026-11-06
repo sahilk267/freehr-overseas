@@ -321,7 +321,7 @@
           "description": "Owner timeline: why due, goal, next action, expected stop condition, prior attempts, snooze/handoff, exhausted sequence and recovery options.",
           "status": "implementing",
           "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "W2 adds explicit snooze, reviewed restarts, immutable definitions and recovery controls; broader handoff/adaptive cadence remains pending. Discovery expiry and reviewed client reply due actions now escalate through existing incidents, with superseded-action resolution; broader handoff and adaptive cadence remain pending."
+          "implementation_note": "W2 adds explicit snooze, reviewed restarts, immutable definitions and recovery controls; broader handoff/adaptive cadence remains pending. Discovery expiry and reviewed client reply due actions now escalate through existing incidents, with superseded-action resolution; broader handoff and adaptive cadence remain pending. Explicit owner completion preserves the due-date history, resolves SLA incidents and cancels timers; automatic scoped outcomes cannot complete newer task versions."
         }
       ],
       "events": "followup.enrolled, followup.due, followup.paused, followup.stopped, followup.exhausted",
@@ -515,14 +515,14 @@
           "description": "Personalized acquisition campaigns and reply routing; M06 owns cadence, M07 delivery, M08 grounded drafting.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-05-client-reply-triage.md",
-          "implementation_note": "M06/M07 campaigns share transactional inbound deduplication and current reply assessment. Reviewed next actions and bound outbox drafts are live-verified. Discovery collection and scoped automatic tentative selection are tracked in M10-F04; grounded automatic replies and actual recipient delivery remain pending."
+          "implementation_note": "M06/M07 campaigns share transactional inbound deduplication and current reply assessment. Reviewed next actions and bound outbox drafts are live-verified. Discovery collection and scoped automatic tentative selection are tracked in M10-F04; grounded automatic replies and actual recipient delivery remain pending. Current owner task completion now uses an immutable outcome ledger; provider acceptance of a bound prepare-response goal can close its timer without claiming recipient delivery."
         },
         {
           "id": "M10-F04",
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-06-client-acquisition-deadlines.md",
-          "implementation_note": "Private collection, tentative booking and scoped Google lifecycle have live evidence. Discovery expiry closes capability and unused outbox work, reuses no-slot incidents and supports replacement. Reviewed reply action deadlines use version-bound existing queue jobs, backfill, stale guards and owner exception navigation. Attendance, stakeholder mapping, broader lead-stage SLA policy and actual recipient mail delivery remain pending. Live managed SLA escalation, desktop/mobile completion and opt-out cancellation passed with zero delivery and synthetic cleanup. Positive production expiry remains unverified; local SQL expiry checks passed."
+          "implementation_note": "Private collection, tentative booking and scoped Google lifecycle have live evidence. Discovery expiry closes capability and unused outbox work, reuses no-slot incidents and supports replacement. Reviewed reply action deadlines use version-bound existing queue jobs, backfill, stale guards and owner exception navigation. Attendance, stakeholder mapping, broader lead-stage SLA policy and actual recipient mail delivery remain pending. Live managed SLA escalation, desktop/mobile completion and opt-out cancellation passed with zero delivery and synthetic cleanup. Positive production expiry remains unverified; local SQL expiry checks passed. Tentative booking now closes only its matching arrange-discovery action. Fresh goals require a new reviewed action; attendance remains unconfirmed."
         },
         {
           "id": "M10-F05",
@@ -2230,7 +2230,7 @@
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Shared discovery expiry and version-bound client reply SLA escalation reuse existing workers, queue and incidents. Positive local SQL verification and scoped live acceptance are tracked separately. Recipient delivery, attendance and remaining advanced module gates stay open.",
+    "note": "Shared workers, outbox and workflow ledger now also track reviewed task completion from owner review, tentative discovery booking and provider-accepted bound responses. Live acceptance is recorded per increment; attendance, actual recipient delivery and remaining advanced gates stay open.",
     "updated_at": "2026-11-06"
   }
 }

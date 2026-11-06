@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, exists, inArray, lte, notExists } from "drizzle-orm";
-import { approvals, automationQueue, candidates, companies, contacts, conversations, emailDispatches, messages, incidents, workspaceSettings, suppressionList, workflowEvents } from "../../drizzle/schema";
+import { clientDiscoveryRequests, approvals, automationQueue, candidates, companies, contacts, conversations, emailDispatches, messages, incidents, workspaceSettings, suppressionList, workflowEvents } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit, requireDb } from "../db";
 import { withWorkspaceTransaction } from "./database";
 import {hasClientCommunicationPermission} from "./communicationPermission";
@@ -35,7 +35,7 @@ export async function processLegacyReplyDeadlines(ownerId?:number,limit=10){
   let detail;try{detail=await clientReplyCase(tx,row.ownerId,row.id);}catch(e){if(!(e instanceof TRPCError)||!["NOT_FOUND","PRECONDITION_FAILED"].includes(e.code))throw e;}
   const action=detail?.action as {revision:number;requestHash?:string;dueAt?:string;action?:string}|null;
   const current=(await tx.select().from(conversations).where(and(eq(conversations.ownerId,row.ownerId),eq(conversations.id,row.id))).limit(1))[0];
-  const eligible=Boolean(!detail?.blocked&&detail?.message&&action?.requestHash&&action.dueAt&&current?.nextActionAt&&Math.floor(new Date(action.dueAt).getTime()/1000)===Math.floor(new Date(current.nextActionAt).getTime()/1000)&&!["stop_contact","close_no_interest"].includes(action.action??""));
+  const eligible=Boolean(!detail?.blocked&&!detail?.completion&&detail?.message&&action?.requestHash&&action.dueAt&&current?.nextActionAt&&Math.abs(new Date(action.dueAt).getTime()-new Date(current.nextActionAt).getTime())<1000&&!["stop_contact","close_no_interest"].includes(action.action??""));
   if(eligible)await scheduleReplyDeadline(tx,row.ownerId,{conversationId:row.id,messageId:detail!.message!.id,replyRevision:detail!.replyRevision,actionRevision:action!.revision,requestHash:action!.requestHash!},new Date(action!.dueAt!));
   await appendWorkflowEvent(tx,row.ownerId,"outreach.deadline_backfilled",row.id,1,{scheduled:eligible});return eligible?1:0;
  });
@@ -58,7 +58,7 @@ export async function executeClientReplyDeadline(ownerId:number,payload:Record<s
   let detail;
   try{detail=await clientReplyCase(tx,ownerId,payload.conversationId);}catch(e){if(!(e instanceof TRPCError)||!["NOT_FOUND","PRECONDITION_FAILED"].includes(e.code))throw e;return {status:"stale"};}
   const action=detail.action as {revision:number;requestHash?:string;dueAt?:string;action?:string}|null;
-  if(detail.blocked||detail.message?.id!==payload.messageId||detail.replyRevision!==payload.replyRevision||action?.revision!==payload.actionRevision||action?.requestHash!==payload.requestHash||!action?.dueAt||["stop_contact","close_no_interest"].includes(action.action??""))return {status:"stale"};
+  if(detail.blocked||detail.completion||detail.message?.id!==payload.messageId||detail.replyRevision!==payload.replyRevision||action?.revision!==payload.actionRevision||action?.requestHash!==payload.requestHash||!action?.dueAt||["stop_contact","close_no_interest"].includes(action.action??""))return {status:"stale"};
   const conversation=await ownedConversation(tx,ownerId,payload.conversationId);
   if(!conversation.contactId||!await hasClientCommunicationPermission(tx,ownerId,conversation.contactId))return {status:"stale"};
   const contact=(await tx.select().from(contacts).where(and(eq(contacts.ownerId,ownerId),eq(contacts.id,conversation.contactId))).limit(1))[0];
@@ -175,13 +175,44 @@ export async function clientReplyCase(db: any, ownerId: number, conversationId: 
   if (message && cursor.metadata.bodyHash !== workflowHash(message.body)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Reply evidence changed; review the inbox record before acting." });
   const assessment = message ? (await events(db, ownerId, "outreach.reply_assessed", message.id))[0] : null;
   const action = message ? (await events(db, ownerId, "outreach.reply_action", message.id))[0] : null;
+  const completed = message && action ? (await db.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,"outreach.reply_action_completed"),eq(workflowEvents.aggregateId,message.id),eq(workflowEvents.revision,action.revision))).limit(1))[0] : null;
+  const completion = completed ? {kind:String(completed.metadata.kind),reason:String(completed.metadata.reason),at:String(completed.metadata.at),resourceId:typeof completed.metadata.resourceId==="string"?completed.metadata.resourceId:null} : null;
   const responseEvent = message ? (await events(db, ownerId, "outreach.reply_email_prepared", message.id))[0] : null;
   const responseApproval = responseEvent ? (await db.select().from(approvals).where(and(eq(approvals.ownerId, ownerId), eq(approvals.id, String(responseEvent.metadata.approvalId)))).limit(1))[0] : null;
   const responseDispatch = responseApproval ? (await db.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, ownerId), eq(emailDispatches.approvalId, responseApproval.id))).limit(1))[0] : null;
-  const response = responseApproval ? { approvalId: responseApproval.id as string, status: responseApproval.status as string, actionRevision: responseEvent.revision as number, cancellable: !responseApproval.actionedAt && ["pending", "approved"].includes(responseApproval.status) && responseDispatch?.status === "queued" && !responseDispatch.claimedAt } : null;
+  const response = responseApproval ? { deliveryStatus:responseDispatch?.status as string|null ?? null, approvalId: responseApproval.id as string, status: responseApproval.status as string, actionRevision: responseEvent.revision as number, cancellable: !responseApproval.actionedAt && ["pending", "approved"].includes(responseApproval.status) && responseDispatch?.status === "queued" && !responseDispatch.claimedAt } : null;
   const blocked = conversation.status === "opted_out" || Boolean(contact.optedOutAt) || contact.contactPermission === "opted_out";
   const recommendation = blocked ? "stop_contact" : assessment?.metadata.applied && assessment.metadata.bodyHash === cursor?.metadata.bodyHash ? assessment.metadata.recommendation as ReplyAction : "review_reply";
-  return { response, conversationId, companyName: company.name as string, contactName: contact.name as string, message: message ? { id: message.id as string, body: message.body as string, subject: message.subject as string | null } : null, replyRevision: cursor?.revision as number ?? 0, assessment: assessment?.metadata ?? null, recommendation, blocked, action: action ? { revision: action.revision as number, ...action.metadata } : null };
+  return { completion, response, conversationId, companyName: company.name as string, contactName: contact.name as string, message: message ? { id: message.id as string, body: message.body as string, subject: message.subject as string | null } : null, replyRevision: cursor?.revision as number ?? 0, assessment: assessment?.metadata ?? null, recommendation, blocked, action: action ? { revision: action.revision as number, ...action.metadata } : null };
+}
+
+export type ReplyActionScope={conversationId:string;messageId:string;replyRevision:number;actionRevision:number};
+/** Internal outcome adapter. Callers validate and persist the real outcome in this same workspace transaction. */
+export async function finishReplyAction(tx:any,ownerId:number,scope:ReplyActionScope,outcome:{kind:"owner_review"|"discovery_booked"|"response_provider_accepted";reason:string;resourceId?:string}){
+ let detail;
+ try{detail=await clientReplyCase(tx,ownerId,scope.conversationId);}catch(e){if(!(e instanceof TRPCError)||!["NOT_FOUND","PRECONDITION_FAILED"].includes(e.code))throw e;return {completed:false,reason:"stale_action"};}
+ const action=detail.action as {revision:number;action?:string}|null;
+ if(detail.message?.id!==scope.messageId||detail.replyRevision!==scope.replyRevision||action?.revision!==scope.actionRevision)return {completed:false,reason:"stale_action"};
+ if(detail.completion)return {completed:true,alreadyCompleted:true};
+ if(outcome.kind==="discovery_booked"&&action.action!=="arrange_discovery"||outcome.kind==="response_provider_accepted"&&action.action!=="prepare_response")return {completed:false,reason:"different_goal"};
+ const at=new Date().toISOString();
+ await appendWorkflowEvent(tx,ownerId,"outreach.reply_action_completed",scope.messageId,scope.actionRevision,{...outcome,at,conversationId:scope.conversationId,replyRevision:scope.replyRevision});
+ await clearReplyDeadline(tx,ownerId,scope.conversationId,"Current reply task completed: "+outcome.reason);
+ await tx.update(conversations).set({nextActionAt:null}).where(and(eq(conversations.ownerId,ownerId),eq(conversations.id,scope.conversationId)));
+ await recordAudit({ownerId,actorType:outcome.kind==="owner_review"?"user":"system",actorId:outcome.kind==="owner_review"?String(ownerId):"reply_action_outcome",action:"outreach.reply_action_completed",resourceType:"conversation",resourceId:scope.conversationId,metadata:{messageId:scope.messageId,actionRevision:scope.actionRevision,kind:outcome.kind,resourceId:outcome.resourceId}},tx);
+ return {completed:true,alreadyCompleted:false};
+}
+export async function completeReplyAction(ownerId:number,input:ReplyActionScope&{reason:string}){
+ return withWorkspaceTransaction(ownerId,async tx=>{
+  const detail=await clientReplyCase(tx,ownerId,input.conversationId),action=detail.action as {revision:number}|null;
+  if(detail.message?.id!==input.messageId||detail.replyRevision!==input.replyRevision||action?.revision!==input.actionRevision)throw new TRPCError({code:"CONFLICT",message:"Reply or next action changed. Reload before completing this task."});
+  if(detail.completion)return {completed:true,alreadyCompleted:true};
+  if(detail.blocked)throw new TRPCError({code:"PRECONDITION_FAILED",message:"Contact is blocked. Review the current stop-contact state."});
+  const pending=await tx.select().from(clientDiscoveryRequests).where(and(eq(clientDiscoveryRequests.ownerId,ownerId),eq(clientDiscoveryRequests.conversationId,input.conversationId),inArray(clientDiscoveryRequests.status,["pending","responded"])));
+  if(pending.some((r:typeof clientDiscoveryRequests.$inferSelect)=>new Date(r.expiresAt)>new Date()))throw new TRPCError({code:"PRECONDITION_FAILED",message:"Book or cancel the active discovery request before completing this task."});
+  if(detail.response&&!["cancelled","rejected"].includes(detail.response.status)&&detail.response.deliveryStatus!=="sent")throw new TRPCError({code:"PRECONDITION_FAILED",message:"Resolve the prepared response and any uncertain delivery before completing this task."});
+  return finishReplyAction(tx,ownerId,input,{kind:"owner_review",reason:input.reason});
+ });
 }
 
 export async function recordReplyAction(ownerId: number, input: { conversationId: string; messageId: string; replyRevision: number; expectedActionRevision: number; action: ReplyAction; notes: string; dueAt?: Date }) {
@@ -198,7 +229,7 @@ export async function recordReplyAction(ownerId: number, input: { conversationId
     await clearReplyDeadline(tx,ownerId,input.conversationId,"Owner revised or closed the client reply action.");
     await appendWorkflowEvent(tx, ownerId, "outreach.reply_action", input.messageId, revision, { action: input.action, notes: input.notes, dueAt: input.dueAt?.toISOString() ?? null, requestHash, replyRevision: input.replyRevision, actorId: ownerId });
     if(input.dueAt&&!["stop_contact","close_no_interest"].includes(input.action))await scheduleReplyDeadline(tx,ownerId,{conversationId:input.conversationId,messageId:input.messageId,replyRevision:input.replyRevision,actionRevision:revision,requestHash},input.dueAt);
-    await tx.update(conversations).set({ nextActionAt: input.dueAt ?? null }).where(and(eq(conversations.ownerId, ownerId), eq(conversations.id, input.conversationId)));
+    await tx.update(conversations).set({ nextActionAt: input.dueAt ? new Date(Math.floor(input.dueAt.getTime()/1000)*1000) : null }).where(and(eq(conversations.ownerId, ownerId), eq(conversations.id, input.conversationId)));
     await recordAudit({ ownerId, actorType: "user", actorId: String(ownerId), action: "outreach.reply_next_action_recorded", resourceType: "conversation", resourceId: input.conversationId, metadata: { messageId: input.messageId, revision, action: input.action } }, tx);
     return { revision, alreadyRecorded: false };
   });

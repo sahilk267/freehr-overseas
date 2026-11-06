@@ -17,7 +17,7 @@ function DiscoveryRequest({ row, conversationId,onLinkReplaced }: {onLinkReplace
  const utils=trpc.useUtils(),proposals=trpc.clientDiscovery.propose.useQuery({requestId:row.id},{enabled:false,retry:false});
  const refresh=()=>utils.clientDiscovery.list.invalidate({conversationId});
  const cancel=trpc.clientDiscovery.cancel.useMutation({onSuccess:async()=>{await refresh();toast.success("Discovery request cancelled.");}});
- const book=trpc.clientDiscovery.book.useMutation({onSuccess:async()=>{await refresh();toast.success("Tentative discovery time reserved.");}});
+ const book=trpc.clientDiscovery.book.useMutation({onSuccess:async()=>{onLinkReplaced();await refresh();await utils.recruitment.outreach.replyCase.invalidate({conversationId});await utils.operations.exceptions.list.invalidate();toast.success("Tentative discovery time reserved.");}});
  const download=async()=>{try{const r=await utils.client.clientDiscovery.ics.query({meetingId:row.meeting!.id});const url=URL.createObjectURL(new Blob([r.ics],{type:"text/calendar"}));const a=document.createElement("a");a.href=url;a.download="client-discovery.ics";a.click();URL.revokeObjectURL(url);}catch(e){toast.error(e instanceof Error?e.message:"Calendar download failed.");}};
  return <div className="space-y-2 rounded-lg border p-3 text-sm"><p>Discovery {row.id.slice(-6)} · {row.stale?"needs a fresh request":row.status.replaceAll("_"," ")}</p><p className="text-xs text-slate-500">{row.autoSelect?"Automatic earliest-slot selection authorized for this request.":"Owner selects the time after the client responds."}</p>
   {row.status==="pending"&&!row.stale&&<DiscoveryEmail requestId={row.id} conversationId={conversationId} onLinkReplaced={onLinkReplaced}/>}
@@ -28,7 +28,7 @@ function DiscoveryRequest({ row, conversationId,onLinkReplaced }: {onLinkReplace
  </div>;
 }
 export function ClientDiscoveryPanel({conversationId,replyRevision,actionRevision,canCreate}:{conversationId:string;replyRevision:number;actionRevision:number;canCreate:boolean}){
- const utils=trpc.useUtils(),list=trpc.clientDiscovery.list.useQuery({conversationId});
+ const utils=trpc.useUtils(),list=trpc.clientDiscovery.list.useQuery({conversationId},{refetchInterval:15_000});
  const [requestKey,setRequestKey]=useState(()=>crypto.randomUUID()),[privateLink,setPrivateLink]=useState("");
  const create=trpc.clientDiscovery.create.useMutation({onSuccess:async result=>{if(result.token)setPrivateLink(`${location.origin}/discovery-response#${result.request.id}.${result.token}`);setRequestKey(crypto.randomUUID());await utils.clientDiscovery.list.invalidate({conversationId});toast.success("Client discovery availability request created.");}});
  const submit=async(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const f=new FormData(e.currentTarget);try{const timezone=String(f.get("timezone"));await create.mutateAsync({conversationId,replyRevision,actionRevision,requestKey,ownerWindows:[{start:zonedDateTimeToUtc(String(f.get("start")),timezone),end:zonedDateTimeToUtc(String(f.get("end")),timezone)}],timezone,durationMinutes:Number(f.get("duration")),bufferMinutes:Number(f.get("buffer")),expiresHours:48,autoSelect:f.get("autoSelect")==="on",syncGoogleCalendar:f.get("syncGoogleCalendar")==="on"});}catch(e){if(!(e instanceof Error))return;toast.error(e.message);}};

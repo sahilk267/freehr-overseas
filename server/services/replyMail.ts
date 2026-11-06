@@ -5,7 +5,7 @@ import { createId, hashContactValue, recordAudit } from "../db";
 import { hasClientCommunicationPermission } from "./communicationPermission";
 import { withWorkspaceTransaction } from "./database";
 import { emailContentHash } from "./emailAuthorization";
-import { clientReplyCase } from "./replyTriage";
+import { finishReplyAction, clientReplyCase } from "./replyTriage";
 import type { ReplyMailScope } from "./replyMailScope";
 import { appendWorkflowEvent, workflowHash } from "./workflowStore";
 
@@ -25,7 +25,7 @@ export async function validateReplyEmail(tx: any, ownerId: number, payload: { re
   if (message.conversationId !== scope.conversationId) throw fail("Reply email thread binding changed.");
   const detail = await clientReplyCase(tx, ownerId, scope.conversationId);
   const action = detail.action as { action?: string; revision: number } | null;
-  if (detail.blocked || detail.message?.id !== scope.messageId || detail.replyRevision !== scope.replyRevision || workflowHash(detail.message.body) !== scope.bodyHash || action?.revision !== scope.actionRevision || !["arrange_discovery", "clarify_requirement", "prepare_response"].includes(action.action ?? "")) throw fail("Client reply or next action changed; prepare a new response for review.");
+  if (detail.blocked || detail.completion || detail.message?.id !== scope.messageId || detail.replyRevision !== scope.replyRevision || workflowHash(detail.message.body) !== scope.bodyHash || action?.revision !== scope.actionRevision || !["arrange_discovery", "clarify_requirement", "prepare_response"].includes(action.action ?? "")) throw fail("Client reply or next action changed; prepare a new response for review.");
   const contact = (await tx.select().from(contacts).where(and(eq(contacts.ownerId, ownerId), eq(contacts.id, scope.contactId))).limit(1))[0];
   // Scope must still name the thread's canonical contact, not just an eligible unrelated recipient.
   const conversation = (await tx.select().from(conversations).where(and(eq(conversations.ownerId, ownerId), eq(conversations.id, scope.conversationId))).limit(1))[0];
@@ -84,4 +84,10 @@ export async function cancelReplyEmail(ownerId: number, approvalId: string, reas
     await recordAudit({ ownerId, actorType: "user", actorId: String(ownerId), action: "outreach.reply_email_cancelled", resourceType: "message", resourceId: approval.resourceId, metadata: { approvalId, reason } }, tx);
     return { alreadyCancelled: false };
   });
+}
+
+/** Receipt has already been persisted. Stale intent must not turn a known acceptance into an uncertain send. */
+export async function completeAcceptedReply(tx:any,ownerId:number,payload:{recipient:string;replyScope:ReplyMailScope},message:{id:string;conversationId:string}){
+ try{await validateReplyEmail(tx,ownerId,payload,message);}catch(e){if(!(e instanceof TRPCError)||!["NOT_FOUND","CONFLICT","PRECONDITION_FAILED"].includes(e.code))throw e;return {completed:false,reason:"stale_action"};}
+ return finishReplyAction(tx,ownerId,payload.replyScope,{kind:"response_provider_accepted",reason:"Provider accepted the approved response; recipient delivery is not confirmed.",resourceId:message.id});
 }

@@ -2,6 +2,10 @@
 
 Updated 6 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
+## Current increment: outcome-bound reply task completion
+
+[Reply action completion report](qa/2026-11-06-reply-action-completion.md) records immutable task outcomes and explicit owner completion. Tentative discovery booking and provider acceptance of a matching prepare-response goal can close the exact reviewed task, its timer and SLA incident. Stale replies/actions/recipients cannot complete a newer goal; uncertain delivery remains in reconciliation. No attendance or recipient delivery claim is made. Local validation: 712 tests passed (57 skips), all 450 real-MySQL regressions passed, and types/build/four entry smokes/tracker checks passed. Live acceptance is pending deployment; the advanced roadmap remains in progress.
+
 ## Current increment: discovery expiry and reviewed reply deadlines
 
 [Client acquisition deadline report](qa/2026-11-06-client-acquisition-deadlines.md) records expiry containment through the shared worker and version-bound reply SLA jobs through the existing queue. One incident per current action/request, no-slot incident reuse, stale source checks, compatibility backfill, owner completion/revision and direct exception navigation are implemented. Booked meetings and uncertain dispatch reconciliation are preserved. The full suite passed 698 tests with 55 skips, and SQL verification passed 435 regressions; focused checks, types, build and hosting entry checks passed. Actual managed SLA escalation, desktop/mobile task completion and opt-out cancellation passed live on `a189538`, with synthetic cleanup and no recipient mail. Positive production request expiry was not run (minimum one-hour expiry); its SQL checks passed. A final booking fix also resolves an earlier no-slot exception when booking later succeeds. No complete module is claimed.

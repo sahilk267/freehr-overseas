@@ -124,4 +124,6 @@ describe("workspace team access", () => {
         .join("\n")}`
     ).toEqual([]);
   });
+  it("keeps reply completion owner-only for every delegated workspace role",()=>{for(const role of ["recruiter","coordinator","finance","viewer"] as const)expect(canAccessWorkspacePath({ownerId:17,role,isOwner:false,memberId:"member"},"recruitment.outreach.completeReplyAction")).toBe(false);expect(canAccessWorkspacePath({ownerId:17,role:"owner",isOwner:true,memberId:null},"recruitment.outreach.completeReplyAction")).toBe(true);});
+
 });
