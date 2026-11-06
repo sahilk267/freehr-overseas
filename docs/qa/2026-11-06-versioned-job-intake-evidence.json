@@ -1,0 +1,71 @@
+{
+  "date": "2026-11-06",
+  "target": "https://freelancehr.overseasjob.in",
+  "coreLiveBuildCommit": "c75b9dc61586655a8f7a668a532aeeaa0078f85e",
+  "syntheticOnly": true,
+  "recipientMailSent": false,
+  "contactsCreated": 0,
+  "sourcingAuthorized": false,
+  "local": {
+    "fullSuite": {
+      "passed": 745,
+      "skipped": 64
+    },
+    "realMySql": {
+      "passed": 490,
+      "files": 26
+    },
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingEntryChecks": 4,
+    "tracker": "PASS"
+  },
+  "live": {
+    "browser": [
+      {
+        "name": "desktop shared create form stores explicit compensation, process and a versioned draft",
+        "status": "PASS"
+      },
+      {
+        "name": "mobile legacy draft adoption preserves unknown facts until explicit owner review",
+        "status": "PASS"
+      },
+      {
+        "name": "stale mobile edit is fenced and version history retains the original requirement",
+        "status": "PASS"
+      }
+    ],
+    "api": [
+      {
+        "name": "anonymous current/history/update requests are denied",
+        "status": "PASS"
+      },
+      {
+        "name": "invalid categories and money ranges fail before writing a new version",
+        "status": "PASS"
+      },
+      {
+        "name": "unchanged reviews preserve one requirement version and retry identity",
+        "status": "PASS"
+      },
+      {
+        "name": "pipeline state changes fence stale saves and active requirement editing",
+        "status": "PASS"
+      }
+    ],
+    "browserRuntimeErrors": 0,
+    "cleanup": {
+      "syntheticJobsCancelled": 2,
+      "companySuppressed": true
+    },
+    "worker": {
+      "enabled": true,
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "emergencyStop": false,
+      "lastError": null
+    }
+  },
+  "preApprovalClarificationLive": "pending_followup_deployment",
+  "matchingProviderTests": "synthetic_model_results_only"
+}

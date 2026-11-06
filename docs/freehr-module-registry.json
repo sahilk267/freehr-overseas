@@ -613,7 +613,7 @@
           "description": "JD/document/email intake, structured clarification conversation, responsibilities, outcomes and weighted assessment scorecard.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-06-versioned-job-intake.md",
-          "implementation_note": "Canonical job creation now records immutable intake versions, draft edits, owner reasons, current fingerprints and historical snapshots. The shared create/edit form supports description, responsibilities, scorecard and a deterministic clarification checklist. No AI/JD extraction or authenticated client sign-off is claimed."
+          "implementation_note": "Canonical job creation now records immutable intake versions, draft edits, owner reasons, current fingerprints and historical snapshots. The shared create/edit form supports description, responsibilities, scorecard and a deterministic clarification checklist. No AI/JD extraction or authenticated client sign-off is claimed. Desktop/mobile create, legacy adoption, version history and stale-save denial passed live on c75b9dc with synthetic cleanup."
         },
         {
           "id": "M12-F02",
@@ -644,7 +644,7 @@
           "description": "Amendment/hold/cancel/filled rules invalidate incompatible matches, follow-ups and submissions without erasing history.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-06-versioned-job-intake.md",
-          "implementation_note": "Draft edits use immutable revisions and state fingerprints, share the pipeline transaction lock, invalidate active draft scores and fence stale queued scoring results. Drafts with shortlisted matches require downstream review. Active amendments, broad hold/cancel/filled invalidation and client re-authorization remain pending."
+          "implementation_note": "Draft edits use immutable revisions and state fingerprints, share the pipeline transaction lock, invalidate active draft scores and fence stale queued scoring results. Drafts with shortlisted matches require downstream review. Active amendments, broad hold/cancel/filled invalidation and client re-authorization remain pending. Pre-approval clarification/draft return clears old owner confirmation statements; the live UI follow-up is tracked separately."
         }
       ],
       "events": "requisition.confirmed, requisition.changed, requisition.paused, requisition.closed",

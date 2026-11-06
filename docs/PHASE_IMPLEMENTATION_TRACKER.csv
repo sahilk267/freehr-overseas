@@ -25,5 +25,6 @@ W4,M10,Explicit discovery calendar grant on booking requests,verified_live_manag
 W4,M10,Discovery expiry and current reply SLA,validated_local_and_scoped_live,qa/2026-11-06-client-acquisition-deadlines.md,Positive production request expiry and broader lead-stage SLA policy
 W4,M10,Outcome-bound reply task completion,verified_live_owner_and_tentative_booking,qa/2026-11-06-reply-action-completion.md,Actual recipient delivery and broader lifecycle goals remain pending
 W4,M06,Observed historical outcome reconciliation,validated_local_and_sql,qa/2026-11-06-reply-action-completion.md,Positive historical-production acceptance and advanced lifecycle adapters
-W5,M12,Versioned structured job intake and clarification,validated_local_live_pending,qa/2026-11-06-versioned-job-intake.md,Authenticated client sign-off and automatic JD extraction and active amendments
+W5,M12,Versioned structured job intake and clarification,verified_live_desktop_mobile_and_guards,qa/2026-11-06-versioned-job-intake.md,Authenticated client sign-off and automatic JD extraction and active amendments
 W5,M12,Draft requirement change and scoring evidence fences,validated_local_and_sql,qa/2026-11-06-versioned-job-intake.md,Full downstream change impact and verified candidate pay-period normalization
+W5,M12,Pre-approval clarification return and owner statement reset,validated_local_live_pending,qa/2026-11-06-versioned-job-intake.md,Live clarification controls and authenticated client re-authorization
