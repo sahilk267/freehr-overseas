@@ -1,0 +1,93 @@
+{
+  "target": "https://freelancehr.overseasjob.in",
+  "checkedAt": "2026-11-06T20:08:27.935Z",
+  "implementationCommit": "a18aa3f77793301183d1db61ac280acf651318cc",
+  "syntheticOnly": true,
+  "recipientMailSent": false,
+  "manualWorkerRun": false,
+  "provider": {
+    "model": "dots-studio/dots-3-note-preview:free",
+    "supportedFacts": 16,
+    "unsupportedFacts": 1,
+    "explicitRetries": 0,
+    "qualityObservation": "The model combined TypeScript and SQL into a nonliteral comma-separated value; that suggestion was disabled. Other list entries were reviewed individually. This does not establish general extraction quality."
+  },
+  "desktop": {
+    "checkedAt": "2026-11-06T20:07:18.110Z",
+    "tests": [
+      {
+        "name": "desktop source input preserves oversized text and prevents silent truncation",
+        "status": "PASS"
+      },
+      {
+        "name": "desktop source command and exact repeat reuse one queue intent without editing intake",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "runtimeErrors": 0
+  },
+  "mobile": {
+    "checkedAt": "2026-11-06T20:07:56.430Z",
+    "tests": [
+      {
+        "name": "mobile supported-fact selection saves one canonical version and preserves owner facts and original history",
+        "status": "PASS"
+      },
+      {
+        "name": "exact adoption replay preserves identity without another version or approval",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "runtimeErrors": 0,
+    "selectedFacts": 15
+  },
+  "api": {
+    "checkedAt": "2026-11-06T20:08:15.279Z",
+    "tests": [
+      {
+        "name": "source history, extraction request and adoption remain private behind owner authentication",
+        "status": "PASS"
+      },
+      {
+        "name": "different selection is rejected and historical replay cannot overwrite a newer intake",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "buildCommit": "a18aa3f77793301183d1db61ac280acf651318cc"
+  },
+  "cleanup": {
+    "checkedAt": "2026-11-06T20:08:27.935Z",
+    "syntheticOnly": true,
+    "recipientMailSent": false,
+    "jobCancelled": true,
+    "companySuppressed": true,
+    "tasks": [
+      {
+        "status": "completed",
+        "appliedRevision": 2
+      }
+    ],
+    "worker": {
+      "enabled": true,
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "emergencyStop": false,
+      "lastError": null
+    }
+  },
+  "localValidation": {
+    "unitPassed": 764,
+    "unitSkipped": 67,
+    "mysqlPassed": 512,
+    "mysqlFiles": 27,
+    "focusedPassed": 26,
+    "focusedSqlSkipped": 3,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingerEntryChecks": 4,
+    "moduleTracker": "PASS"
+  }
+}

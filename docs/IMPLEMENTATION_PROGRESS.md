@@ -4,7 +4,7 @@ Updated 7 November 2026 (Asia/Calcutta). This record tracks implementation again
 
 ## Current increment: quoted JD text extraction
 
-[JD extraction report](qa/2026-11-07-jd-extraction.md) records a new typed task in the existing free-model AI worker. Immutable source/version binding, literal source excerpts, unsupported-fact controls and selective owner adoption reuse canonical intake and its transaction. Model completion does not edit jobs, approve requirements or send messages. Stale tasks/results and repeated request/application commands are fenced; stopped unused tasks can be explicitly resumed with the same identity. Local regression and live acceptance are recorded in the report. No advanced module is complete.
+[JD extraction report](qa/2026-11-07-jd-extraction.md) records a new typed task in the existing free-model AI worker. Immutable source/version binding, literal source excerpts, unsupported-fact controls and selective owner adoption reuse canonical intake and its transaction. Model completion does not edit jobs, approve requirements or send messages. Stale tasks/results and repeated request/application commands are fenced; stopped unused tasks can be explicitly resumed with the same identity. Validation: 764 unit tests and 512 MySQL tests passed, plus typecheck/build/four hosting entry checks. Live managed free-model extraction, desktop/mobile reviewed adoption, historical replay and private APIs passed on `a18aa3f`; synthetic records were closed and the worker remained healthy. Detailed limits and sanitized evidence are in the report. No advanced module is complete.
 
 ## Current increment: versioned job intake and requirement clarification
 

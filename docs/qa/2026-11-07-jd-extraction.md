@@ -14,7 +14,15 @@ Preflight prevents known stale inference, and late outputs remain marked stale. 
 
 ## Verification
 
-Full suite: 764 passed, 67 skipped. Disposable MySQL: 512 passed across 27 files. Final extraction/worker focused checks passed 26 tests with 3 SQL-only skips. TypeScript, production build and four hosting entry checks passed, including the final source-counter UI. Coverage includes quoted facts, fabricated/unsupported values, schema/authority rejection, no automatic job edit, stale work before/during inference, ownership, conflicts, idempotency, controlled requeue, duplicate SQL commands, concurrent edit/adoption and atomic audit-failure rollback. Provider calls in these regressions are synthetic mocks. Actual free-provider and owner browser acceptance are pending deployment.
+Full suite: 764 passed, 67 skipped. Disposable MySQL: 512 passed across 27 files. Final extraction/worker focused checks passed 26 tests with 3 SQL-only skips. TypeScript, production build and four hosting entry checks passed, including the final source-counter UI. Coverage includes quoted facts, fabricated/unsupported values, schema/authority rejection, no automatic job edit, stale work before/during inference, ownership, conflicts, idempotency, controlled requeue, duplicate SQL commands, concurrent edit/adoption and atomic audit-failure rollback. Provider calls in these regressions are synthetic mocks. Actual free-provider and owner browser acceptance passed on implementation commit `a18aa3f77793301183d1db61ac280acf651318cc`; see [sanitized evidence](2026-11-07-jd-extraction-evidence.json).
+
+## Live acceptance
+
+The managed worker, without a manual worker run, used `dots-studio/dots-3-note-preview:free` and returned 16 supported suggestions and one unsupported suggestion. The provider combined TypeScript and SQL as a comma-separated value absent from the supporting quote, so it was disabled; this pilot is not general extraction-quality evidence. Desktop source entry preserved oversized text and blocked submission, and exact source retries reused one queue intent. Provider completion left intake unchanged.
+
+At a 390 × 844 mobile viewport, owner review selected 15 supported facts, copied the source description and explicitly allowed selected-value replacement. Requirement version 2 preserved the manual department and original version 1; the role remained draft with no verified confirmation. Exact adoption replay created no extra version. A later manual headcount edit created version 3, and replay of the original selection still acknowledged version 2 without replacing version 3. A different selection conflicted. All three extraction APIs rejected anonymous access. Both browser runs had zero runtime errors; mobile had no horizontal overflow.
+
+The synthetic job was cancelled, its company suppressed and its extraction task remained completed. The persistent managed worker was enabled with a recent heartbeat, no emergency stop and no error. No recipient messages, invitations or payments were sent.
 
 ## Remaining scope
 
