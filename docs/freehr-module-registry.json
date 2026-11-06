@@ -522,7 +522,7 @@
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-06-client-acquisition-deadlines.md",
-          "implementation_note": "Private collection, tentative booking and scoped Google lifecycle have live evidence. Discovery expiry closes capability and unused outbox work, reuses no-slot incidents and supports replacement. Reviewed reply action deadlines use version-bound existing queue jobs, backfill, stale guards and owner exception navigation. Attendance, stakeholder mapping, broader lead-stage SLA policy and actual recipient mail delivery remain pending."
+          "implementation_note": "Private collection, tentative booking and scoped Google lifecycle have live evidence. Discovery expiry closes capability and unused outbox work, reuses no-slot incidents and supports replacement. Reviewed reply action deadlines use version-bound existing queue jobs, backfill, stale guards and owner exception navigation. Attendance, stakeholder mapping, broader lead-stage SLA policy and actual recipient mail delivery remain pending. Live managed SLA escalation, desktop/mobile completion and opt-out cancellation passed with zero delivery and synthetic cleanup. Positive production expiry remains unverified; local SQL expiry checks passed."
         },
         {
           "id": "M10-F05",

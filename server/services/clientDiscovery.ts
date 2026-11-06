@@ -136,6 +136,7 @@ export async function bookDiscovery(ownerId:number,actorId:number|string,input:{
   if((await recordedOwnerBusy(tx,ownerId,start,end)).length)throw fail("This time now conflicts with another recorded meeting or hold.","CONFLICT");
   const id=createId("dcm_");await tx.insert(meetings).values({id,ownerId,requestId:r.id,bookingHash,scheduledAt:input.scheduledAt,durationMinutes:r.durationMinutes,bufferMinutes:r.bufferMinutes,timezone:r.clientTimezone||r.timezone,status:"tentative",revision:1});
   await tx.update(requests).set({status:"booked",revision:r.revision+1,tokenHash:""}).where(and(eq(requests.ownerId,ownerId),eq(requests.id,r.id)));
+  await resolveDiscoveryIncidents(tx,ownerId,r.id,"A tentative discovery meeting was booked.");
   await inheritDiscoveryCalendarPolicy(tx,ownerId,r.id,id);
   await appendWorkflowEvent(tx,ownerId,"discovery.booked",r.id,1,{meetingId:id,automatic,participantAcceptance:false,googleConnectionRevision:connection.revision});
   await recordAudit({ownerId,actorType:automatic?"cron":"user",actorId:String(actorId),action:"discovery.booked",resourceType:"client_discovery",resourceId:r.id,metadata:{meetingId:id,participantAcceptance:false}},tx);

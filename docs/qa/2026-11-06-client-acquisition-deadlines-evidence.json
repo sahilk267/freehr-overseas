@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-06",
+  "target": "https://freelancehr.overseasjob.in",
+  "buildCommit": "a189538acab2b863e01287dbc641974fb913be22",
+  "syntheticOnly": true,
+  "recipientMailSent": false,
+  "guestInvitationsSent": false,
+  "productionDiscoveryExpiryPositive": "not_run_minimum_request_expiry_one_hour",
+  "local": {
+    "fullSuite": {
+      "passed": 698,
+      "skipped": 55
+    },
+    "realMySqlRegressions": 435,
+    "focused": {
+      "passed": 67,
+      "skipped": 9
+    },
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingEntryChecks": 4,
+    "tracker": "PASS"
+  },
+  "live": {
+    "api": [
+      {
+        "name": "reviewed synthetic overdue action schedules one version-bound timer",
+        "status": "PASS"
+      },
+      {
+        "name": "actual managed worker creates one owner escalation without a manual run command",
+        "status": "PASS"
+      }
+    ],
+    "browser": [
+      {
+        "name": "desktop exception links to the exact owned current reply task",
+        "status": "PASS"
+      },
+      {
+        "name": "mobile current-task form renders and clears the due date to resolve the owner escalation",
+        "status": "PASS"
+      }
+    ],
+    "cleanup": [
+      {
+        "name": "a fresh future deadline uses a new action version and remains queued until its due time",
+        "status": "PASS"
+      },
+      {
+        "name": "synthetic contact suppressed and review-only campaign closed with zero deliveries",
+        "status": "PASS"
+      },
+      {
+        "name": "no synthetic reply deadline remains queued or open in Exceptions",
+        "status": "PASS"
+      }
+    ],
+    "browserRuntimeErrors": 0,
+    "worker": {
+      "enabled": true,
+      "heartbeatRecent": true,
+      "persistentDatabase": true,
+      "emergencyStop": false,
+      "lastError": null
+    },
+    "health": "ok",
+    "deadlineJobTerminalStates": [
+      "cancelled",
+      "completed"
+    ]
+  },
+  "postReviewBookingFix": {
+    "focused": {
+      "passed": 30,
+      "sqlOnlySkipped": 5
+    },
+    "realMySql": {
+      "passed": 35,
+      "files": 1
+    },
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingEntryChecks": 4,
+    "livePositive": "not_run"
+  }
+}
