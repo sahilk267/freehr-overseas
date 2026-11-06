@@ -1,3 +1,4 @@
+import {processObservedReplyOutcomes} from "./replyOutcomeRecovery";
 import {processDueDiscoveryDeadlines} from "./clientDiscoveryDeadline";
 import {executeDiscoverySelection} from "./clientDiscovery";
 import { processLegacyReplyDeadlines, executeClientReplyDeadline, assessReply, type ReplyAssessment } from "./replyTriage";
@@ -507,7 +508,7 @@ export type ProcessBatchResult = {
   completed: number;
   failed: number;
   skipped: number;
-  sources?: { campaigns: Awaited<ReturnType<typeof processDueCampaigns>>; discoveryDeadlines: Awaited<ReturnType<typeof processDueDiscoveryDeadlines>>; replyDeadlines: Awaited<ReturnType<typeof processLegacyReplyDeadlines>> };
+  sources?: { replyOutcomes: Awaited<ReturnType<typeof processObservedReplyOutcomes>>; campaigns: Awaited<ReturnType<typeof processDueCampaigns>>; discoveryDeadlines: Awaited<ReturnType<typeof processDueDiscoveryDeadlines>>; replyDeadlines: Awaited<ReturnType<typeof processLegacyReplyDeadlines>> };
   results: Array<{
     status: string;
     jobId?: string;
@@ -518,6 +519,7 @@ export type ProcessBatchResult = {
 
 export async function processDueAutomationBatch(ownerId?: number, limit = 5): Promise<ProcessBatchResult> {
   const boundedLimit = Math.min(Math.max(limit, 1), 25);
+  const replyOutcomes = await processObservedReplyOutcomes(ownerId, boundedLimit);
   const replyDeadlines = await processLegacyReplyDeadlines(ownerId, boundedLimit);
   const discoveryDeadlines = await processDueDiscoveryDeadlines(ownerId, boundedLimit);
   const campaigns = await processDueCampaigns(ownerId, boundedLimit);
@@ -577,7 +579,7 @@ export async function processDueAutomationBatch(ownerId?: number, limit = 5): Pr
     failed,
     skipped,
     results,
-    ...(campaigns.evaluated || discoveryDeadlines.scanned || replyDeadlines.scanned ? { sources: { campaigns, discoveryDeadlines, replyDeadlines } } : {}),
+    sources: { replyOutcomes, campaigns, discoveryDeadlines, replyDeadlines },
   };
 }
 

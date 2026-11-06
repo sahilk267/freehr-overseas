@@ -1,0 +1,89 @@
+{
+  "date": "2026-11-06",
+  "target": "https://freelancehr.overseasjob.in",
+  "coreLiveBuildCommit": "d67006df32610c5dff2fbab0812a7244ee8e4eac",
+  "syntheticOnly": true,
+  "recipientMailSent": false,
+  "guestInvitationsSent": false,
+  "calendarWritesRequested": false,
+  "coreLocal": {
+    "fullSuite": {
+      "passed": 712,
+      "skipped": 57
+    },
+    "realMySql": 450,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "hostingEntryChecks": 4
+  },
+  "historicalRecoveryLocal": {
+    "fullSuite": {
+      "passed": 717,
+      "skipped": 60
+    },
+    "realMySql": 458,
+    "positiveProductionHistoricalRecovery": "not_run",
+    "providerReceiptTests": "synthetic_provider_mocks",
+    "followupManagedWorkerChecks": {
+      "passed": 59,
+      "sqlOnlySkipped": 8,
+      "typecheck": "PASS",
+      "productionBuild": "PASS",
+      "hostingEntryChecks": 4,
+      "tracker": "PASS"
+    }
+  },
+  "live": {
+    "browser": [
+      {
+        "name": "desktop owner completes the exact current task without editing its reviewed history",
+        "status": "PASS"
+      },
+      {
+        "name": "mobile new-action form drops the completed deadline and creates a fresh incomplete goal",
+        "status": "PASS"
+      }
+    ],
+    "booking": [
+      {
+        "name": "anonymous capability response only records availability, without completing the booking goal",
+        "status": "PASS"
+      },
+      {
+        "name": "fresh real calendar admission and tentative booking complete only the matching task and cancel its timer",
+        "status": "PASS"
+      },
+      {
+        "name": "completed goal cannot silently authorize another discovery request",
+        "status": "PASS"
+      }
+    ],
+    "cleanup": [
+      {
+        "name": "synthetic availability and tentative reservation are cancelled with calendar sync disabled",
+        "status": "PASS"
+      },
+      {
+        "name": "synthetic contact suppressed and review-only campaign closed with zero deliveries",
+        "status": "PASS"
+      },
+      {
+        "name": "no synthetic reply deadline remains queued or open in Exceptions",
+        "status": "PASS"
+      }
+    ],
+    "browserRuntimeErrors": 0,
+    "worker": {
+      "enabled": true,
+      "heartbeatRecent": true,
+      "persistentDatabase": true,
+      "emergencyStop": false,
+      "lastError": null
+    },
+    "health": "ok",
+    "deadlineJobTerminalStates": [
+      "cancelled",
+      "completed"
+    ]
+  }
+}
