@@ -1,8 +1,9 @@
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
-import { approvals, automationQueue, candidates, companies, contacts, conversations, emailDispatches, messages, suppressionList, workflowEvents } from "../../drizzle/schema";
-import { createId, hashContactValue, recordAudit } from "../db";
+import { and, asc, desc, eq, exists, inArray, lte, notExists } from "drizzle-orm";
+import { approvals, automationQueue, candidates, companies, contacts, conversations, emailDispatches, messages, incidents, workspaceSettings, suppressionList, workflowEvents } from "../../drizzle/schema";
+import { createId, hashContactValue, recordAudit, requireDb } from "../db";
 import { withWorkspaceTransaction } from "./database";
+import {hasClientCommunicationPermission} from "./communicationPermission";
 import { stopRelatedFollowUps } from "./followups";
 import { detectOptOut } from "./hostingerMail";
 import { redactAvailabilityLinks } from "./privateLinkRedaction";
@@ -17,6 +18,62 @@ const ownedConversation = async (tx: any, ownerId: number, id: string) => {
   if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation was not found." });
   return row as typeof conversations.$inferSelect;
 };
+
+async function scheduleReplyDeadline(tx:any,ownerId:number,payload:{conversationId:string;messageId:string;replyRevision:number;actionRevision:number;requestHash:string},dueAt:Date){
+ const idempotencyKey=`client_reply_deadline:${ownerId}:${payload.messageId}:${payload.actionRevision}`;
+ if((await tx.select().from(automationQueue).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.idempotencyKey,idempotencyKey))).limit(1)).length)return;
+ await tx.insert(automationQueue).values({id:createId("que_"),ownerId,jobType:"client_reply_deadline",status:"queued",priority:25,scheduledAt:dueAt,attempts:0,maxAttempts:3,idempotencyKey,payload});
+}
+/** One bounded compatibility pass for reviewed due actions saved before deadline jobs existed. */
+export async function processLegacyReplyDeadlines(ownerId?:number,limit=10){
+ const db=await requireDb(),conditions=[lte(conversations.nextActionAt,new Date()),exists(db.select({id:workspaceSettings.ownerId}).from(workspaceSettings).where(and(eq(workspaceSettings.ownerId,conversations.ownerId),eq(workspaceSettings.backgroundEnabled,true),eq(workspaceSettings.emergencyStop,false)))),notExists(db.select({id:workflowEvents.id}).from(workflowEvents).where(and(eq(workflowEvents.ownerId,conversations.ownerId),eq(workflowEvents.aggregateId,conversations.id),eq(workflowEvents.eventType,"outreach.deadline_backfilled"))))];
+ if(ownerId!==undefined)conditions.push(eq(conversations.ownerId,ownerId));
+ const rows=await db.select().from(conversations).where(and(...conditions)).orderBy(asc(conversations.nextActionAt),asc(conversations.id)).limit(Math.min(25,Math.max(1,limit)));let scheduled=0;
+ for(const row of rows)scheduled+=await withWorkspaceTransaction(row.ownerId,async tx=>{
+  const settings=(await tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId,row.ownerId)).limit(1))[0];
+  if(!settings?.backgroundEnabled||settings.emergencyStop||(await events(tx,row.ownerId,"outreach.deadline_backfilled",row.id)).length)return 0;
+  let detail;try{detail=await clientReplyCase(tx,row.ownerId,row.id);}catch(e){if(!(e instanceof TRPCError)||!["NOT_FOUND","PRECONDITION_FAILED"].includes(e.code))throw e;}
+  const action=detail?.action as {revision:number;requestHash?:string;dueAt?:string;action?:string}|null;
+  const current=(await tx.select().from(conversations).where(and(eq(conversations.ownerId,row.ownerId),eq(conversations.id,row.id))).limit(1))[0];
+  const eligible=Boolean(!detail?.blocked&&detail?.message&&action?.requestHash&&action.dueAt&&current?.nextActionAt&&Math.floor(new Date(action.dueAt).getTime()/1000)===Math.floor(new Date(current.nextActionAt).getTime()/1000)&&!["stop_contact","close_no_interest"].includes(action.action??""));
+  if(eligible)await scheduleReplyDeadline(tx,row.ownerId,{conversationId:row.id,messageId:detail!.message!.id,replyRevision:detail!.replyRevision,actionRevision:action!.revision,requestHash:action!.requestHash!},new Date(action!.dueAt!));
+  await appendWorkflowEvent(tx,row.ownerId,"outreach.deadline_backfilled",row.id,1,{scheduled:eligible});return eligible?1:0;
+ });
+ return {scanned:rows.length,scheduled};
+}
+
+/** Superseded reply/action timers cannot keep an obsolete owner escalation open. */
+async function clearReplyDeadline(tx:any,ownerId:number,conversationId:string,reason:string){
+ await tx.update(incidents).set({status:"resolved",resolvedAt:new Date(),containmentNotes:reason}).where(and(eq(incidents.ownerId,ownerId),eq(incidents.incidentType,"client_reply_overdue"),eq(incidents.affectedResourceId,conversationId),inArray(incidents.status,["detected","triaged","contained","investigated"])));
+ const cursor=(await events(tx,ownerId,"conversation.reply_cursor",conversationId))[0];
+ const messageId=cursor?.metadata?.messageId;
+ const action=typeof messageId==="string"?(await events(tx,ownerId,"outreach.reply_action",messageId))[0]:null;
+ if(action)await tx.update(automationQueue).set({status:"cancelled",lockToken:null,lockedAt:null}).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.idempotencyKey,`client_reply_deadline:${ownerId}:${messageId}:${action.revision}`),inArray(automationQueue.status,["queued","retryable_failed"])));
+}
+export async function executeClientReplyDeadline(ownerId:number,payload:Record<string,unknown>){
+ return withWorkspaceTransaction(ownerId,async tx=>{
+  const settings=(await tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId,ownerId)).limit(1))[0];
+  if(!settings?.backgroundEnabled||settings.emergencyStop)return {status:"deferred",nextActionAt:new Date(Date.now()+60000)};
+  if(typeof payload.conversationId!=="string"||typeof payload.messageId!=="string"||!Number.isInteger(payload.actionRevision))throw new TRPCError({code:"BAD_REQUEST",message:"Invalid client reply deadline scope."});
+  let detail;
+  try{detail=await clientReplyCase(tx,ownerId,payload.conversationId);}catch(e){if(!(e instanceof TRPCError)||!["NOT_FOUND","PRECONDITION_FAILED"].includes(e.code))throw e;return {status:"stale"};}
+  const action=detail.action as {revision:number;requestHash?:string;dueAt?:string;action?:string}|null;
+  if(detail.blocked||detail.message?.id!==payload.messageId||detail.replyRevision!==payload.replyRevision||action?.revision!==payload.actionRevision||action?.requestHash!==payload.requestHash||!action?.dueAt||["stop_contact","close_no_interest"].includes(action.action??""))return {status:"stale"};
+  const conversation=await ownedConversation(tx,ownerId,payload.conversationId);
+  if(!conversation.contactId||!await hasClientCommunicationPermission(tx,ownerId,conversation.contactId))return {status:"stale"};
+  const contact=(await tx.select().from(contacts).where(and(eq(contacts.ownerId,ownerId),eq(contacts.id,conversation.contactId))).limit(1))[0];
+  if(contact?.email&&(await tx.select().from(suppressionList).where(and(eq(suppressionList.ownerId,ownerId),eq(suppressionList.channel,"email"),eq(suppressionList.valueHash,hashContactValue(contact.email)),eq(suppressionList.active,true))).limit(1)).length)return {status:"stale"};
+  const due=new Date(action.dueAt);if(!Number.isFinite(due.getTime()))return {status:"stale"};
+  if(due>new Date())return {status:"deferred",nextActionAt:due};
+  const key=workflowHash(["outreach.reply_overdue",payload.messageId,action.revision,""]);
+  const prior=(await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventKey,key))).limit(1))[0];if(prior)return {status:"already_escalated"};
+  const id=workflowHash(["client_reply_overdue",ownerId,payload.messageId,action.revision]).slice(0,36);
+  await tx.insert(incidents).values({id,ownerId,incidentType:"client_reply_overdue",severity:"medium",status:"detected",affectedResourceType:"conversation",affectedResourceId:payload.conversationId,summary:"A reviewed client reply action is overdue. Review the latest reply and complete or revise its next action.",detectedAt:new Date()});
+  await appendWorkflowEvent(tx,ownerId,"outreach.reply_overdue",payload.messageId,action.revision,{incidentId:id,conversationId:payload.conversationId,dueAt:action.dueAt});
+  await recordAudit({ownerId,actorType:"cron",action:"outreach.reply_deadline_escalated",resourceType:"conversation",resourceId:payload.conversationId,metadata:{incidentId:id,messageId:payload.messageId,actionRevision:action.revision}},tx);
+  return {status:"escalated",incidentId:id};
+ });
+}
 
 /** One transaction owns message receipt, monotonic cursor, stop signal and AI work. */
 export async function receiveReply(ownerId: number, input: { conversationId: string; body: string; subject?: string; sender?: string; providerMessageId?: string; inReplyTo?: string; references?: string[]; source: string }) {
@@ -43,6 +100,7 @@ export async function receiveReply(ownerId: number, input: { conversationId: str
     // Opt-out is sticky; a later polite reply does not re-grant permission.
     if (optedOut && contact) await tx.update(contacts).set({ contactPermission: "opted_out", optedOutAt: new Date() }).where(and(eq(contacts.ownerId, ownerId), eq(contacts.id, contact.id)));
     if (optedOut && candidate) await tx.update(candidates).set({ doNotContactAt: new Date() }).where(and(eq(candidates.ownerId, ownerId), eq(candidates.id, candidate.id)));
+    await clearReplyDeadline(tx,ownerId,conversation.id,"A newer client reply superseded this deadline.");
     await tx.update(conversations).set({ status: blocked ? "opted_out" : "reply_received", classification: blocked ? "stop_contact" : null, lastMessageAt: new Date(), nextActionAt: null }).where(and(eq(conversations.ownerId, ownerId), eq(conversations.id, conversation.id)));
     await stopRelatedFollowUps(tx, ownerId, { conversationId: conversation.id }, "Recipient replied; review before resuming.", blocked ? "cancelled" : "paused");
     if (optedOut && sender) await stopRelatedFollowUps(tx, ownerId, { recipientHash: hashContactValue(sender) }, "Recipient opted out.", "cancelled");
@@ -87,6 +145,7 @@ export async function assessReply(ownerId: number, payload: Record<string, unkno
       const stop = recommendation === "stop_contact";
       await tx.update(conversations).set({ classification: assessment.classification, ...(stop ? { status: "opted_out", nextActionAt: null } : {}) }).where(and(eq(conversations.ownerId, ownerId), eq(conversations.id, conversation.id)));
       if (stop) {
+        await clearReplyDeadline(tx,ownerId,conversation.id,"Contact was stopped by the current reply assessment.");
         // Derive recipient from workspace records, never the model or caller payload.
         const contact = conversation.contactId ? (await tx.select().from(contacts).where(and(eq(contacts.ownerId, ownerId), eq(contacts.id, conversation.contactId))).limit(1))[0] : null;
         const candidate = conversation.candidateId ? (await tx.select().from(candidates).where(and(eq(candidates.ownerId, ownerId), eq(candidates.id, conversation.candidateId))).limit(1))[0] : null;
@@ -136,7 +195,9 @@ export async function recordReplyAction(ownerId: number, input: { conversationId
     if ((previous?.revision ?? 0) !== input.expectedActionRevision) throw new TRPCError({ code: "CONFLICT", message: "Next action changed. Reload before editing." });
     const revision = input.expectedActionRevision + 1;
     if (input.action === "stop_contact" && !detail.blocked) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Use contact opt-out controls to stop contact; recording a note alone cannot change permission." });
+    await clearReplyDeadline(tx,ownerId,input.conversationId,"Owner revised or closed the client reply action.");
     await appendWorkflowEvent(tx, ownerId, "outreach.reply_action", input.messageId, revision, { action: input.action, notes: input.notes, dueAt: input.dueAt?.toISOString() ?? null, requestHash, replyRevision: input.replyRevision, actorId: ownerId });
+    if(input.dueAt&&!["stop_contact","close_no_interest"].includes(input.action))await scheduleReplyDeadline(tx,ownerId,{conversationId:input.conversationId,messageId:input.messageId,replyRevision:input.replyRevision,actionRevision:revision,requestHash},input.dueAt);
     await tx.update(conversations).set({ nextActionAt: input.dueAt ?? null }).where(and(eq(conversations.ownerId, ownerId), eq(conversations.id, input.conversationId)));
     await recordAudit({ ownerId, actorType: "user", actorId: String(ownerId), action: "outreach.reply_next_action_recorded", resourceType: "conversation", resourceId: input.conversationId, metadata: { messageId: input.messageId, revision, action: input.action } }, tx);
     return { revision, alreadyRecorded: false };

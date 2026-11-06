@@ -65,7 +65,7 @@ function ReplyDetail({ conversationId }: { conversationId: string }) {
       <div><Label htmlFor="reply-action-notes">Action notes</Label><Textarea id="reply-action-notes" name="notes" required minLength={8} maxLength={2000} defaultValue={current?.notes ?? ""} placeholder="Record what needs to happen and any client context." /></div>
       <div><Label htmlFor="reply-due-at">Due at (your local time, optional)</Label><Input id="reply-due-at" name="dueAt" type="datetime-local" defaultValue={current?.dueAt ? new Date(new Date(current.dueAt).getTime() - new Date(current.dueAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""} /></div>
       <Button type="submit" disabled={save.isPending} className="justify-self-start">Save next action</Button>
-      <p className="text-xs text-slate-500">This records a task for review. Discovery booking and sending a response still require their own completed workflow.</p>
+      <p className="text-xs text-slate-500">A due date creates one owner escalation in Exceptions if this action remains current. Clear the due date or revise the action when complete. Discovery booking and sending a response have their own workflows.</p>
     </form>
     <ClientDiscoveryPanel key={`discovery:${detail.message.id}:${current?.revision ?? 0}`} conversationId={conversationId} replyRevision={detail.replyRevision} actionRevision={current?.revision ?? 0} canCreate={!detail.blocked && current?.action === "arrange_discovery"} />
     {detail.response && <div className="rounded-lg border p-3 text-sm"><p>Latest response: {detail.response.status.replaceAll("_", " ")}</p><p className="mt-1 break-all text-xs text-slate-500">Approval {detail.response.approvalId}</p>{detail.response.cancellable && <Button type="button" size="sm" variant="outline" disabled={cancel.isPending} className="mt-2" onClick={() => cancel.mutate({ approvalId: detail.response!.approvalId, reason: "Owner cancelled unused client response for revision." })}>Cancel unused response</Button>}</div>}
@@ -74,7 +74,7 @@ function ReplyDetail({ conversationId }: { conversationId: string }) {
 }
 export function ClientReplyPanel() {
   const { data = [], error } = trpc.recruitment.outreach.list.useQuery({ limit: 100 });
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState(() => { const id=new URLSearchParams(location.search).get("conversation")||"";return /^[A-Za-z0-9_-]{4,36}$/.test(id)?id:""; });
   const requestId = new URLSearchParams(location.search).get("discovery") || "";
   const linkedRequest = trpc.clientDiscovery.get.useQuery({ requestId }, { enabled: /^[A-Za-z0-9_-]{4,36}$/.test(requestId), retry: false });
   useEffect(() => { if (linkedRequest.data) { setSelected(linkedRequest.data.conversationId); document.getElementById("client-reply-actions")?.scrollIntoView(); } }, [linkedRequest.data?.conversationId]);

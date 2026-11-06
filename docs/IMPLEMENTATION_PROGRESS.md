@@ -1,6 +1,12 @@
 # Automation implementation progress
 
-Updated 1 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+Updated 6 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+
+## Current increment: discovery expiry and reviewed reply deadlines
+
+[Client acquisition deadline report](qa/2026-11-06-client-acquisition-deadlines.md) records expiry containment through the shared worker and version-bound reply SLA jobs through the existing queue. One incident per current action/request, no-slot incident reuse, stale source checks, compatibility backfill, owner completion/revision and direct exception navigation are implemented. Booked meetings and uncertain dispatch reconciliation are preserved. The full suite passed 698 tests with 55 skips, and SQL verification passed 435 regressions; focused checks, types, build and hosting entry checks passed. Live acceptance is pending the deployed commit; no complete module is claimed.
+
+Earlier checkpoints below retain their original validation date and scope.
 
 ## Latest live checkpoint: scheduling controls and healthy AI credentials
 

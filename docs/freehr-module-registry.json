@@ -321,7 +321,7 @@
           "description": "Owner timeline: why due, goal, next action, expected stop condition, prior attempts, snooze/handoff, exhausted sequence and recovery options.",
           "status": "implementing",
           "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "W2 adds explicit snooze, reviewed restarts, immutable definitions and recovery controls; broader handoff/adaptive cadence remains pending."
+          "implementation_note": "W2 adds explicit snooze, reviewed restarts, immutable definitions and recovery controls; broader handoff/adaptive cadence remains pending. Discovery expiry and reviewed client reply due actions now escalate through existing incidents, with superseded-action resolution; broader handoff and adaptive cadence remain pending."
         }
       ],
       "events": "followup.enrolled, followup.due, followup.paused, followup.stopped, followup.exhausted",
@@ -521,8 +521,8 @@
           "id": "M10-F04",
           "description": "Discovery booking, stakeholder map, buying process, objections, lead stage SLAs and automatic next-action requests.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-06-discovery-google-calendar.md",
-          "implementation_note": "Private collection, scoped automatic/manual tentative booking and owner-reviewed mail preparation are verified. Actual managed Google discovery create/cancel, stable retry identity, explicit request/per-meeting grants and provider privacy/no-guest/no-reminder checks passed live; cleanup verified. Actual mail delivery, attendance, stakeholder mapping and automatic SLA escalation remain pending."
+          "evidence_ref": "qa/2026-11-06-client-acquisition-deadlines.md",
+          "implementation_note": "Private collection, tentative booking and scoped Google lifecycle have live evidence. Discovery expiry closes capability and unused outbox work, reuses no-slot incidents and supports replacement. Reviewed reply action deadlines use version-bound existing queue jobs, backfill, stale guards and owner exception navigation. Attendance, stakeholder mapping, broader lead-stage SLA policy and actual recipient mail delivery remain pending."
         },
         {
           "id": "M10-F05",
@@ -2230,7 +2230,7 @@
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Interview and discovery Google lifecycles, current client reply actions, private discovery collection/tentative booking and shared reviewed link outbox have scoped implementation evidence. Live private calendar/booking and no-send mail acceptance are recorded; recipient delivery, attendance and remaining advanced module gates stay open.",
+    "note": "Shared discovery expiry and version-bound client reply SLA escalation reuse existing workers, queue and incidents. Positive local SQL verification and scoped live acceptance are tracked separately. Recipient delivery, attendance and remaining advanced module gates stay open.",
     "updated_at": "2026-11-06"
   }
 }

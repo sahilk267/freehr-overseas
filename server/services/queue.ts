@@ -1,5 +1,6 @@
+import {processDueDiscoveryDeadlines} from "./clientDiscoveryDeadline";
 import {executeDiscoverySelection} from "./clientDiscovery";
-import { assessReply, type ReplyAssessment } from "./replyTriage";
+import { processLegacyReplyDeadlines, executeClientReplyDeadline, assessReply, type ReplyAssessment } from "./replyTriage";
 import {executeRecoveryAutoSelection} from "./recoveryAutoSelection";
 import { TRPCError } from "@trpc/server";
 import { executeCalendarSync } from "./calendarAutomation";
@@ -23,7 +24,7 @@ import { readPrivateDocument } from "./privateStorage";
 export class NonRetryableJobError extends Error {}
 export class RetryableJobError extends Error {}
 
-const DETERMINISTIC_JOB_TYPES = new Set(["discovery_select", "recovery_auto_select", "google_calendar_sync", "scan_document", "execute_policy_decision", "follow_up", "deliver_email", "send_reminder", "invoice_collection_source"]);
+const DETERMINISTIC_JOB_TYPES = new Set(["client_reply_deadline", "discovery_select", "recovery_auto_select", "google_calendar_sync", "scan_document", "execute_policy_decision", "follow_up", "deliver_email", "send_reminder", "invoice_collection_source"]);
 const AI_JOB_TYPES = new Set<AiTaskType>(["classify_reply", "draft_outreach", "parse_cv", "score_match", "send_reminder", "reconcile_invoice"]);
 const calculateBackoff = (attempts: number) => Math.min(60 * 60 * 1000, 30_000 * 2 ** Math.max(0, attempts - 1));
 export const withinDailyAiBudget = (used: number, limit: number) => used < limit;
@@ -243,7 +244,7 @@ export async function processOneQueuedJob(ownerId: number) {
     .where(and(eq(automationQueue.ownerId, ownerId), inArray(automationQueue.status, ["queued", "retryable_failed"]), lte(automationQueue.scheduledAt, now)))
     .orderBy(asc(automationQueue.priority), asc(automationQueue.scheduledAt))
     .limit(25);
-  let job = readyJobs.find(task => workspace?.backgroundEnabled || !["google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType));
+  let job = readyJobs.find(task => workspace?.backgroundEnabled || !["client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType));
   if (!job) return { status: "empty" as const };
 
   // AI daily budget applies only to AI inference job types, not deterministic security scans or policy executions
@@ -251,21 +252,21 @@ export async function processOneQueuedJob(ownerId: number) {
     const budget = Number((workspace?.policyConfig as { aiDailyLimit?: number } | null)?.aiDailyLimit ?? 45);
     const todayUsage = await db.select({ count: sql<number>`count(*)` }).from(aiUsage).where(and(eq(aiUsage.ownerId, ownerId), sql`date(${aiUsage.createdAt}) = curdate()`));
     if (!withinDailyAiBudget(todayUsage[0]?.count ?? 0, budget)) {
-      const deterministic = readyJobs.find((task: typeof automationQueue.$inferSelect) => DETERMINISTIC_JOB_TYPES.has(task.jobType)&&(workspace?.backgroundEnabled||!["google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType)));
+      const deterministic = readyJobs.find((task: typeof automationQueue.$inferSelect) => DETERMINISTIC_JOB_TYPES.has(task.jobType)&&(workspace?.backgroundEnabled||!["client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType)));
       if (!deterministic) return { status: "skipped" as const, reason: `The daily AI budget of ${budget} requests has been reached.` };
       job = deterministic;
     }
   }
   job = { ...job, attempts: job.attempts ?? 0, maxAttempts: job.maxAttempts ?? 3 };
 
-  if (["google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType) && !workspace?.backgroundEnabled) return { status: "skipped" as const, reason: "Managed worker is paused; calendar task remains queued." };
+  if (["client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType) && !workspace?.backgroundEnabled) return { status: "skipped" as const, reason: "Managed worker is paused; calendar task remains queued." };
   const lockToken = createId("lock_");
   const claimed = await db.update(automationQueue).set({ status: "running", lockToken, lockedAt: now, attempts: job.attempts + 1 }).where(and(eq(automationQueue.id, job.id), inArray(automationQueue.status, ["queued", "retryable_failed"])));
   if (!claimed[0]?.affectedRows) return { status: "contended" as const };
 
-  if (["google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType)) {
+  if (["client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType)) {
     try {
-      const result = job.jobType==="discovery_select"?await executeDiscoverySelection(ownerId,job.payload):job.jobType==="google_calendar_sync"?await executeCalendarSync(ownerId,job.payload):await executeRecoveryAutoSelection(ownerId,job.payload);
+      const result = job.jobType==="client_reply_deadline"?await executeClientReplyDeadline(ownerId,job.payload):job.jobType==="discovery_select"?await executeDiscoverySelection(ownerId,job.payload):job.jobType==="google_calendar_sync"?await executeCalendarSync(ownerId,job.payload):await executeRecoveryAutoSelection(ownerId,job.payload);
       if('status' in result&&result.status==='deferred'&&'nextActionAt' in result){await db.update(automationQueue).set({status:'queued',scheduledAt:result.nextActionAt,attempts:job.attempts,lockToken:null,lockedAt:null}).where(and(eq(automationQueue.id,job.id),eq(automationQueue.lockToken,lockToken)));return {status:'skipped' as const,jobId:job.id,reason:'Waiting for both participant responses.'};}
       await db.update(automationQueue).set({status:"completed",result,completedAt:new Date(),lockToken:null,lockedAt:null,lastError:null}).where(and(eq(automationQueue.id,job.id),eq(automationQueue.lockToken,lockToken)));
       return {status:"completed" as const,jobId:job.id};
@@ -506,7 +507,7 @@ export type ProcessBatchResult = {
   completed: number;
   failed: number;
   skipped: number;
-  sources?: { campaigns: Awaited<ReturnType<typeof processDueCampaigns>> };
+  sources?: { campaigns: Awaited<ReturnType<typeof processDueCampaigns>>; discoveryDeadlines: Awaited<ReturnType<typeof processDueDiscoveryDeadlines>>; replyDeadlines: Awaited<ReturnType<typeof processLegacyReplyDeadlines>> };
   results: Array<{
     status: string;
     jobId?: string;
@@ -517,6 +518,8 @@ export type ProcessBatchResult = {
 
 export async function processDueAutomationBatch(ownerId?: number, limit = 5): Promise<ProcessBatchResult> {
   const boundedLimit = Math.min(Math.max(limit, 1), 25);
+  const replyDeadlines = await processLegacyReplyDeadlines(ownerId, boundedLimit);
+  const discoveryDeadlines = await processDueDiscoveryDeadlines(ownerId, boundedLimit);
   const campaigns = await processDueCampaigns(ownerId, boundedLimit);
   const results: Array<{ status: string; jobId?: string; reason?: string; selectedModel?: string }> = [];
   const skippedOwnerIds = new Set<number>();
@@ -574,7 +577,7 @@ export async function processDueAutomationBatch(ownerId?: number, limit = 5): Pr
     failed,
     skipped,
     results,
-    ...(campaigns.evaluated ? { sources: { campaigns } } : {}),
+    ...(campaigns.evaluated || discoveryDeadlines.scanned || replyDeadlines.scanned ? { sources: { campaigns, discoveryDeadlines, replyDeadlines } } : {}),
   };
 }
 

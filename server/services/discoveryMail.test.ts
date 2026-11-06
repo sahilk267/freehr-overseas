@@ -1,9 +1,10 @@
+import {processDueDiscoveryDeadlines} from "./clientDiscoveryDeadline";
 import {beforeEach,afterEach,describe,it,expect,vi} from 'vitest';
 import {and,eq} from 'drizzle-orm';
 import {createHmac} from 'node:crypto';
 import {followupFixture} from '../testSupport/followupFixture';
 import {createId} from '../db';
-import {approvals,automationQueue,clientDiscoveryRequests as requests,contacts,emailDispatches,emailIdentities,messages} from '../../drizzle/schema';
+import {approvals,automationQueue,clientDiscoveryRequests as requests,contacts,emailDispatches,emailIdentities,messages,workspaceSettings} from '../../drizzle/schema';
 import {receiveReply} from './replyTriage';
 import {createDiscoveryRequest,publicDiscovery,cancelDiscovery} from './clientDiscovery';
 import {prepareAvailabilityEmail,materializeAvailabilityEmail} from './availabilityMail';
@@ -57,4 +58,9 @@ describe('purpose-bound client discovery links through the shared approved outbo
  it.skipIf(!process.env.FREEHR_TEST_MYSQL)('concurrent SQL preparation shares one token revision, message and approval',async()=>{const f=await fixture();const results=await Promise.all([f.prepare(),f.prepare()]);expect(results[0].messageId).toBe(results[1].messageId);expect((await f.row()).revision).toBe(2);expect(await f.db.select().from(messages).where(and(eq(messages.ownerId,f.ownerId),eq(messages.direction,'outbound')))).toHaveLength(1);expect(await f.db.select().from(approvals).where(eq(approvals.ownerId,f.ownerId))).toHaveLength(1);});
  it('does not authorize link mail after all recruiter windows have elapsed',async()=>{const f=await fixture(),draft=await f.prepare();await f.db.update(requests).set({ownerWindows:[{start:new Date(Date.now()-7200000).toISOString(),end:new Date(Date.now()-3600000).toISOString()}]}).where(eq(requests.id,f.id));await expect(f.approve(draft.approvalId)).rejects.toThrow(/future recruiter window/);expect(send).not.toHaveBeenCalled();});
 
+});
+
+describe('discovery deadline outbox containment',()=>{
+ it('revokes an unused approved draft on expiry without provider delivery',async()=>{const f=await fixture(),draft=await f.prepare();await f.approve(draft.approvalId);try{await f.db.update(workspaceSettings).set({backgroundEnabled:true}).where(eq(workspaceSettings.ownerId,f.ownerId));await f.db.update(requests).set({expiresAt:new Date(Date.now()-60000)}).where(eq(requests.id,f.id));expect((await processDueDiscoveryDeadlines(f.ownerId)).escalated).toBe(1);expect((await f.detail(draft.approvalId)).approval.status).toBe('cancelled');expect((await f.db.select().from(emailDispatches).where(eq(emailDispatches.ownerId,f.ownerId)))[0].status).toBe('cancelled');expect(send).not.toHaveBeenCalled();}finally{await f.db.update(workspaceSettings).set({backgroundEnabled:false}).where(eq(workspaceSettings.ownerId,f.ownerId));}});
+ it('preserves uncertain attempted delivery for reconciliation when the link expires',async()=>{const f=await fixture(),draft=await f.prepare();await f.approve(draft.approvalId);send.mockRejectedValueOnce(Error('Synthetic uncertain provider response'));await expect(deliverApprovedEmail(f.ownerId,{messageId:draft.messageId})).rejects.toThrow(/reconciliation/);try{await f.db.update(workspaceSettings).set({backgroundEnabled:true}).where(eq(workspaceSettings.ownerId,f.ownerId));await f.db.update(requests).set({expiresAt:new Date(Date.now()-60000)}).where(eq(requests.id,f.id));await processDueDiscoveryDeadlines(f.ownerId);const dispatch=(await f.db.select().from(emailDispatches).where(eq(emailDispatches.ownerId,f.ownerId)))[0];expect(dispatch.status).toBe('reconciliation_required');expect(dispatch.claimedAt).toBeTruthy();expect(send).toHaveBeenCalledTimes(1);}finally{await f.db.update(workspaceSettings).set({backgroundEnabled:false}).where(eq(workspaceSettings.ownerId,f.ownerId));}});
 });

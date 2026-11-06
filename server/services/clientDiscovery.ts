@@ -33,7 +33,20 @@ async function currentSource(tx:any,ownerId:number,conversationId:string){
 }
 async function currentRequest(tx:any,ownerId:number,id:string){
  const r=await owned(tx,ownerId,id);if(!["pending","responded"].includes(r.status)||new Date(r.expiresAt)<=new Date())throw fail("Discovery request is closed or expired.");
- const source=await currentSource(tx,ownerId,r.conversationId);if(source.fingerprint!==r.sourceFingerprint||source.contactId!==r.contactId)throw fail("Client reply, next action or recipient changed. Create a fresh discovery request.","CONFLICT");return r;
+ await assertDiscoverySource(tx,ownerId,r);return r;
+}
+export async function assertDiscoverySource(tx:any,ownerId:number,r:typeof requests.$inferSelect){
+ const source=await currentSource(tx,ownerId,r.conversationId);
+ if(source.fingerprint!==r.sourceFingerprint||source.contactId!==r.contactId)throw fail("Client reply, next action or recipient changed. Create a fresh discovery request.","CONFLICT");
+}
+/** Revoke only unused scheduling authority. Attempted mail and real meetings are preserved. */
+export async function stopDiscoveryRequestWork(tx:any,ownerId:number,r:typeof requests.$inferSelect,reason:string){
+ const prepared=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,"discovery.email_requested"),eq(workflowEvents.aggregateId,r.id)));
+ for(const e of prepared){const dispatch=(await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId,ownerId),eq(emailDispatches.approvalId,String(e.metadata?.approvalId)))).limit(1))[0];if(dispatch)await cancelUnusedEmailDispatch(tx,ownerId,dispatch,reason);}
+ await tx.update(automationQueue).set({status:"cancelled",lockToken:null,lockedAt:null}).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.idempotencyKey,`discovery_select:${r.id}:${r.revision}`),inArray(automationQueue.status,["queued","retryable_failed"])));
+}
+export async function resolveDiscoveryIncidents(tx:any,ownerId:number,requestId:string,reason:string){
+ await tx.update(incidents).set({status:"resolved",resolvedAt:new Date(),containmentNotes:reason}).where(and(eq(incidents.ownerId,ownerId),inArray(incidents.incidentType,["client_discovery_no_slots","client_discovery_expired"]),eq(incidents.affectedResourceId,requestId),inArray(incidents.status,["detected","triaged","contained","investigated"])));
 }
 export async function createDiscoveryRequest(ownerId:number,actorId:number,input:{conversationId:string;replyRevision:number;actionRevision:number;requestKey:string;ownerWindows:Window[];timezone:string;durationMinutes:number;bufferMinutes:number;expiresHours:number;autoSelect:boolean;syncGoogleCalendar?:boolean}){
  const normalized=normalizeAvailabilityWindows(input.ownerWindows).map(w=>({start:new Date(w.start).toISOString(),end:new Date(w.end).toISOString()}));
@@ -53,6 +66,12 @@ export async function createDiscoveryRequest(ownerId:number,actorId:number,input
   }
   const id=createId("dcr_"),token=randomBytes(32).toString("base64url");
   await tx.insert(requests).values({id,ownerId,conversationId:input.conversationId,contactId:source.contactId,sourceFingerprint:source.fingerprint,requestKeyHash,requestHash,tokenHash:tokenHash(token),status:"pending",revision:1,ownerWindows:normalized,timezone:input.timezone,durationMinutes:input.durationMinutes,bufferMinutes:input.bufferMinutes,autoSelect:input.autoSelect,expiresAt:new Date(Date.now()+input.expiresHours*3600000)});
+  const oldRequests=await tx.select().from(requests).where(and(eq(requests.ownerId,ownerId),eq(requests.conversationId,input.conversationId)));
+  for(const oldRow of oldRequests)if(oldRow.id!==id&&new Date(oldRow.expiresAt)<=new Date()&&oldRow.status!=="booked"){
+   const old={...oldRow};
+   if(["pending","responded"].includes(old.status)){await tx.update(requests).set({status:"expired",tokenHash:"",revision:old.revision+1}).where(and(eq(requests.ownerId,ownerId),eq(requests.id,old.id)));await stopDiscoveryRequestWork(tx,ownerId,old,"Discovery request replaced.");await appendWorkflowEvent(tx,ownerId,"discovery.expiry_skipped",old.id,old.revision+1,{reason:"replaced"});}
+   await resolveDiscoveryIncidents(tx,ownerId,old.id,"Owner created a replacement discovery request.");
+  }
   if(input.syncGoogleCalendar)await authorizeDiscoveryRequestCalendar(tx,ownerId,id,actorId);
   await recordAudit({ownerId,actorType:"user",actorId:String(actorId),action:"discovery.request_created",resourceType:"client_discovery",resourceId:id,metadata:{conversationId:input.conversationId,autoSelect:input.autoSelect}},tx);
   return {request:safe(await owned(tx,ownerId,id)),token,alreadyExists:false};
@@ -126,12 +145,10 @@ export async function bookDiscovery(ownerId:number,actorId:number|string,input:{
 export async function cancelDiscovery(ownerId:number,actorId:number,input:{requestId:string;expectedRevision:number}){
  return withWorkspaceTransaction(ownerId,async tx=>{const r=await owned(tx,ownerId,input.requestId);if(r.status==="cancelled")return {alreadyCancelled:true};if(r.revision!==input.expectedRevision)throw fail("Discovery changed. Reload before cancelling.","CONFLICT");
   await tx.update(requests).set({status:"cancelled",tokenHash:"",revision:r.revision+1}).where(and(eq(requests.ownerId,ownerId),eq(requests.id,r.id)));
-  const prepared=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,"discovery.email_requested"),eq(workflowEvents.aggregateId,r.id)));
-  for(const e of prepared){const dispatch=(await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId,ownerId),eq(emailDispatches.approvalId,String(e.metadata?.approvalId)))).limit(1))[0];if(dispatch)await cancelUnusedEmailDispatch(tx,ownerId,dispatch,"Client discovery request cancelled.");}
+  await stopDiscoveryRequestWork(tx,ownerId,r,"Client discovery request cancelled.");
   const m=(await tx.select().from(meetings).where(and(eq(meetings.ownerId,ownerId),eq(meetings.requestId,r.id))).limit(1))[0];if(m)await tx.update(meetings).set({status:"cancelled",revision:m.revision+1}).where(and(eq(meetings.ownerId,ownerId),eq(meetings.id,m.id)));
   if(m)await enqueueDiscoveryCalendarSync(tx,ownerId,m.id);
-  await tx.update(automationQueue).set({status:"cancelled",lockToken:null,lockedAt:null}).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.idempotencyKey,`discovery_select:${r.id}:${r.revision}`),inArray(automationQueue.status,["queued","retryable_failed"])));
-  await tx.update(incidents).set({status:"resolved",resolvedAt:new Date(),containmentNotes:"Owner cancelled this discovery request."}).where(and(eq(incidents.ownerId,ownerId),eq(incidents.incidentType,"client_discovery_no_slots"),eq(incidents.affectedResourceId,r.id),inArray(incidents.status,["detected","triaged","contained","investigated"])));
+  await resolveDiscoveryIncidents(tx,ownerId,r.id,"Owner cancelled this discovery request.");
   await recordAudit({ownerId,actorType:"user",actorId:String(actorId),action:"discovery.cancelled",resourceType:"client_discovery",resourceId:r.id},tx);return {alreadyCancelled:false};
  });
 }
