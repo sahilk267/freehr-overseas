@@ -66,6 +66,29 @@
       "lastError": null
     }
   },
-  "preApprovalClarificationLive": "pending_followup_deployment",
+  "preApprovalClarificationLive": {
+    "buildCommit": "a4b5dba7306176ca2e568f9975eaf7c4f13bbbd7",
+    "tests": [
+      {
+        "name": "mobile clarification stage resets the earlier owner statement without claiming client authentication",
+        "status": "PASS"
+      },
+      {
+        "name": "mobile return-to-draft edit creates a new version and rejects stale approval context",
+        "status": "PASS"
+      },
+      {
+        "name": "old owner statement cannot approve the freshly reviewed requirement without a new statement",
+        "status": "PASS"
+      }
+    ],
+    "browserRuntimeErrors": 0,
+    "cleanup": {
+      "checkedAt": "2026-11-06T17:43:39.778Z",
+      "jobCancelled": true,
+      "companySuppressed": true,
+      "recipientMailSent": false
+    }
+  },
   "matchingProviderTests": "synthetic_model_results_only"
 }

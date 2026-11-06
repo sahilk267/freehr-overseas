@@ -644,7 +644,7 @@
           "description": "Amendment/hold/cancel/filled rules invalidate incompatible matches, follow-ups and submissions without erasing history.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-06-versioned-job-intake.md",
-          "implementation_note": "Draft edits use immutable revisions and state fingerprints, share the pipeline transaction lock, invalidate active draft scores and fence stale queued scoring results. Drafts with shortlisted matches require downstream review. Active amendments, broad hold/cancel/filled invalidation and client re-authorization remain pending. Pre-approval clarification/draft return clears old owner confirmation statements; the live UI follow-up is tracked separately."
+          "implementation_note": "Draft edits use immutable revisions and state fingerprints, share the pipeline transaction lock, invalidate active draft scores and fence stale queued scoring results. Drafts with shortlisted matches require downstream review. Active amendments, broad hold/cancel/filled invalidation and client re-authorization remain pending. Pre-approval clarification/draft return clears old owner confirmation statements; mobile return/edit, stale approval denial and fresh-statement enforcement passed live on a4b5dba with synthetic cleanup."
         }
       ],
       "events": "requisition.confirmed, requisition.changed, requisition.paused, requisition.closed",
