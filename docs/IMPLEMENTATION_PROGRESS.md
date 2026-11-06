@@ -4,7 +4,7 @@ Updated 7 November 2026 (Asia/Calcutta). This record tracks implementation again
 
 ## Current increment: JD document text import
 
-[Document import report](qa/2026-11-07-jd-document-import.md) records bounded PDF/DOCX/TXT parsing into private immutable source text, explicit preview/excerpt selection and document-hash provenance through the existing free-model task and canonical intake adoption. Raw files are not retained; image-only scans require OCR. Duplicate and stale imports are guarded without adding a parallel queue or storage system. Local/SQL/live acceptance and open scope are recorded in the report. No module is complete.
+[Document import report](qa/2026-11-07-jd-document-import.md) records bounded PDF/DOCX/TXT parsing into private immutable source text, explicit preview/excerpt selection and document-hash provenance through the existing free-model task and canonical intake adoption. Raw files are not retained; image-only scans require OCR. Duplicate and stale imports are guarded without adding a parallel queue or storage system. Validation: 778 unit tests and 528 MySQL tests passed, plus types/build/four hosting entry checks. Real DOCX/PDF/TXT production parsing, managed free-model inference, mobile source switching and selective adoption, private APIs and historical replay passed on `ad7431d`; synthetic records were closed and the persistent worker remained healthy. Open scope and sanitized evidence are in the report. No module is complete.
 
 ## Current increment: quoted JD text extraction
 

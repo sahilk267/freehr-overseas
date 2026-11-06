@@ -24,6 +24,10 @@ At a 390 × 844 mobile viewport, owner review selected 15 supported facts, copie
 
 The synthetic job was cancelled, its company suppressed and its extraction task remained completed. The persistent managed worker was enabled with a recent heartbeat, no emergency stop and no error. No recipient messages, invitations or payments were sent.
 
+## Subsequent document intake increment
+
+[Document import acceptance](2026-11-07-jd-document-import.md) adds bounded PDF/DOCX/TXT text preview and document-bound source adoption, verified live on `ad7431d`. Original-file lifecycle and scanned-image OCR remain open. The following scope statement describes the text-only increment at its original release.
+
 ## Remaining scope
 
 PDF/DOCX/OCR ingestion, automatic inbox attachment intake, semantically verified interpretation, scale/FX/pay-period normalization, automatic clarification sending, authenticated client sign-off, active amendments and the remaining advanced roadmap are open. This is partial M08-F01/F03/F08 and M12-F01 implementation. No recipient communication or business approval is authorized by QA.

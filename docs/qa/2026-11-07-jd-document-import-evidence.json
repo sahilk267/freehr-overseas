@@ -1,0 +1,122 @@
+{
+  "target": "https://freelancehr.overseasjob.in",
+  "checkedAt": "2026-11-06T21:33:37.050Z",
+  "implementationCommit": "ad7431d241930a0dd2c032004448c29ba0b31bbc",
+  "syntheticOnly": true,
+  "recipientMailSent": false,
+  "manualWorkerRun": false,
+  "rawFileRetained": false,
+  "localValidation": {
+    "unitPassed": 778,
+    "unitSkipped": 69,
+    "mysqlPassed": 528,
+    "mysqlFiles": 28,
+    "focusedPassed": 21,
+    "focusedSqlSkipped": 2,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingerEntryChecks": 4,
+    "moduleTracker": "PASS"
+  },
+  "qualityObservation": "The free provider returned employmentType full-time instead of canonical full_time. This suggestion remained nonselectable. Literal source checks do not establish semantic extraction quality.",
+  "desktop": {
+    "checkedAt": "2026-11-06T21:31:55.898Z",
+    "tests": [
+      {
+        "name": "real DOCX browser upload plus production PDF and long TXT parsing; exact retry reuses import and no intake changes",
+        "status": "PASS"
+      },
+      {
+        "name": "document preview and explicit use bind immutable document provenance to the existing AI extraction task",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "runtimeErrors": 0
+  },
+  "provider": {
+    "checkedAt": "2026-11-06T21:32:16.301Z",
+    "tests": [
+      {
+        "name": "actual managed free-model inference records literal source suggestions without automatic intake edits",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "manualWorkerRun": false,
+    "model": "nvidia/nemotron-3.5-super-vl:free",
+    "supportedFacts": 9,
+    "unsupportedFacts": 1,
+    "explicitRetries": 0,
+    "buildCommit": "ad7431d241930a0dd2c032004448c29ba0b31bbc"
+  },
+  "mobile": {
+    "checkedAt": "2026-11-06T21:32:55.608Z",
+    "tests": [
+      {
+        "name": "mobile retains long imported text with extraction blocked, supports explicit link clearing and source switching without overflow",
+        "status": "PASS"
+      },
+      {
+        "name": "mobile supported-fact selection saves one canonical version and preserves owner facts and original history",
+        "status": "PASS"
+      },
+      {
+        "name": "exact adoption replay preserves identity without another version or approval",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "runtimeErrors": 0,
+    "selectedFacts": 8
+  },
+  "documentApi": {
+    "checkedAt": "2026-11-06T21:33:15.672Z",
+    "tests": [
+      {
+        "name": "document routes reject anonymous access, malformed/signature-invalid uploads and stale source reuse after adoption",
+        "status": "PASS"
+      },
+      {
+        "name": "full long source and original document identity remain available after canonical adoption",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false
+  },
+  "adoptionApi": {
+    "checkedAt": "2026-11-06T21:33:24.985Z",
+    "tests": [
+      {
+        "name": "source history, extraction request and adoption remain private behind owner authentication",
+        "status": "PASS"
+      },
+      {
+        "name": "different selection is rejected and historical replay cannot overwrite a newer intake",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "buildCommit": "ad7431d241930a0dd2c032004448c29ba0b31bbc"
+  },
+  "cleanup": {
+    "checkedAt": "2026-11-06T21:33:37.050Z",
+    "syntheticOnly": true,
+    "recipientMailSent": false,
+    "jobCancelled": true,
+    "companySuppressed": true,
+    "tasks": [
+      {
+        "status": "completed",
+        "appliedRevision": 2
+      }
+    ],
+    "worker": {
+      "enabled": true,
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "emergencyStop": false,
+      "lastError": null
+    }
+  }
+}
