@@ -4,7 +4,7 @@ Updated 7 November 2026 (Asia/Calcutta). This record tracks implementation again
 
 ## Combined batch: candidate evidence and current matching
 
-[Combined acceptance report](qa/2026-11-07-candidate-evidence-ranked-pool.md) tracks four connected scopes: immutable owner-recorded candidate evidence, conservative compensation comparison, paginated explainable ranked pools and one shared per-pair/batch AI context/queue command. Source changes, expiry, suppression and consent fence new and queued work. Privacy erasure covers the new ledger/snapshots. Detailed acceptance and remaining scope are in the report; no module is complete.
+[Combined acceptance report](qa/2026-11-07-candidate-evidence-ranked-pool.md) tracks four connected scopes: immutable owner-recorded candidate evidence, conservative compensation comparison, paginated explainable ranked pools and one shared per-pair/batch AI context/queue command. Source changes, expiry, suppression and consent fence new and queued work. Privacy erasure covers the new ledger/snapshots. Validation: 801 unit tests and all 554 MySQL tests passed, plus types/build/four hosting entry checks. Combined desktop/mobile profile/ranking, exact unit comparison, task reuse and managed free-model scoring passed on `fc0e439`; correction invalidation, stale pool denial and private API guards passed live. Synthetic records were closed and the persistent worker remained healthy. Detailed acceptance and remaining scope are in the report; no module is complete.
 
 ## Current increment: JD document text import
 

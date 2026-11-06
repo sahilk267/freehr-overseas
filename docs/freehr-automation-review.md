@@ -4,6 +4,8 @@
 
 The [combined candidate-evidence and ranked-matching report](qa/2026-11-07-candidate-evidence-ranked-pool.md) records four connected increments and their current acceptance: source/expiry-bound candidate evidence; explicit compensation comparison; bounded paginated ranked review; and a shared per-pair/batch AI scoring context/queue with stale-source, consent, suppression and privacy-erasure integration. `candidateEvidence.ts`, `matchContext.ts` and `rankedMatching.ts` own these commands; existing queue/worker and canonical workflow ledger remain authoritative. Review flags and snapshots add no candidate/job FSM state or automatic final rejection. Global ranking, employer-weighted scorecard evaluation, candidate self-service and remaining advanced gates are open.
 
+Combined acceptance: 801 unit tests, 554 MySQL tests, typecheck/build/four hosting entry checks and desktop/mobile/managed free-provider lifecycle checks passed. Live implementation commit: `fc0e439`. Synthetic records were closed; no full module is complete.
+
 The dated audit/design counts below remain historical baseline evidence; current status is maintained in the module registry, implementation backlog, phase tracker and linked acceptance report.
 
 Implementation has since started. See [current implementation progress](IMPLEMENTATION_PROGRESS.md) and the canonical registry for verified changes; baseline findings and planned scope below are historical/design records.

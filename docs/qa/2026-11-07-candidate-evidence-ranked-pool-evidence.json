@@ -1,0 +1,90 @@
+{
+  "target": "https://freelancehr.overseasjob.in",
+  "checkedAt": "2026-11-06T22:14:42.068Z",
+  "implementationCommit": "fc0e43947d5b73bb122eacdfa969926a674f0cec",
+  "syntheticOnly": true,
+  "recipientMailSent": false,
+  "manualWorkerRun": false,
+  "qualityLimit": "One synthetic managed free-model pilot establishes execution and lifecycle guards, not general matching accuracy, source truth or final hiring suitability. Owner statements remain independently unverified.",
+  "localValidation": {
+    "unitPassed": 801,
+    "unitSkipped": 72,
+    "mysqlPassed": 554,
+    "mysqlFiles": 29,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingerEntryChecks": 4,
+    "moduleTracker": "PASS"
+  },
+  "desktop": {
+    "checkedAt": "2026-11-06T22:13:00.186Z",
+    "tests": [
+      {
+        "name": "desktop versioned candidate statement records explicit skills preferences pay units and source without claiming verification",
+        "status": "PASS"
+      },
+      {
+        "name": "desktop ranked review shows exact salary conversion, missing evidence, suppression exclusion and immutable historical snapshot",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "runtimeErrors": 0
+  },
+  "mobile": {
+    "checkedAt": "2026-11-06T22:13:32.905Z",
+    "tests": [
+      {
+        "name": "mobile selection queues the existing shared score task once; single and batch retries reuse it without overflow or disposition",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "runtimeErrors": 0
+  },
+  "provider": {
+    "checkedAt": "2026-11-06T22:13:51.563Z",
+    "tests": [
+      {
+        "name": "actual managed free-model scoring consumes explicit candidate units and current evidence without profile edits or progression",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "manualWorkerRun": false,
+    "model": "nvidia/nemotron-3.5-super-vl:free",
+    "matchStatus": "evidence_validated",
+    "lowConfidence": false,
+    "buildCommit": "fc0e43947d5b73bb122eacdfa969926a674f0cec"
+  },
+  "api": {
+    "checkedAt": "2026-11-06T22:14:17.351Z",
+    "tests": [
+      {
+        "name": "six matching/evidence routes reject anonymous access and suppressed/unconsented candidates cannot enter AI processing",
+        "status": "PASS"
+      },
+      {
+        "name": "candidate correction creates one version, invalidates old match and rejects stale pool actions while preserving history",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false
+  },
+  "cleanup": {
+    "checkedAt": "2026-11-06T22:14:42.068Z",
+    "syntheticOnly": true,
+    "recipientMailSent": false,
+    "taskStatus": "completed",
+    "jobCancelled": true,
+    "companySuppressed": true,
+    "allCandidatesSuppressedOrWithdrawn": true,
+    "worker": {
+      "enabled": true,
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "emergencyStop": false,
+      "lastError": null
+    }
+  }
+}
