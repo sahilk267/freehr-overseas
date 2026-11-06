@@ -1,3 +1,4 @@
+import {jobExtractionAiInput,recordJobExtractionResult} from "./jobExtraction";
 import {jobRequirementFingerprint} from "./jobIntake";
 import {processObservedReplyOutcomes} from "./replyOutcomeRecovery";
 import {processDueDiscoveryDeadlines} from "./clientDiscoveryDeadline";
@@ -19,7 +20,7 @@ import { applySideEffect } from "./approvalEngine";
 import { prepareFollowUp } from "./followups";
 import { deliverApprovedEmail } from "./emailDelivery";
 import { enrollInterviewFollowUp } from "./interviewFollowups";
-import { lockedSelect } from "./database";
+import { lockedSelect,withWorkspaceTransaction } from "./database";
 import { extractDocumentText } from "./documentText";
 import { readPrivateDocument } from "./privateStorage";
 
@@ -27,7 +28,7 @@ export class NonRetryableJobError extends Error {}
 export class RetryableJobError extends Error {}
 
 const DETERMINISTIC_JOB_TYPES = new Set(["client_reply_deadline", "discovery_select", "recovery_auto_select", "google_calendar_sync", "scan_document", "execute_policy_decision", "follow_up", "deliver_email", "send_reminder", "invoice_collection_source"]);
-const AI_JOB_TYPES = new Set<AiTaskType>(["classify_reply", "draft_outreach", "parse_cv", "score_match", "send_reminder", "reconcile_invoice"]);
+const AI_JOB_TYPES = new Set<AiTaskType>(["extract_job_requirements","classify_reply", "draft_outreach", "parse_cv", "score_match", "send_reminder", "reconcile_invoice"]);
 const calculateBackoff = (attempts: number) => Math.min(60 * 60 * 1000, 30_000 * 2 ** Math.max(0, attempts - 1));
 export const withinDailyAiBudget = (used: number, limit: number) => used < limit;
 
@@ -40,7 +41,8 @@ export async function handleAiTaskResult(
 ) {
   const payload = (job.payload ?? {}) as Record<string, unknown>;
 
-  if (job.jobType === "parse_cv") {
+  if(job.jobType==="extract_job_requirements"){await recordJobExtractionResult(db,ownerId,payload,result,selectedModel);
+  } else if (job.jobType === "parse_cv") {
     const documentId = payload.documentId ? String(payload.documentId) : null;
     const candidateId = payload.candidateId ? String(payload.candidateId) : null;
     const parsed = result as {
@@ -463,6 +465,9 @@ export async function processOneQueuedJob(ownerId: number) {
   const usageId = createId("aiu_");
   try {
     let aiInput = (job.payload ?? {}) as Record<string, unknown>;
+    if(job.jobType==="extract_job_requirements"){
+      try{aiInput=await withWorkspaceTransaction(ownerId,tx=>jobExtractionAiInput(tx,ownerId,job.payload));}catch(e){if(e instanceof TRPCError&&["NOT_FOUND","CONFLICT","PRECONDITION_FAILED"].includes(e.code))throw new NonRetryableJobError(e.message);throw e;}
+    }
     if (job.jobType === "parse_cv" && aiInput.documentId) {
       const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, String(aiInput.documentId)), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];
       const candidate = doc ? (await db.select().from(candidates).where(and(eq(candidates.id, doc.candidateId), eq(candidates.ownerId, ownerId))).limit(1))[0] : null;
@@ -474,11 +479,11 @@ export async function processOneQueuedJob(ownerId: number) {
       input: aiInput,
       primaryModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite",
       fallbackModels: (route?.fallbackModels as string[] | null) ?? [],
-      maxOutputTokens: route?.maxOutputTokens ?? 1200,
+      maxOutputTokens: route?.maxOutputTokens ?? (job.jobType==="extract_job_requirements"?3200:1200),
     });
     await db.insert(aiUsage).values({ id: usageId, ownerId, routeId: route?.id ?? null, queueJobId: job.id, taskType: job.jobType, requestedModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite", selectedModel: response.selectedModel, status: "succeeded", latencyMs: response.latencyMs });
     await db.transaction(async (tx: any) => {
-      if(job.jobType==="score_match")await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId,ownerId)).limit(1));
+      if(["score_match","extract_job_requirements"].includes(job.jobType))await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId,ownerId)).limit(1));
       const owned = (await lockedSelect(tx.select().from(automationQueue).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken), eq(automationQueue.status, "running"))).limit(1)))[0];
       if (!owned) throw new NonRetryableJobError("Worker no longer owns this task; result discarded.");
       if (job.jobType === "parse_cv" && aiInput.candidateId) await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.id, String(aiInput.candidateId)), eq(candidates.ownerId, ownerId))).limit(1));

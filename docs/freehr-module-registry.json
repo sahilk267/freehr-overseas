@@ -398,7 +398,9 @@
         {
           "id": "M08-F01",
           "description": "Task-specific structured tools for discovery, intake, CV extraction, matching explanation, screening assistance, reply/objection handling and negotiation recommendations.",
-          "status": "planned"
+          "status": "implementing",
+          "implementation_note": "Typed JD/email-text extraction uses the existing free-only AI queue. Source-bound suggested facts require explicit owner adoption through canonical draft intake. Other domain tools, document/OCR intake and automatic grounded business actions remain open.",
+          "evidence_ref": "qa/2026-11-07-jd-extraction.md"
         },
         {
           "id": "M08-F02",
@@ -408,7 +410,9 @@
         {
           "id": "M08-F03",
           "description": "Evidence-grounded reasoning with source citations, missing-info questions, conflicting-fact detection and fact-versus-hypothesis labeling.",
-          "status": "planned"
+          "status": "implementing",
+          "implementation_note": "Per-field normalized literal quote/value checks, missing-information questions and immutable source/result/adoption provenance are implemented for JD text. Excerpt matching does not verify semantic interpretation or client identity; unsupported values remain nonselectable.",
+          "evidence_ref": "qa/2026-11-07-jd-extraction.md"
         },
         {
           "id": "M08-F04",
@@ -433,7 +437,9 @@
         {
           "id": "M08-F08",
           "description": "AI recommends an authorized command; M04 and the domain validate it. No AI direct SQL, independent consent grant, payment truth or final hiring authority.",
-          "status": "planned"
+          "status": "implementing",
+          "implementation_note": "JD extraction never edits roles or grants approval on model completion. Owner-selected supported facts pass canonical intake validation and transactional version/state fences; no AI SQL, sending or financial authority is granted.",
+          "evidence_ref": "qa/2026-11-07-jd-extraction.md"
         }
       ],
       "events": "ai.result_ready, ai.needs_evidence, ai.validation_failed, knowledge.updated",
@@ -612,8 +618,8 @@
           "id": "M12-F01",
           "description": "JD/document/email intake, structured clarification conversation, responsibilities, outcomes and weighted assessment scorecard.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-06-versioned-job-intake.md",
-          "implementation_note": "Canonical job creation now records immutable intake versions, draft edits, owner reasons, current fingerprints and historical snapshots. The shared create/edit form supports description, responsibilities, scorecard and a deterministic clarification checklist. No AI/JD extraction or authenticated client sign-off is claimed. Desktop/mobile create, legacy adoption, version history and stale-save denial passed live on c75b9dc with synthetic cleanup."
+          "evidence_ref": "qa/2026-11-07-jd-extraction.md",
+          "implementation_note": "Canonical job creation now records immutable intake versions, draft edits, owner reasons, current fingerprints and historical snapshots. The shared create/edit form supports description, responsibilities, scorecard and a deterministic clarification checklist. No AI/JD extraction or authenticated client sign-off is claimed. Desktop/mobile create, legacy adoption, version history and stale-save denial passed live on c75b9dc with synthetic cleanup. Quoted, schema-bound JD/email text extraction and selective owner adoption now reuse the same worker and canonical intake transaction; file/OCR import and automatic clarification delivery remain open."
         },
         {
           "id": "M12-F02",
@@ -2237,7 +2243,7 @@
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Versioned job intake and conservative scoring handoff extend the existing jobs, workflow ledger and queue. No module is complete; client-authenticated requirement approval, active amendments, automated source extraction and remaining advanced acceptance gates stay open.",
-    "updated_at": "2026-11-06"
+    "note": "Quoted JD text extraction adds scoped M08/M12 implementation through the existing queue and immutable intake. Semantic review, authenticated client sign-off, document/OCR ingestion and remaining advanced acceptance gates stay open; no module is complete.",
+    "updated_at": "2026-11-07"
   }
 }

@@ -28,3 +28,5 @@ W4,M06,Observed historical outcome reconciliation,validated_local_and_sql,qa/202
 W5,M12,Versioned structured job intake and clarification,verified_live_desktop_mobile_and_guards,qa/2026-11-06-versioned-job-intake.md,Authenticated client sign-off and automatic JD extraction and active amendments
 W5,M12,Draft requirement change and scoring evidence fences,validated_local_and_sql,qa/2026-11-06-versioned-job-intake.md,Full downstream change impact and verified candidate pay-period normalization
 W5,M12,Pre-approval clarification return and owner statement reset,verified_live_mobile_and_fresh_statement_guard,qa/2026-11-06-versioned-job-intake.md,Authenticated client re-authorization and active requisition amendments
+W5,M12,Quoted JD text extraction and selective intake adoption,validated_local_live_pending,qa/2026-11-07-jd-extraction.md,Actual free-provider and owner mobile acceptance; document OCR and authenticated client sign-off
+W5,M08,Source evidence guards and extraction identity recovery,validated_local_and_sql,qa/2026-11-07-jd-extraction.md,Other domain tools and semantic quality datasets

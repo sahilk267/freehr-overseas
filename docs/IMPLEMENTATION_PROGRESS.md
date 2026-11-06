@@ -1,6 +1,10 @@
 # Automation implementation progress
 
-Updated 6 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+Updated 7 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+
+## Current increment: quoted JD text extraction
+
+[JD extraction report](qa/2026-11-07-jd-extraction.md) records a new typed task in the existing free-model AI worker. Immutable source/version binding, literal source excerpts, unsupported-fact controls and selective owner adoption reuse canonical intake and its transaction. Model completion does not edit jobs, approve requirements or send messages. Stale tasks/results and repeated request/application commands are fenced; stopped unused tasks can be explicitly resumed with the same identity. Local regression and live acceptance are recorded in the report. No advanced module is complete.
 
 ## Current increment: versioned job intake and requirement clarification
 

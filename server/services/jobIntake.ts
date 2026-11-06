@@ -31,9 +31,9 @@ export async function createJobDraft(ownerId:number,actorId:number,input:JobInta
   await recordAudit({ownerId,actorType:'user',actorId:String(actorId),action:'job.created',resourceType:'job',resourceId:id,nextState:'draft',metadata:{requirementQuality:r.requirementQuality,intakeRevision:1}},tx);return {id,requirementQuality:r.requirementQuality,alreadyExists:false};
  });
 }
-export async function saveJobIntake(ownerId:number,actorId:number,input:{jobId:string;expectedRevision:number;expectedFingerprint:string;fields:JobIntakeFields;reason:string}){
+export async function saveJobIntakeInTransaction(tx:any,ownerId:number,actorId:number,input:{jobId:string;expectedRevision:number;expectedFingerprint:string;fields:JobIntakeFields;reason:string}){
  const f=validated(input.fields),requestHash=workflowHash({fields:f,reason:input.reason});
- return withWorkspaceTransaction(ownerId,async tx=>{const r=await owned(tx,ownerId,input.jobId),previous=await latest(tx,ownerId,r.id);
+ const r=await owned(tx,ownerId,input.jobId),previous=await latest(tx,ownerId,r.id);
   if(previous?.revision===input.expectedRevision+1&&previous.metadata.requestHash===requestHash&&previous.metadata.parentFingerprint===input.expectedFingerprint)return {...await detail(tx,ownerId,r.id),alreadySaved:true,unchanged:false};
   if((previous?.revision??0)!==input.expectedRevision||fingerprint(r)!==input.expectedFingerprint)throw conflict('Requirements or job state changed. Reload before saving.');
   if(r.pipelineState!=='draft')throw new TRPCError({code:'PRECONDITION_FAILED',message:'Only draft requirements can be edited. Active requisition amendments need a separate review.'});
@@ -46,8 +46,11 @@ export async function saveJobIntake(ownerId:number,actorId:number,input:{jobId:s
   if(invalidated.length)await appendWorkflowEvent(tx,ownerId,'job.matches_invalidated',r.id,revision,{matchIds:invalidated});
   const saved=await owned(tx,ownerId,r.id);await appendWorkflowEvent(tx,ownerId,'job.intake_saved',r.id,revision,{fields:f,contentHash,persistenceHash:workflowHash(projection(saved)),requestHash,parentFingerprint:input.expectedFingerprint,reason:input.reason,actorId,source:'owner_recorded',clientSignOffVerified:false});
   await recordAudit({ownerId,actorType:'user',actorId:String(actorId),action:'job.intake_saved',resourceType:'job',resourceId:r.id,metadata:{revision,contentHash,clientSignOffVerified:false}},tx);return {...await detail(tx,ownerId,r.id),alreadySaved:false,unchanged:false};
- });
+
 }
+
+export async function saveJobIntake(ownerId:number,actorId:number,input:Parameters<typeof saveJobIntakeInTransaction>[3]){return withWorkspaceTransaction(ownerId,tx=>saveJobIntakeInTransaction(tx,ownerId,actorId,input));}
+export async function jobIntakeInTransaction(tx:any,ownerId:number,id:string){return detail(tx,ownerId,id);}
 
 /** Legacy owner-recorded confirmation remains explicitly unverified; state changes share the intake lock. */
 export async function transitionJob(ownerId:number,actorId:number,input:{id:string;state:string;clientConfirmedBy?:string;expectedRevision?:number;expectedFingerprint?:string}){

@@ -32,7 +32,11 @@ describe("managed runtime processing with observable persisted heartbeats", () =
   });
   it("records actual cycles, and disabling prevents later cycles from claiming work", async () => {
     const f = await fixture(); await f.caller.operations.queue.enableSchedule();
-    expect(await runManagedAutomationCycle()).toContainEqual({ ownerId: f.ownerId, status: "polled" });
+    // SQL suites retain other enabled fixtures. The worker intentionally polls
+    // only 25 workspaces per cycle; wait for this owner without changing fairness.
+    let observed=false;
+    for(let poll=0;poll<5&&!observed;poll++)observed=(await runManagedAutomationCycle()).some(r=>r.ownerId===f.ownerId&&r.status==="polled");
+    expect(observed).toBe(true);
     expect(await backgroundWorkerStatus(f.ownerId)).toMatchObject({ enabled: true, heartbeatRecent: true, lastError: null });
     await f.caller.operations.queue.configureWorker({ enabled: false, expectedRevision: 2 });
     expect(await runManagedAutomationCycle()).not.toContainEqual({ ownerId: f.ownerId, status: "polled" });
