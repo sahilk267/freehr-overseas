@@ -1,3 +1,6 @@
+import {candidateEvidenceSaveSchema} from '../../shared/candidateEvidence';
+import {getCandidateEvidence,saveCandidateEvidence} from '../services/candidateEvidence';
+import {previewRankedPool,actOnRankedPool,listRankedSnapshots,queueCurrentMatch} from '../services/rankedMatching';
 import {jobDocumentInputSchema} from '../../shared/jobDocument';
 import {importJobDocument,listJobDocuments} from '../services/jobDocument';
 import {requestJobExtraction,listJobExtractions,applyJobExtraction} from "../services/jobExtraction";
@@ -212,6 +215,8 @@ export const jobsRouter = router({
 });
 
 export const candidatesRouter = router({
+  evidence:protectedProcedure.input(idInput).query(({ctx,input})=>getCandidateEvidence(ctx.user.id,input.id)),
+  saveEvidence:protectedProcedure.input(candidateEvidenceSaveSchema).mutation(({ctx,input})=>saveCandidateEvidence(ctx.user.id,ctx.actor.id,input)),
   list: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(100).default(50), profileState: z.string().min(2).max(48).optional(), sourceType: z.string().min(2).max(64).optional(), availability: z.string().min(1).max(120).optional() }).default({ limit: 50 })).query(async ({ ctx, input }) => {
     const db = await requireDb();
     const filters = [eq(candidates.ownerId, ctx.user.id)];
@@ -600,78 +605,10 @@ export const matchingRouter = router({
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "match.evidence_recorded", resourceType: "match", resourceId: id, metadata: { candidateId: input.candidateId, jobId: input.jobId, lowConfidence } });
     return { id, lowConfidence };
   }),
-  queueScoreMatch: protectedProcedure
-    .input(z.object({ candidateId: z.string().min(4), jobId: z.string().min(4) }))
-    .mutation(async ({ ctx, input }) => {
-      const db = await requireDb();
-      const candidateRows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
-      await requireOwned(candidateRows[0], ctx.user.id, "Candidate");
-      const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
-      await requireOwned(jobRows[0], ctx.user.id, "Job");
-      const candidate = candidateRows[0];
-      const job = jobRows[0];
-      const documents = await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.ownerId, ctx.user.id), eq(candidateDocuments.candidateId, candidate.id), eq(candidateDocuments.scanState, "clean"), eq(candidateDocuments.parseState, "parsed")));
-      const queueId = createId("que_");
-      const intake=job.intake as {currencyExplicit?:boolean;compensationPeriod?:string;trainableSkills?:string[];responsibilities?:string[]}|null;
-      const hasBudget=typeof job.compensationMin==='number'||typeof job.compensationMax==='number';
-      const payload = {
-          requirementFingerprint:jobRequirementFingerprint(job),
-          compensationComparison:{allowed:false,reason:'Candidate compensation pay period is not explicitly recorded. Do not compare amounts or invent currency/period conversions.'},
-          requiredMissingEvidence:hasBudget?['Compensation compatibility is unverified: candidate amount, currency and pay period need explicit verification.']:[],
-          candidateId: candidate.id,
-          jobId: job.id,
-          candidate: {
-            headline: candidate.headline,
-            location: candidate.location,
-            availability: candidate.availability,
-            compensationExpectation: candidate.compensationExpectation,
-            currency: candidate.currency,
-            workAuthorization: candidate.workAuthorization,
-            evidence: documents.sort((a: typeof candidateDocuments.$inferSelect, b: typeof candidateDocuments.$inferSelect) => a.id.localeCompare(b.id)).map((doc: typeof candidateDocuments.$inferSelect) => ({ documentId: doc.id, sha256: doc.sha256, parsedData: doc.parsedData })),
-          },
-          job: {
-            title: job.title,
-            description: (job.intake as { description?: string } | null)?.description,
-            location: job.location,
-            mustHaveSkills: job.mustHaveSkills,
-            niceToHaveSkills: job.niceToHaveSkills,
-            scorecard: job.scorecard,
-            experienceMinYears: job.experienceMinYears,
-            experienceMaxYears: job.experienceMaxYears,
-            compensationMin: job.compensationMin,
-            compensationMax: job.compensationMax,
-            currency: job.currency,
-            currencyRecorded: Boolean(intake?.currencyExplicit),
-            compensationPeriod:intake?.compensationPeriod??null,
-            trainableSkills:intake?.trainableSkills??[],
-            responsibilities:intake?.responsibilities??[],
-            workModel: job.workModel,
-          },
-        };
-      const idempotencyKey = `score_match:${createHash("sha256").update(JSON.stringify([ctx.user.id, payload])).digest("hex")}`;
-      await db.insert(automationQueue).values({
-        id: queueId,
-        ownerId: ctx.user.id,
-        jobType: "score_match",
-        payload: payload,
-        idempotencyKey,
-        priority: 2,
-        scheduledAt: new Date(),
-        maxAttempts: 3,
-      }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
-      const queued = (await db.select().from(automationQueue).where(and(eq(automationQueue.ownerId, ctx.user.id), eq(automationQueue.idempotencyKey, idempotencyKey))).limit(1))[0];
-      if (!queued) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Matching work could not be loaded." });
-      await recordAudit({
-        ownerId: ctx.user.id,
-        actorType: "user",
-        actorId: String(ctx.user.id),
-        action: queued.id === queueId ? "match.score_queued" : "match.score_reused",
-        resourceType: "candidate",
-        resourceId: candidate.id,
-        metadata: { jobId: job.id, queueId: queued.id },
-      });
-      return { queueId: queued.id as string, alreadyQueued: queued.id !== queueId, status: queued.status as string };
-    }),
+  previewPool:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),offset:z.number().int().min(0).max(100000).default(0),scanLimit:z.number().int().min(1).max(200).default(100),query:z.string().trim().min(1).max(120).optional()})).query(({ctx,input})=>previewRankedPool(ctx.user.id,input)),
+  actOnPool:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),offset:z.number().int().min(0).max(100000).default(0),scanLimit:z.number().int().min(1).max(200).default(100),query:z.string().trim().min(1).max(120).optional(),expectedPreviewHash:z.string().length(64),candidateIds:z.array(z.string().min(4).max(36)).max(20),queueAi:z.boolean().default(false)})).mutation(({ctx,input})=>actOnRankedPool(ctx.user.id,ctx.actor.id,input)),
+  rankedSnapshots:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36)})).query(({ctx,input})=>listRankedSnapshots(ctx.user.id,input.jobId)),
+  queueScoreMatch:protectedProcedure.input(z.object({candidateId:z.string().min(4).max(36),jobId:z.string().min(4).max(36)})).mutation(({ctx,input})=>queueCurrentMatch(ctx.user.id,ctx.actor.id,input)),
   requestShareApproval: protectedProcedure
     .input(
       z.object({

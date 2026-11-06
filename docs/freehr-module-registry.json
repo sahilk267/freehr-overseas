@@ -625,8 +625,8 @@
           "id": "M12-F02",
           "description": "Must-have versus trainable skills, equivalent experience, compensation/currency/pay-period, work model, location, notice period and target joining.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-06-versioned-job-intake.md",
-          "implementation_note": "Explicit currency/pay-period, headcount, employment type, trainable skills, expected notice, joining date and hiring timezone are recorded. Unknown units remain unknown in intake assessment; candidate compensation period is not inferred. Scoring carries unit context and retains required missing evidence. Candidate pay-period collection and verified normalization remain open."
+          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md",
+          "implementation_note": "Explicit owner-recorded candidate amount/currency/pay period now supports same-currency monthly/annual and equal-period budget comparisons through one context builder. Unknown/default units, FX, working-time and tax/benefit assumptions remain unverified; statements are not independently verified."
         },
         {
           "id": "M12-F03",
@@ -694,7 +694,9 @@
         {
           "id": "M13-F04",
           "description": "Candidate onboarding and self-service corrections; collect purpose-appropriate consent via M04 rather than manufacture it.",
-          "status": "planned"
+          "status": "implementing",
+          "implementation_note": "Versioned owner-recorded evidence correction with source, observation/expiry and optimistic locks is implemented. Saving never grants consent or reactivates suppression. Authenticated candidate self-service and candidate-led onboarding remain open.",
+          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
         },
         {
           "id": "M13-F05",
@@ -759,7 +761,9 @@
         {
           "id": "M14-F06",
           "description": "Candidate corrections and document replacements invalidate stale profiles/matches; retryable extraction with visible failure reasons.",
-          "status": "planned"
+          "status": "implementing",
+          "implementation_note": "Candidate evidence revisions invalidate active matches and source fingerprints fence queued scoring after profile/document changes. Existing-score invalidation after document replacement and full extraction retry lifecycle remain open.",
+          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
         }
       ],
       "events": "document.clean, document.flagged, extraction.completed, document.superseded",
@@ -783,28 +787,36 @@
           "id": "M15-F01",
           "description": "One full context builder for requirements, parsed evidence, current salary/expectations, notice, availability, work model and relevant authorization facts.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md",
+          "implementation_note": "A shared context builder now serves owned ranked pools and both per-pair/batch AI scoring, including current statements, clean parsed evidence, explicit compensation units, notice and availability. Authorization/credential packs, comprehensive chronology and oversized-input compaction remain open."
         },
         {
           "id": "M15-F02",
           "description": "Deterministic eligibility rules separated from semantic similarity; weighted explainable scorecards and skill equivalence.",
-          "status": "planned"
+          "status": "implementing",
+          "implementation_note": "Deterministic missing/conflict review flags and fixed 70/20/10 retrieval priority are separate from semantic AI scoring. Missing skills are unknown; no final disposition is inferred. Employer-weighted scorecard evaluation, semantic equivalence and held-out quality remain open.",
+          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
         },
         {
           "id": "M15-F03",
           "description": "Candidate-to-many-jobs and job-to-many-candidates retrieval/ranking, freshness decay, duplicates and submission conflicts.",
-          "status": "planned"
+          "status": "implementing",
+          "implementation_note": "Bounded paginated job-to-candidate review ranking, suppression exclusion, statement expiry cap, current-preview-bound historical snapshots and at-most-20 selected AI queue commands are implemented. Each page ranks independently. Global/multi-job ordering, richer decay and submission arbitration remain open.",
+          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
         },
         {
           "id": "M15-F04",
           "description": "Explicit unknown/missing/conflicting evidence, calibration, human-readable trade-offs and evidence-collection requests.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md",
+          "implementation_note": "Current source/statement/consent fingerprints, explicit missing/conflicting facts, conservative compensation checks and required review evidence guard model outputs. General confidence calibration and automated evidence-collection requests remain open."
         },
         {
           "id": "M15-F05",
           "description": "No automatic final hiring rejection; a lawful eligibility flag is distinguishable from client disposition and can be corrected or reviewed.",
-          "status": "planned"
+          "status": "implementing",
+          "implementation_note": "Ranked review and conflict flags cannot change candidate disposition. Closed/withdrawn matches cannot be reopened by automatic scores; shortlisted progression is preserved and profile corrections can trigger review. Full downstream governed disposition acceptance remains open.",
+          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
         },
         {
           "id": "M15-F06",
@@ -2243,7 +2255,7 @@
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Bounded JD document text import advances scoped M08/M12 work through shared parsers, the existing AI queue and canonical versioned intake. OCR, original-binary lifecycle, semantic verification, authenticated sign-off and remaining advanced acceptance gates stay open; no module is complete.",
+    "note": "Combined candidate-evidence/compensation/ranked-review/current-AI batch advances scoped M12/M13/M14/M15 work. The same worker and queue own scoring; bounded page coverage and review-only flags are explicit. No full module is complete.",
     "updated_at": "2026-11-07"
   }
 }

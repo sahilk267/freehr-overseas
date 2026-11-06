@@ -134,6 +134,7 @@ describe("W0 correctness regressions (also executable against disposable MySQL)"
 
   it("passes requirements and clean parsed CV evidence into queued scoring", async () => {
     const { job, candidate } = await fixture();
+    await caller.recruitment.candidates.grantConsent({candidateId:candidate.id,consentType:"platform_processing",noticeVersion:"synthetic-scoring-fixture"});
     const documentId = createId("doc_");
     await db.insert(candidateDocuments).values({ id: documentId, ownerId, candidateId: candidate.id, storageKey: "test/reference", storageUrl: "private://test", originalName: "cv.txt", mimeType: "text/plain", sizeBytes: 20, scanState: "clean", parseState: "parsed", parsedData: { skills: ["TypeScript"], totalExperienceYears: 6 } });
     const queued = await caller.recruitment.matching.queueScoreMatch({ candidateId: candidate.id, jobId: job.id });

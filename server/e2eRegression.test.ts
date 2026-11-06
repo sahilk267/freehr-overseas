@@ -48,6 +48,7 @@ describe("regressions found during live end-to-end testing", () => {
   });
   it("reuses matching work when the same evidence is queued twice", async () => {
     const f = await fixture();
+    await f.caller.recruitment.candidates.grantConsent({candidateId:f.candidate.id,consentType:"platform_processing",noticeVersion:"synthetic-scoring-fixture"});
     const first = await f.caller.recruitment.matching.queueScoreMatch({ candidateId: f.candidate.id, jobId: f.job.id });
     const second = await f.caller.recruitment.matching.queueScoreMatch({ candidateId: f.candidate.id, jobId: f.job.id });
     expect(second.queueId).toBe(first.queueId);

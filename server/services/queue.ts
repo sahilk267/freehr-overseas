@@ -1,3 +1,4 @@
+import {buildMatchContext} from './matchContext';
 import {jobExtractionAiInput,recordJobExtractionResult} from "./jobExtraction";
 import {jobRequirementFingerprint} from "./jobIntake";
 import {processObservedReplyOutcomes} from "./replyOutcomeRecovery";
@@ -147,9 +148,12 @@ export async function handleAiTaskResult(
       const currentJob=(await db.select().from(jobs).where(and(eq(jobs.ownerId,ownerId),eq(jobs.id,jobId))).limit(1))[0];
       if(!currentJob||['cancelled','archived','filled'].includes(currentJob.pipelineState))throw new NonRetryableJobError('Scoring result has no current active owned requirement.');
       if(typeof payload.requirementFingerprint==='string'&&payload.requirementFingerprint!==jobRequirementFingerprint(currentJob))throw new NonRetryableJobError('Requirements changed. Queue a fresh score for the current job version.');
+      if(typeof payload.candidateContextFingerprint==='string'){try{const context=await buildMatchContext(db,ownerId,candidateId,jobId);if(!context.processingConsent||context.candidateFingerprint!==payload.candidateContextFingerprint)throw new NonRetryableJobError('Candidate evidence or processing consent changed. Queue a fresh score.');}catch(e){if(e instanceof TRPCError)throw new NonRetryableJobError(e.message);throw e;}}
+      const priorMatch=(await db.select().from(matches).where(and(eq(matches.ownerId,ownerId),eq(matches.candidateId,candidateId),eq(matches.jobId,jobId))).limit(1))[0];
+      if(priorMatch&&['closed','withdrawn'].includes(priorMatch.status))throw new NonRetryableJobError('Closed or withdrawn matching work cannot be reopened by an AI result.');
       const matchId = payload.matchId ? String(payload.matchId) : createId("mat_");
       const requiredMissing=Array.isArray(payload.requiredMissingEvidence)?payload.requiredMissingEvidence.filter((v):v is string=>typeof v==="string"&&v.length>0&&v.length<=500).slice(0,12):[];
-      const missingEvidence=[...new Set([...(matchScore.missingEvidence??[]),...requiredMissing,...(typeof payload.requirementFingerprint==='string'?[]:['Requirement version binding is missing; review this legacy score before use.'])])];
+      const missingEvidence=[...new Set([...(matchScore.missingEvidence??[]),...requiredMissing,...(typeof payload.requirementFingerprint==='string'?[]:['Requirement version binding is missing; review this legacy score before use.']),...(typeof payload.candidateContextFingerprint==='string'?[]:['Candidate evidence version binding is missing; review this legacy score before use.'])])];
       const lowConf = Boolean(matchScore.lowConfidence) || (matchScore.confidence ?? 0) < 70 || Boolean(missingEvidence.length);
       await db
         .insert(matches)
@@ -175,7 +179,7 @@ export async function handleAiTaskResult(
             evidence: matchScore.matchedEvidence ?? [],
             missingEvidence,
             lowConfidence: lowConf,
-            status: lowConf ? "low_confidence" : "evidence_validated",
+            status: priorMatch?.status==='shortlisted'?'shortlisted':lowConf ? "low_confidence" : "evidence_validated",
             modelRoute: selectedModel,
             updatedAt: new Date(),
           },
@@ -467,6 +471,9 @@ export async function processOneQueuedJob(ownerId: number) {
     let aiInput = (job.payload ?? {}) as Record<string, unknown>;
     if(job.jobType==="extract_job_requirements"){
       try{aiInput=await withWorkspaceTransaction(ownerId,tx=>jobExtractionAiInput(tx,ownerId,job.payload));}catch(e){if(e instanceof TRPCError&&["NOT_FOUND","CONFLICT","PRECONDITION_FAILED"].includes(e.code))throw new NonRetryableJobError(e.message);throw e;}
+    }
+    if(job.jobType==="score_match"&&typeof aiInput.candidateContextFingerprint==='string'){
+      try{await withWorkspaceTransaction(ownerId,async tx=>{const c=await buildMatchContext(tx,ownerId,String(aiInput.candidateId),String(aiInput.jobId));if(!c.processingConsent||c.candidateFingerprint!==aiInput.candidateContextFingerprint||c.requirementFingerprint!==aiInput.requirementFingerprint)throw new NonRetryableJobError('Candidate evidence, consent or requirements changed before inference.');});}catch(e){if(e instanceof TRPCError)throw new NonRetryableJobError(e.message);throw e;}
     }
     if (job.jobType === "parse_cv" && aiInput.documentId) {
       const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, String(aiInput.documentId)), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];

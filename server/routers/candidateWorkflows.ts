@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import {
   candidateDocuments,
+  workflowEvents,
   automationQueue,
   approvals,
   candidates,
@@ -317,6 +318,12 @@ export const candidateWorkflowsRouter = router({
         });
         documentsDeletedCount++;
       }
+
+      // Redact the new evidence ledger and candidate rows in historical ranking snapshots.
+      const evidenceEvents = await db.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ctx.user.id),eq(workflowEvents.aggregateId,candidate.id),eq(workflowEvents.eventType,'candidate.evidence_saved')));
+      for(const event of evidenceEvents)await db.update(workflowEvents).set({metadata:{redacted:true,reason:'candidate_privacy_erasure'}}).where(eq(workflowEvents.id,event.id));
+      const rankingEvents = await db.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ctx.user.id),eq(workflowEvents.eventType,'match.pool_ranked')));
+      for(const event of rankingEvents){const metadata=event.metadata as any;if(Array.isArray(metadata.rows)&&metadata.rows.some((r:any)=>r.candidateId===candidate.id))await db.update(workflowEvents).set({metadata:{...metadata,rows:metadata.rows.filter((r:any)=>r.candidateId!==candidate.id),candidateRowsRedacted:true}}).where(eq(workflowEvents.id,event.id));}
 
       // 10. Update candidate record with redacted PII and terminal deleted state
       await db.update(candidates).set({

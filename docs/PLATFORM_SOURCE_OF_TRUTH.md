@@ -1,5 +1,11 @@
 # FreelanceHR Platform Source of Truth (Canonical Architecture Record)
 
+## Current implementation delta — 7 November 2026
+
+The [combined candidate-evidence and ranked-matching report](qa/2026-11-07-candidate-evidence-ranked-pool.md) records four connected increments and their current acceptance: source/expiry-bound candidate evidence; explicit compensation comparison; bounded paginated ranked review; and a shared per-pair/batch AI scoring context/queue with stale-source, consent, suppression and privacy-erasure integration. `candidateEvidence.ts`, `matchContext.ts` and `rankedMatching.ts` own these commands; existing queue/worker and canonical workflow ledger remain authoritative. Review flags and snapshots add no candidate/job FSM state or automatic final rejection. Global ranking, employer-weighted scorecard evaluation, candidate self-service and remaining advanced gates are open.
+
+The dated audit/design counts below remain historical baseline evidence; current status is maintained in the module registry, implementation backlog, phase tracker and linked acceptance report.
+
 **Document Phase**: P0.1-G Final Source of Truth Consistency & Configuration Normalization  
 **Verification Level**: Strict Repository-Audited Evidence (Zero Hallucination / Zero Speculation)  
 **Last Verified Date**: 2026-09-29  

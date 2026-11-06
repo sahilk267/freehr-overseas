@@ -1,5 +1,11 @@
 # FreelanceHR — module-wise advanced automation master plan
 
+## Current implementation delta — 7 November 2026
+
+The [combined candidate-evidence and ranked-matching report](qa/2026-11-07-candidate-evidence-ranked-pool.md) records four connected increments and their current acceptance: source/expiry-bound candidate evidence; explicit compensation comparison; bounded paginated ranked review; and a shared per-pair/batch AI scoring context/queue with stale-source, consent, suppression and privacy-erasure integration. `candidateEvidence.ts`, `matchContext.ts` and `rankedMatching.ts` own these commands; existing queue/worker and canonical workflow ledger remain authoritative. Review flags and snapshots add no candidate/job FSM state or automatic final rejection. Global ranking, employer-weighted scorecard evaluation, candidate self-service and remaining advanced gates are open.
+
+The dated audit/design counts below remain historical baseline evidence; current status is maintained in the module registry, implementation backlog, phase tracker and linked acceptance report.
+
 Implementation has since started. See [current implementation progress](IMPLEMENTATION_PROGRESS.md) and the canonical registry for verified changes; baseline findings and planned scope below are historical/design records.
 Version 1.0 · 28 October 2026 · Design baseline, not an implementation claim.
 
