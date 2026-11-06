@@ -30,3 +30,5 @@ W5,M12,Draft requirement change and scoring evidence fences,validated_local_and_
 W5,M12,Pre-approval clarification return and owner statement reset,verified_live_mobile_and_fresh_statement_guard,qa/2026-11-06-versioned-job-intake.md,Authenticated client re-authorization and active requisition amendments
 W5,M12,Quoted JD text extraction and selective intake adoption,verified_live_desktop_mobile_and_free_provider,qa/2026-11-07-jd-extraction.md,General extraction quality; document OCR and authenticated client sign-off
 W5,M08,Source evidence guards and extraction identity recovery,verified_local_sql_and_live_core_flow,qa/2026-11-07-jd-extraction.md,Other domain tools and semantic quality datasets
+W5,M12,PDF DOCX TXT requirement document preview and bound adoption,validated_local_live_pending,qa/2026-11-07-jd-document-import.md,Live free-provider and browser acceptance; OCR and original document lifecycle and authenticated sign-off
+W5,M08,Bounded document parsing and immutable extraction provenance,validated_local_and_sql,qa/2026-11-07-jd-document-import.md,Semantic verification and comprehensive malware scanning and parser sandboxing

@@ -2,6 +2,10 @@
 
 Updated 7 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
+## Current increment: JD document text import
+
+[Document import report](qa/2026-11-07-jd-document-import.md) records bounded PDF/DOCX/TXT parsing into private immutable source text, explicit preview/excerpt selection and document-hash provenance through the existing free-model task and canonical intake adoption. Raw files are not retained; image-only scans require OCR. Duplicate and stale imports are guarded without adding a parallel queue or storage system. Local/SQL/live acceptance and open scope are recorded in the report. No module is complete.
+
 ## Current increment: quoted JD text extraction
 
 [JD extraction report](qa/2026-11-07-jd-extraction.md) records a new typed task in the existing free-model AI worker. Immutable source/version binding, literal source excerpts, unsupported-fact controls and selective owner adoption reuse canonical intake and its transaction. Model completion does not edit jobs, approve requirements or send messages. Stale tasks/results and repeated request/application commands are fenced; stopped unused tasks can be explicitly resumed with the same identity. Validation: 764 unit tests and 512 MySQL tests passed, plus typecheck/build/four hosting entry checks. Live managed free-model extraction, desktop/mobile reviewed adoption, historical replay and private APIs passed on `a18aa3f`; synthetic records were closed and the worker remained healthy. Detailed limits and sanitized evidence are in the report. No advanced module is complete.

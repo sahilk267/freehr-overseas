@@ -10,6 +10,12 @@ const send = vi.hoisted(() => vi.fn(async () => ({ providerMessageId: "synthetic
 vi.mock("./hostingerMail", async original => ({ ...await original(), isSenderIdentityConfigured: () => true, sendViaHostingerMailApi: send }));
 const owners: number[] = [];
 async function fixture() { const f = await followupFixture(); owners.push(f.ownerId); return f; }
+async function observeOwnerCycle(ownerId: number, status: string, limit = 5) {
+  for (let poll = 0; poll < 5; poll++) {
+    if ((await runManagedAutomationCycle(limit)).some(r => r.ownerId === ownerId && r.status === status)) return;
+  }
+  throw new Error('Synthetic owner was not observed within the bounded managed polling window.');
+}
 afterEach(async () => {
   vi.useRealTimers(); vi.restoreAllMocks(); send.mockClear();
   const db = await requireDb();
@@ -34,9 +40,7 @@ describe("managed runtime processing with observable persisted heartbeats", () =
     const f = await fixture(); await f.caller.operations.queue.enableSchedule();
     // SQL suites retain other enabled fixtures. The worker intentionally polls
     // only 25 workspaces per cycle; wait for this owner without changing fairness.
-    let observed=false;
-    for(let poll=0;poll<5&&!observed;poll++)observed=(await runManagedAutomationCycle()).some(r=>r.ownerId===f.ownerId&&r.status==="polled");
-    expect(observed).toBe(true);
+    await observeOwnerCycle(f.ownerId, 'polled');
     expect(await backgroundWorkerStatus(f.ownerId)).toMatchObject({ enabled: true, heartbeatRecent: true, lastError: null });
     await f.caller.operations.queue.configureWorker({ enabled: false, expectedRevision: 2 });
     expect(await runManagedAutomationCycle()).not.toContainEqual({ ownerId: f.ownerId, status: "polled" });
@@ -44,7 +48,7 @@ describe("managed runtime processing with observable persisted heartbeats", () =
   it("records emergency stop without processing campaign or delivery work", async () => {
     const f = await fixture(); await f.caller.operations.queue.enableSchedule();
     await f.db.update(workspaceSettings).set({ emergencyStop: true }).where(eq(workspaceSettings.ownerId, f.ownerId));
-    expect(await runManagedAutomationCycle()).toContainEqual({ ownerId: f.ownerId, status: "emergency_stopped" });
+    await observeOwnerCycle(f.ownerId, 'emergency_stopped');
     expect(send).not.toHaveBeenCalled();
     expect((await backgroundWorkerStatus(f.ownerId)).lastResult).toMatchObject({ status: "emergency_stopped", processed: 0 });
   });
@@ -53,17 +57,18 @@ describe("managed runtime processing with observable persisted heartbeats", () =
     const campaign = await f.caller.campaigns.draft({ requestKey: createId(), name: "Synthetic background campaign", scenarioId: "FU01", recipientIds: [f.contactId], senderIdentityId: f.senders.clients, executionMode: "delegated", timezone: "UTC", businessDaysOnly: false, deadlineAt: new Date(Date.now() + 86400000), steps: [{ delayMinutes: 0, subject: "Synthetic enquiry", body: "An owned-mailbox synthetic enquiry. {{opt_out}}" }] });
     const preview = await f.caller.campaigns.preview({ id: campaign.id });
     await f.caller.campaigns.launch({ id: campaign.id, expectedRevision: 1, previewHash: preview.previewHash, authorizeSending: true });
-    await f.caller.operations.queue.enableSchedule(); await runManagedAutomationCycle(5);
+    await f.caller.operations.queue.enableSchedule(); await observeOwnerCycle(f.ownerId, 'polled');
     expect(send).toHaveBeenCalledTimes(1);
     const member = (await f.caller.campaigns.detail({ id: campaign.id })).recipients[0];
     expect(await f.getPlan(member.planId!)).toMatchObject({ stepIndex: 1, status: "waiting" });
   });
   it("retains a failed cycle as an actionable observation and recovers on the next poll", async () => {
     const f = await fixture(); await f.caller.operations.queue.enableSchedule();
-    const spy = vi.spyOn(queue, "processDueAutomationBatch").mockRejectedValueOnce(new Error("synthetic database outage"));
-    expect(await runManagedAutomationCycle()).toContainEqual({ ownerId: f.ownerId, status: "failed" });
+    const original = queue.processDueAutomationBatch;
+    const spy = vi.spyOn(queue, "processDueAutomationBatch").mockImplementation((ownerId, limit) => ownerId === f.ownerId ? Promise.reject(new Error("synthetic database outage")) : original(ownerId, limit));
+    await observeOwnerCycle(f.ownerId, 'failed');
     expect((await backgroundWorkerStatus(f.ownerId)).lastError).toMatch(/Check migrations/);
-    spy.mockRestore(); await runManagedAutomationCycle();
+    spy.mockRestore(); await observeOwnerCycle(f.ownerId, 'polled');
     expect((await backgroundWorkerStatus(f.ownerId)).lastError).toBeNull();
   });
   it("polls without overlapping cycles and drains an in-flight cycle at shutdown", async () => {

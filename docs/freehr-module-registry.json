@@ -399,8 +399,8 @@
           "id": "M08-F01",
           "description": "Task-specific structured tools for discovery, intake, CV extraction, matching explanation, screening assistance, reply/objection handling and negotiation recommendations.",
           "status": "implementing",
-          "implementation_note": "Typed JD/email-text extraction uses the existing free-only AI queue. Source-bound suggested facts require explicit owner adoption through canonical draft intake. Other domain tools, document/OCR intake and automatic grounded business actions remain open.",
-          "evidence_ref": "qa/2026-11-07-jd-extraction.md"
+          "implementation_note": "Typed JD/email text and bounded PDF/DOCX/TXT import reuse shared parsers, the existing free-only queue and selective canonical intake adoption. Private source hashes bind document excerpts to their original requirement snapshot. OCR, automatic attachment intake, semantic quality and other domain tools remain open.",
+          "evidence_ref": "qa/2026-11-07-jd-document-import.md"
         },
         {
           "id": "M08-F02",
@@ -618,8 +618,8 @@
           "id": "M12-F01",
           "description": "JD/document/email intake, structured clarification conversation, responsibilities, outcomes and weighted assessment scorecard.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-07-jd-extraction.md",
-          "implementation_note": "Canonical job creation now records immutable intake versions, draft edits, owner reasons, current fingerprints and historical snapshots. The shared create/edit form supports description, responsibilities, scorecard and a deterministic clarification checklist. No AI/JD extraction or authenticated client sign-off is claimed. Desktop/mobile create, legacy adoption, version history and stale-save denial passed live on c75b9dc with synthetic cleanup. Quoted, schema-bound JD/email text extraction and selective owner adoption now reuse the same worker and canonical intake transaction; file/OCR import and automatic clarification delivery remain open."
+          "evidence_ref": "qa/2026-11-07-jd-document-import.md",
+          "implementation_note": "Canonical intake versions, draft-only optimistic edits, scorecard and clarification checklist are implemented. Quoted JD/email extraction and selective owner adoption share one queue and canonical transaction. Bounded PDF/DOCX/TXT text preview now retains private source/hash provenance without keeping the original binary. OCR, automatic inbox attachment ingestion, authenticated client sign-off, clarification delivery and active amendments remain open."
         },
         {
           "id": "M12-F02",
@@ -2243,7 +2243,7 @@
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Quoted JD text extraction adds scoped M08/M12 implementation through the existing queue and immutable intake. Semantic review, authenticated client sign-off, document/OCR ingestion and remaining advanced acceptance gates stay open; no module is complete.",
+    "note": "Bounded JD document text import advances scoped M08/M12 work through shared parsers, the existing AI queue and canonical versioned intake. OCR, original-binary lifecycle, semantic verification, authenticated sign-off and remaining advanced acceptance gates stay open; no module is complete.",
     "updated_at": "2026-11-07"
   }
 }

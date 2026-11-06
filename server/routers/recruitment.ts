@@ -1,3 +1,5 @@
+import {jobDocumentInputSchema} from '../../shared/jobDocument';
+import {importJobDocument,listJobDocuments} from '../services/jobDocument';
 import {requestJobExtraction,listJobExtractions,applyJobExtraction} from "../services/jobExtraction";
 import {createJobIntakeSchema,jobIntakeFieldsSchema} from "../../shared/jobIntake";
 import {createJobDraft,getJobIntake,getJobIntakeVersion,saveJobIntake,transitionJob,jobRequirementAssessment,jobRequirementFingerprint} from "../services/jobIntake";
@@ -198,7 +200,9 @@ export const jobsRouter = router({
     return rows.map(job=>({...job,requirementQuality:jobRequirementAssessment(job).quality}));
   }),
   create: protectedProcedure.input(createJobIntakeSchema).mutation(({ctx,input})=>createJobDraft(ctx.user.id,ctx.actor.id,input)),
-  extractRequirements:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),expectedRevision:z.number().int().nonnegative(),expectedFingerprint:z.string().length(64),sourceText:z.string().trim().min(40).max(8500),sourceLabel:z.string().trim().min(2).max(120)})).mutation(({ctx,input})=>requestJobExtraction(ctx.user.id,ctx.actor.id,input)),
+  importRequirementDocument:protectedProcedure.input(jobDocumentInputSchema).mutation(({ctx,input})=>importJobDocument(ctx.user.id,ctx.actor.id,input)),
+  requirementDocuments:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36)})).query(({ctx,input})=>listJobDocuments(ctx.user.id,input.jobId)),
+  extractRequirements:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),expectedRevision:z.number().int().nonnegative(),expectedFingerprint:z.string().length(64),sourceText:z.string().trim().min(40).max(8500),sourceLabel:z.string().trim().min(2).max(120),documentImportId:z.string().regex(/^[a-f0-9]{64}$/).optional()})).mutation(({ctx,input})=>requestJobExtraction(ctx.user.id,ctx.actor.id,input)),
   extractions:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36)})).query(({ctx,input})=>listJobExtractions(ctx.user.id,input.jobId)),
   applyExtraction:protectedProcedure.input(z.object({extractionId:z.string().regex(/^[a-f0-9]{64}$/),selectedIndexes:z.array(z.number().int().min(0).max(31)).max(32),useSourceAsDescription:z.boolean().default(false),replaceExisting:z.boolean().default(false),reason:z.string().trim().min(8).max(2000)})).mutation(({ctx,input})=>applyJobExtraction(ctx.user.id,ctx.actor.id,input)),
   intake:protectedProcedure.input(z.object({id:z.string().min(4).max(36)})).query(({ctx,input})=>getJobIntake(ctx.user.id,input.id)),
