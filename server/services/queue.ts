@@ -1,3 +1,4 @@
+import {jobRequirementFingerprint} from "./jobIntake";
 import {processObservedReplyOutcomes} from "./replyOutcomeRecovery";
 import {processDueDiscoveryDeadlines} from "./clientDiscoveryDeadline";
 import {executeDiscoverySelection} from "./clientDiscovery";
@@ -9,7 +10,7 @@ import { evaluateInvoiceCollection } from "./invoiceCollections";
 import { processDueCampaigns } from "./campaigns";
 import { blockFollowUpFailure } from "./followupEvents";
 import { and, asc, eq, inArray, lte, notInArray, sql } from "drizzle-orm";
-import { aiModelRoutes, aiUsage, approvals, automationQueue, candidateDocuments, candidates, contacts, conversations, emailDispatches, interviews, invoices, matches, messages, suppressionList, workspaceSettings } from "../../drizzle/schema";
+import { aiModelRoutes, aiUsage, approvals, automationQueue, candidateDocuments, candidates, contacts, conversations, emailDispatches, interviews, invoices, jobs, matches, messages, suppressionList, workspaceSettings } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit, requireDb } from "../db";
 import { OpenRouterConfigurationError, OpenRouterTransientError, OpenRouterValidationError, type AiTaskType } from "./openrouter";
 import { runControlledAiTask } from "./aiRouting";
@@ -141,8 +142,13 @@ export async function handleAiTaskResult(
     };
 
     if (candidateId && jobId && matchScore) {
+      const currentJob=(await db.select().from(jobs).where(and(eq(jobs.ownerId,ownerId),eq(jobs.id,jobId))).limit(1))[0];
+      if(!currentJob||['cancelled','archived','filled'].includes(currentJob.pipelineState))throw new NonRetryableJobError('Scoring result has no current active owned requirement.');
+      if(typeof payload.requirementFingerprint==='string'&&payload.requirementFingerprint!==jobRequirementFingerprint(currentJob))throw new NonRetryableJobError('Requirements changed. Queue a fresh score for the current job version.');
       const matchId = payload.matchId ? String(payload.matchId) : createId("mat_");
-      const lowConf = Boolean(matchScore.lowConfidence) || (matchScore.confidence ?? 0) < 70 || Boolean(matchScore.missingEvidence?.length);
+      const requiredMissing=Array.isArray(payload.requiredMissingEvidence)?payload.requiredMissingEvidence.filter((v):v is string=>typeof v==="string"&&v.length>0&&v.length<=500).slice(0,12):[];
+      const missingEvidence=[...new Set([...(matchScore.missingEvidence??[]),...requiredMissing,...(typeof payload.requirementFingerprint==='string'?[]:['Requirement version binding is missing; review this legacy score before use.'])])];
+      const lowConf = Boolean(matchScore.lowConfidence) || (matchScore.confidence ?? 0) < 70 || Boolean(missingEvidence.length);
       await db
         .insert(matches)
         .values({
@@ -155,7 +161,7 @@ export async function handleAiTaskResult(
           semanticScore: matchScore.semanticScore ?? 0,
           confidence: matchScore.confidence ?? 0,
           evidence: matchScore.matchedEvidence ?? [],
-          missingEvidence: matchScore.missingEvidence ?? [],
+          missingEvidence,
           lowConfidence: lowConf,
           modelRoute: selectedModel,
         })
@@ -165,7 +171,7 @@ export async function handleAiTaskResult(
             semanticScore: matchScore.semanticScore ?? 0,
             confidence: matchScore.confidence ?? 0,
             evidence: matchScore.matchedEvidence ?? [],
-            missingEvidence: matchScore.missingEvidence ?? [],
+            missingEvidence,
             lowConfidence: lowConf,
             status: lowConf ? "low_confidence" : "evidence_validated",
             modelRoute: selectedModel,
@@ -472,6 +478,7 @@ export async function processOneQueuedJob(ownerId: number) {
     });
     await db.insert(aiUsage).values({ id: usageId, ownerId, routeId: route?.id ?? null, queueJobId: job.id, taskType: job.jobType, requestedModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite", selectedModel: response.selectedModel, status: "succeeded", latencyMs: response.latencyMs });
     await db.transaction(async (tx: any) => {
+      if(job.jobType==="score_match")await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId,ownerId)).limit(1));
       const owned = (await lockedSelect(tx.select().from(automationQueue).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken), eq(automationQueue.status, "running"))).limit(1)))[0];
       if (!owned) throw new NonRetryableJobError("Worker no longer owns this task; result discarded.");
       if (job.jobType === "parse_cv" && aiInput.candidateId) await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.id, String(aiInput.candidateId)), eq(candidates.ownerId, ownerId))).limit(1));

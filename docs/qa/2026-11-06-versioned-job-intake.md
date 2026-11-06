@@ -1,0 +1,23 @@
+# Versioned job intake and clarification
+
+Date: 6 November 2026 (Asia/Calcutta). Target: `https://freelancehr.overseasjob.in`.
+
+## Implemented behavior
+
+The existing `jobs.create` command now uses one canonical workspace transaction. An optional create request key preserves exact retries and conflicts on changed content. Every new draft gets an immutable `job.intake_saved` version; drafts predating this increment can be explicitly adopted from version zero. No new requisition table or migration is introduced. Snapshots and audit events use the existing workflow ledger and existing job ID.
+
+Current intake and history are owner-scoped. Draft updates require both the reviewed revision and a fingerprint of persisted fields and pipeline/confirmation state. Exact save retries do not fork versions. Unchanged reviewed fields record a deduplicated review event, preserve their version and leave match scores intact. Edits and all existing job state transitions share the workspace lock. Active requirements cannot be silently rewritten through the draft editor. Owner-recorded client email confirmation is bound to its current requirement version and logged with `identityVerified:false`; this remains an owner statement, not authenticated client sign-off.
+
+The shared create/edit form records description, responsibilities, mandatory/optional/trainable skills, weighted scorecard, currency, pay period, employment type, openings, hiring process, expected notice, target joining date and hiring timezone. Salary/experience inversions, category conflicts, duplicate criteria, invalid weights, invalid timezone and integer overflow are rejected. Repeated skills within one category are normalized. Partial drafts are allowed and get explicit clarification questions. Past targets, joining/notice tensions and zero compensation are surfaced without inventing market wage benchmarks. Target dates use the recorded hiring timezone's calendar day.
+
+List and detail share one completeness evaluator; large skill lists cannot inflate the score. A completeness score is not source accuracy or verified approval. Legacy default currency/employment values remain stored for compatibility but are not presented as explicitly recorded facts. Unknown fields remain unknown until reviewed. Clearing an explicit unit does not silently overwrite a legacy stored currency or employment type with a new default.
+
+Draft edits flag existing nonterminal draft match scores for re-evaluation while retaining their previous evidence. A shortlisted match blocks the draft edit pending downstream review. New scoring tasks carry the requirement fingerprint, current units, responsibilities and trainable skills. A stale bound result cannot apply after criteria change; unbound legacy results retain a missing-version evidence warning. Candidate compensation pay period is not currently recorded, so salary compatibility stays unverified and missing evidence survives even a confident model result. Currency or annual/monthly conversions are not invented.
+
+## Verification
+
+The final suite passed 744 tests (64 skipped). All 489 disposable-MySQL regressions passed across 26 files, including exact create retries, concurrent edit/activation and audit rollback. TypeScript, production build, four hosting entry checks and tracker consistency passed. Salary-unit/missing-evidence and stale queued scoring application were tested with synthetic model results; no model claim was treated as authority. Live owner/browser/API acceptance follows deployment. No recipient contact, sourcing campaign, email, invoice or funds action is authorized by this QA increment.
+
+## Remaining scope
+
+JD/document ingestion and grounded AI extraction, automated clarification delivery, authenticated client sign-off, active requisition amendments, complete downstream invalidation, headcount fulfillment accounting, market benchmark adapters and verified candidate compensation normalization remain open. Legacy owner-recorded confirmation remains compatible and does not become verified client identity. This increment is partial M12-F01/F02/F04/F06 work; no advanced module is declared complete.

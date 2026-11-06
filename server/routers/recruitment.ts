@@ -1,3 +1,5 @@
+import {createJobIntakeSchema,jobIntakeFieldsSchema} from "../../shared/jobIntake";
+import {createJobDraft,getJobIntake,getJobIntakeVersion,saveJobIntake,transitionJob,jobRequirementAssessment,jobRequirementFingerprint} from "../services/jobIntake";
 import { interviewEditFingerprint } from "../../shared/interviewRevision";
 import { bookInterviewHold, holdInterviewSlot, listInterviewHolds, releaseInterviewHold, configureInterviewReminder, changeInterviewState, previewInterviewSlot, rescheduleInterview, scheduleInterview } from "../services/interviewScheduling";
 import { withWorkspaceTransaction } from "../services/database";
@@ -191,41 +193,14 @@ export const prospectsRouter = router({
 export const jobsRouter = router({
   list: protectedProcedure.input(paginationInput).query(async ({ ctx, input }) => {
     const db = await requireDb();
-    return db.select().from(jobs).where(eq(jobs.ownerId, ctx.user.id)).orderBy(desc(jobs.updatedAt)).limit(input.limit);
+    const rows=await db.select().from(jobs).where(eq(jobs.ownerId, ctx.user.id)).orderBy(desc(jobs.updatedAt)).limit(input.limit);
+    return rows.map(job=>({...job,requirementQuality:jobRequirementAssessment(job).quality}));
   }),
-  create: protectedProcedure.input(z.object({
-    companyId: z.string().min(4), title: z.string().trim().min(2).max(200), description: z.string().trim().max(16000).optional(), department: z.string().trim().max(120).optional(), location: z.string().trim().max(160).optional(), workModel: z.enum(["remote", "hybrid", "onsite"]).optional(), compensationMin: z.number().int().nonnegative().optional(), compensationMax: z.number().int().nonnegative().optional(), experienceMinYears: z.number().int().min(0).max(40).optional(), experienceMaxYears: z.number().int().min(0).max(40).optional(), mustHaveSkills: stringArray.default([]), niceToHaveSkills: stringArray.default([]), scorecard: z.array(z.object({ criterion: z.string().trim().min(2).max(160), weight: z.number().int().min(1).max(100), required: z.boolean().default(false) })).max(12).default([]),
-  })).mutation(async ({ ctx, input }) => {
-    for (const item of input.scorecard) {
-      ensureSafeAiText(item.criterion);
-    }
-    if (input.compensationMin !== undefined && input.compensationMax !== undefined && input.compensationMin > input.compensationMax) throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum compensation cannot be above maximum compensation." });
-    if (input.scorecard.length && input.scorecard.reduce((sum, item) => sum + item.weight, 0) !== 100) throw new TRPCError({ code: "BAD_REQUEST", message: "Weighted scorecard criteria must total 100%." });
-    if (input.experienceMinYears !== undefined && input.experienceMaxYears !== undefined && input.experienceMinYears > input.experienceMaxYears) throw new TRPCError({ code: "BAD_REQUEST", message: "Minimum experience cannot be above maximum experience." });
-    const db = await requireDb();
-    const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
-    await requireOwned(companyRows[0], ctx.user.id, "Client");
-    const id = createId("job_");
-    const quality = Math.min(100, 35 + input.mustHaveSkills.length * 12 + (input.location ? 10 : 0) + (input.compensationMin ? 15 : 0));
-    await db.insert(jobs).values({
-      id, ownerId: ctx.user.id, companyId: input.companyId, title: input.title, department: input.department ?? null, location: input.location ?? null, workModel: input.workModel ?? null,
-      compensationMin: input.compensationMin ?? null, compensationMax: input.compensationMax ?? null, experienceMinYears: input.experienceMinYears ?? null, experienceMaxYears: input.experienceMaxYears ?? null,
-      intake: { description: input.description ?? null }, mustHaveSkills: input.mustHaveSkills, niceToHaveSkills: input.niceToHaveSkills, scorecard: input.scorecard, pipelineState: "draft", requirementQuality: quality,
-    });
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "job.created", resourceType: "job", resourceId: id, nextState: "draft", metadata: { requirementQuality: quality } });
-    return { id, requirementQuality: quality };
-  }),
-  transition: protectedProcedure.input(z.object({ id: z.string().min(4), state: z.string().min(2).max(48), clientConfirmedBy: z.string().email().optional() })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const rows = await db.select().from(jobs).where(eq(jobs.id, input.id)).limit(1);
-    const job = await requireOwned(rows[0], ctx.user.id, "Job");
-    assertTransition("job", job.pipelineState, input.state);
-    const isApprovalState = ["approved", "sourcing"].includes(input.state);
-    if (isApprovalState && !job.clientConfirmedAt && !input.clientConfirmedBy) throw new TRPCError({ code: "BAD_REQUEST", message: "Client confirmation is required before activating sourcing." });
-    await db.update(jobs).set({ pipelineState: input.state, clientConfirmedAt: input.clientConfirmedBy ? new Date() : job.clientConfirmedAt, clientConfirmedBy: input.clientConfirmedBy ?? job.clientConfirmedBy }).where(eq(jobs.id, job.id));
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "job.state_changed", resourceType: "job", resourceId: job.id, previousState: job.pipelineState, nextState: input.state });
-    return { success: true };
-  }),
+  create: protectedProcedure.input(createJobIntakeSchema).mutation(({ctx,input})=>createJobDraft(ctx.user.id,ctx.actor.id,input)),
+  intake:protectedProcedure.input(z.object({id:z.string().min(4).max(36)})).query(({ctx,input})=>getJobIntake(ctx.user.id,input.id)),
+  intakeVersion:protectedProcedure.input(z.object({id:z.string().min(4).max(36),revision:z.number().int().positive()})).query(({ctx,input})=>getJobIntakeVersion(ctx.user.id,input.id,input.revision)),
+  updateIntake:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),expectedRevision:z.number().int().nonnegative(),expectedFingerprint:z.string().length(64),fields:jobIntakeFieldsSchema,reason:z.string().trim().min(8).max(2000)})).mutation(({ctx,input})=>saveJobIntake(ctx.user.id,ctx.actor.id,input)),
+  transition:protectedProcedure.input(z.object({id:z.string().min(4),state:z.string().min(2).max(48),clientConfirmedBy:z.string().email().optional(),expectedRevision:z.number().int().nonnegative().optional(),expectedFingerprint:z.string().length(64).optional()})).mutation(({ctx,input})=>transitionJob(ctx.user.id,ctx.actor.id,input)),
 });
 
 export const candidatesRouter = router({
@@ -629,7 +604,12 @@ export const matchingRouter = router({
       const job = jobRows[0];
       const documents = await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.ownerId, ctx.user.id), eq(candidateDocuments.candidateId, candidate.id), eq(candidateDocuments.scanState, "clean"), eq(candidateDocuments.parseState, "parsed")));
       const queueId = createId("que_");
+      const intake=job.intake as {currencyExplicit?:boolean;compensationPeriod?:string;trainableSkills?:string[];responsibilities?:string[]}|null;
+      const hasBudget=typeof job.compensationMin==='number'||typeof job.compensationMax==='number';
       const payload = {
+          requirementFingerprint:jobRequirementFingerprint(job),
+          compensationComparison:{allowed:false,reason:'Candidate compensation pay period is not explicitly recorded. Do not compare amounts or invent currency/period conversions.'},
+          requiredMissingEvidence:hasBudget?['Compensation compatibility is unverified: candidate amount, currency and pay period need explicit verification.']:[],
           candidateId: candidate.id,
           jobId: job.id,
           candidate: {
@@ -653,6 +633,10 @@ export const matchingRouter = router({
             compensationMin: job.compensationMin,
             compensationMax: job.compensationMax,
             currency: job.currency,
+            currencyRecorded: Boolean(intake?.currencyExplicit),
+            compensationPeriod:intake?.compensationPeriod??null,
+            trainableSkills:intake?.trainableSkills??[],
+            responsibilities:intake?.responsibilities??[],
             workModel: job.workModel,
           },
         };

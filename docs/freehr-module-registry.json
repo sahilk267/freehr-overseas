@@ -612,12 +612,15 @@
           "id": "M12-F01",
           "description": "JD/document/email intake, structured clarification conversation, responsibilities, outcomes and weighted assessment scorecard.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-06-versioned-job-intake.md",
+          "implementation_note": "Canonical job creation now records immutable intake versions, draft edits, owner reasons, current fingerprints and historical snapshots. The shared create/edit form supports description, responsibilities, scorecard and a deterministic clarification checklist. No AI/JD extraction or authenticated client sign-off is claimed."
         },
         {
           "id": "M12-F02",
           "description": "Must-have versus trainable skills, equivalent experience, compensation/currency/pay-period, work model, location, notice period and target joining.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-06-versioned-job-intake.md",
+          "implementation_note": "Explicit currency/pay-period, headcount, employment type, trainable skills, expected notice, joining date and hiring timezone are recorded. Unknown units remain unknown in intake assessment; candidate compensation period is not inferred. Scoring carries unit context and retains required missing evidence. Candidate pay-period collection and verified normalization remain open."
         },
         {
           "id": "M12-F03",
@@ -627,7 +630,9 @@
         {
           "id": "M12-F04",
           "description": "Requirement contradictions, unrealistic salary/skill combinations, incomplete hiring process and stale criteria flagged before sourcing.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-06-versioned-job-intake.md",
+          "implementation_note": "Salary/experience inversion, overlapping skill categories, duplicate criteria and invalid score weights are rejected. Legacy contradictions, stale joining targets, notice/target conflicts and zero compensation are surfaced. Market compensation feasibility needs verified external benchmark data."
         },
         {
           "id": "M12-F05",
@@ -637,7 +642,9 @@
         {
           "id": "M12-F06",
           "description": "Amendment/hold/cancel/filled rules invalidate incompatible matches, follow-ups and submissions without erasing history.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-06-versioned-job-intake.md",
+          "implementation_note": "Draft edits use immutable revisions and state fingerprints, share the pipeline transaction lock, invalidate active draft scores and fence stale queued scoring results. Drafts with shortlisted matches require downstream review. Active amendments, broad hold/cancel/filled invalidation and client re-authorization remain pending."
         }
       ],
       "events": "requisition.confirmed, requisition.changed, requisition.paused, requisition.closed",
@@ -2230,7 +2237,7 @@
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Shared workers, outbox and workflow ledger now also track reviewed task completion from owner review, tentative discovery booking and provider-accepted bound responses. Live acceptance is recorded per increment; attendance, actual recipient delivery and remaining advanced gates stay open.",
+    "note": "Versioned job intake and conservative scoring handoff extend the existing jobs, workflow ledger and queue. No module is complete; client-authenticated requirement approval, active amendments, automated source extraction and remaining advanced acceptance gates stay open.",
     "updated_at": "2026-11-06"
   }
 }
