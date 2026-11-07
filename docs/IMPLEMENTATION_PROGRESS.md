@@ -2,6 +2,10 @@
 
 Updated 7 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
+## Combined batch: global ranking and unattended refresh
+
+[Global ranking/refresh report](qa/2026-11-07-global-ranking-refresh.md) records full supported-dataset ordering before display pagination, candidate-to-many-job review, bounded owner-authorized refresh on the existing worker and explicit same-task recovery. Source fingerprints, consent/suppression, scoped AI budgets, expiry/revocation and historical run identity are preserved without a parallel engine. Final acceptance and support limits are recorded in the report; no module is complete.
+
 ## Combined batch: candidate evidence and current matching
 
 [Combined acceptance report](qa/2026-11-07-candidate-evidence-ranked-pool.md) tracks four connected scopes: immutable owner-recorded candidate evidence, conservative compensation comparison, paginated explainable ranked pools and one shared per-pair/batch AI context/queue command. Source changes, expiry, suppression and consent fence new and queued work. Privacy erasure covers the new ledger/snapshots. Validation: 801 unit tests and all 554 MySQL tests passed, plus types/build/four hosting entry checks. Combined desktop/mobile profile/ranking, exact unit comparison, task reuse and managed free-model scoring passed on `fc0e439`; correction invalidation, stale pool denial and private API guards passed live. Synthetic records were closed and the persistent worker remained healthy. Detailed acceptance and remaining scope are in the report; no module is complete.

@@ -1,3 +1,4 @@
+import {CandidateJobsPanel} from './CandidateJobsPanel';
 import {useState,type FormEvent} from 'react';
 import {trpc} from '@/lib/trpc';
 import {Button} from '@/components/ui/button';
@@ -32,5 +33,5 @@ function EvidenceForm({id}:{id:string}){
 }
 export function CandidateEvidenceWorkspace({candidates}:{candidates:{id:string;name:string}[]}){
  const [id,setId]=useState('');
- return <section aria-label="Candidate evidence profile" className="space-y-4 rounded-xl border bg-white p-5"><h2 className="font-semibold">Candidate evidence & compensation units</h2><Label htmlFor="evidence-candidate">Candidate for evidence review</Label><select id="evidence-candidate" value={id} onChange={e=>setId(e.target.value)} className="w-full rounded-md border p-2"><option value="">Choose candidate</option>{candidates.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>{id&&<EvidenceForm key={id} id={id}/>}</section>;
+ return <section aria-label="Candidate evidence profile" className="space-y-4 rounded-xl border bg-white p-5"><h2 className="font-semibold">Candidate evidence & compensation units</h2><Label htmlFor="evidence-candidate">Candidate for evidence review</Label><select id="evidence-candidate" value={id} onChange={e=>setId(e.target.value)} className="w-full rounded-md border p-2"><option value="">Choose candidate</option>{candidates.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>{id&&<><EvidenceForm key={id} id={id}/><CandidateJobsPanel key={'jobs-'+id} candidateId={id}/></>}</section>;
 }

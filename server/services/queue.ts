@@ -1,3 +1,4 @@
+import {executeRankingRefresh,assertRankingRefreshAuthority} from './rankingRefresh';
 import {buildMatchContext} from './matchContext';
 import {jobExtractionAiInput,recordJobExtractionResult} from "./jobExtraction";
 import {jobRequirementFingerprint} from "./jobIntake";
@@ -28,7 +29,7 @@ import { readPrivateDocument } from "./privateStorage";
 export class NonRetryableJobError extends Error {}
 export class RetryableJobError extends Error {}
 
-const DETERMINISTIC_JOB_TYPES = new Set(["client_reply_deadline", "discovery_select", "recovery_auto_select", "google_calendar_sync", "scan_document", "execute_policy_decision", "follow_up", "deliver_email", "send_reminder", "invoice_collection_source"]);
+const DETERMINISTIC_JOB_TYPES = new Set(["rank_refresh", "client_reply_deadline", "discovery_select", "recovery_auto_select", "google_calendar_sync", "scan_document", "execute_policy_decision", "follow_up", "deliver_email", "send_reminder", "invoice_collection_source"]);
 const AI_JOB_TYPES = new Set<AiTaskType>(["extract_job_requirements","classify_reply", "draft_outreach", "parse_cv", "score_match", "send_reminder", "reconcile_invoice"]);
 const calculateBackoff = (attempts: number) => Math.min(60 * 60 * 1000, 30_000 * 2 ** Math.max(0, attempts - 1));
 export const withinDailyAiBudget = (used: number, limit: number) => used < limit;
@@ -148,7 +149,7 @@ export async function handleAiTaskResult(
       const currentJob=(await db.select().from(jobs).where(and(eq(jobs.ownerId,ownerId),eq(jobs.id,jobId))).limit(1))[0];
       if(!currentJob||['cancelled','archived','filled'].includes(currentJob.pipelineState))throw new NonRetryableJobError('Scoring result has no current active owned requirement.');
       if(typeof payload.requirementFingerprint==='string'&&payload.requirementFingerprint!==jobRequirementFingerprint(currentJob))throw new NonRetryableJobError('Requirements changed. Queue a fresh score for the current job version.');
-      if(typeof payload.candidateContextFingerprint==='string'){try{const context=await buildMatchContext(db,ownerId,candidateId,jobId);if(!context.processingConsent||context.candidateFingerprint!==payload.candidateContextFingerprint)throw new NonRetryableJobError('Candidate evidence or processing consent changed. Queue a fresh score.');}catch(e){if(e instanceof TRPCError)throw new NonRetryableJobError(e.message);throw e;}}
+      if(typeof payload.candidateContextFingerprint==='string'){try{await assertRankingRefreshAuthority(db,ownerId,payload.rankingRefreshAuthority);const context=await buildMatchContext(db,ownerId,candidateId,jobId);if(!context.processingConsent||context.candidateFingerprint!==payload.candidateContextFingerprint)throw new NonRetryableJobError('Candidate evidence or processing consent changed. Queue a fresh score.');}catch(e){if(e instanceof TRPCError)throw new NonRetryableJobError(e.message);throw e;}}
       const priorMatch=(await db.select().from(matches).where(and(eq(matches.ownerId,ownerId),eq(matches.candidateId,candidateId),eq(matches.jobId,jobId))).limit(1))[0];
       if(priorMatch&&['closed','withdrawn'].includes(priorMatch.status))throw new NonRetryableJobError('Closed or withdrawn matching work cannot be reopened by an AI result.');
       const matchId = payload.matchId ? String(payload.matchId) : createId("mat_");
@@ -257,7 +258,7 @@ export async function processOneQueuedJob(ownerId: number) {
     .where(and(eq(automationQueue.ownerId, ownerId), inArray(automationQueue.status, ["queued", "retryable_failed"]), lte(automationQueue.scheduledAt, now)))
     .orderBy(asc(automationQueue.priority), asc(automationQueue.scheduledAt))
     .limit(25);
-  let job = readyJobs.find(task => workspace?.backgroundEnabled || !["client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType));
+  let job = readyJobs.find(task => workspace?.backgroundEnabled || !((task.payload as any)?.rankingRefreshAuthority) && !["rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType));
   if (!job) return { status: "empty" as const };
 
   // AI daily budget applies only to AI inference job types, not deterministic security scans or policy executions
@@ -265,21 +266,21 @@ export async function processOneQueuedJob(ownerId: number) {
     const budget = Number((workspace?.policyConfig as { aiDailyLimit?: number } | null)?.aiDailyLimit ?? 45);
     const todayUsage = await db.select({ count: sql<number>`count(*)` }).from(aiUsage).where(and(eq(aiUsage.ownerId, ownerId), sql`date(${aiUsage.createdAt}) = curdate()`));
     if (!withinDailyAiBudget(todayUsage[0]?.count ?? 0, budget)) {
-      const deterministic = readyJobs.find((task: typeof automationQueue.$inferSelect) => DETERMINISTIC_JOB_TYPES.has(task.jobType)&&(workspace?.backgroundEnabled||!["client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType)));
+      const deterministic = readyJobs.find((task: typeof automationQueue.$inferSelect) => DETERMINISTIC_JOB_TYPES.has(task.jobType)&&(workspace?.backgroundEnabled||!(task.payload as any)?.rankingRefreshAuthority&&!["rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType)));
       if (!deterministic) return { status: "skipped" as const, reason: `The daily AI budget of ${budget} requests has been reached.` };
       job = deterministic;
     }
   }
   job = { ...job, attempts: job.attempts ?? 0, maxAttempts: job.maxAttempts ?? 3 };
 
-  if (["client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType) && !workspace?.backgroundEnabled) return { status: "skipped" as const, reason: "Managed worker is paused; calendar task remains queued." };
+  if (["rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType) && !workspace?.backgroundEnabled) return { status: "skipped" as const, reason: "Managed worker is paused; calendar task remains queued." };
   const lockToken = createId("lock_");
   const claimed = await db.update(automationQueue).set({ status: "running", lockToken, lockedAt: now, attempts: job.attempts + 1 }).where(and(eq(automationQueue.id, job.id), inArray(automationQueue.status, ["queued", "retryable_failed"])));
   if (!claimed[0]?.affectedRows) return { status: "contended" as const };
 
-  if (["client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType)) {
+  if (["rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType)) {
     try {
-      const result = job.jobType==="client_reply_deadline"?await executeClientReplyDeadline(ownerId,job.payload):job.jobType==="discovery_select"?await executeDiscoverySelection(ownerId,job.payload):job.jobType==="google_calendar_sync"?await executeCalendarSync(ownerId,job.payload):await executeRecoveryAutoSelection(ownerId,job.payload);
+      const result = job.jobType==="rank_refresh"?await executeRankingRefresh(ownerId,job.payload,{id:job.id,lockToken}):job.jobType==="client_reply_deadline"?await executeClientReplyDeadline(ownerId,job.payload):job.jobType==="discovery_select"?await executeDiscoverySelection(ownerId,job.payload):job.jobType==="google_calendar_sync"?await executeCalendarSync(ownerId,job.payload):await executeRecoveryAutoSelection(ownerId,job.payload);
       if('status' in result&&result.status==='deferred'&&'nextActionAt' in result){await db.update(automationQueue).set({status:'queued',scheduledAt:result.nextActionAt,attempts:job.attempts,lockToken:null,lockedAt:null}).where(and(eq(automationQueue.id,job.id),eq(automationQueue.lockToken,lockToken)));return {status:'skipped' as const,jobId:job.id,reason:'Waiting for both participant responses.'};}
       await db.update(automationQueue).set({status:"completed",result,completedAt:new Date(),lockToken:null,lockedAt:null,lastError:null}).where(and(eq(automationQueue.id,job.id),eq(automationQueue.lockToken,lockToken)));
       return {status:"completed" as const,jobId:job.id};
@@ -473,7 +474,7 @@ export async function processOneQueuedJob(ownerId: number) {
       try{aiInput=await withWorkspaceTransaction(ownerId,tx=>jobExtractionAiInput(tx,ownerId,job.payload));}catch(e){if(e instanceof TRPCError&&["NOT_FOUND","CONFLICT","PRECONDITION_FAILED"].includes(e.code))throw new NonRetryableJobError(e.message);throw e;}
     }
     if(job.jobType==="score_match"&&typeof aiInput.candidateContextFingerprint==='string'){
-      try{await withWorkspaceTransaction(ownerId,async tx=>{const c=await buildMatchContext(tx,ownerId,String(aiInput.candidateId),String(aiInput.jobId));if(!c.processingConsent||c.candidateFingerprint!==aiInput.candidateContextFingerprint||c.requirementFingerprint!==aiInput.requirementFingerprint)throw new NonRetryableJobError('Candidate evidence, consent or requirements changed before inference.');});}catch(e){if(e instanceof TRPCError)throw new NonRetryableJobError(e.message);throw e;}
+      try{await withWorkspaceTransaction(ownerId,async tx=>{await assertRankingRefreshAuthority(tx,ownerId,aiInput.rankingRefreshAuthority);const c=await buildMatchContext(tx,ownerId,String(aiInput.candidateId),String(aiInput.jobId));if(!c.canQueueAi||c.candidateFingerprint!==aiInput.candidateContextFingerprint||c.requirementFingerprint!==aiInput.requirementFingerprint)throw new NonRetryableJobError('Candidate evidence, consent or requirements changed before inference.');});}catch(e){if(e instanceof TRPCError)throw new NonRetryableJobError(e.message);throw e;}
     }
     if (job.jobType === "parse_cv" && aiInput.documentId) {
       const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, String(aiInput.documentId)), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];

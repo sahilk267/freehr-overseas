@@ -1,3 +1,6 @@
+import {rankingRefreshInput} from '../../shared/rankingRefresh';
+import {getRankingRefresh,configureRankingRefresh} from '../services/rankingRefresh';
+import {previewCandidateJobs,actOnCandidateJobs} from '../services/candidateJobRanking';
 import {candidateEvidenceSaveSchema} from '../../shared/candidateEvidence';
 import {getCandidateEvidence,saveCandidateEvidence} from '../services/candidateEvidence';
 import {previewRankedPool,actOnRankedPool,listRankedSnapshots,queueCurrentMatch} from '../services/rankedMatching';
@@ -581,6 +584,10 @@ export const candidatesRouter = router({
 });
 
 export const matchingRouter = router({
+  candidateJobs:protectedProcedure.input(z.object({candidateId:z.string().min(4).max(36),query:z.string().trim().min(1).max(120).optional(),offset:z.number().int().min(0).max(100000).default(0),limit:z.number().int().min(1).max(100).default(50)})).query(({ctx,input})=>previewCandidateJobs(ctx.user.id,input)),
+  actOnCandidateJobs:protectedProcedure.input(z.object({candidateId:z.string().min(4).max(36),query:z.string().trim().min(1).max(120).optional(),offset:z.number().int().min(0).max(100000).default(0),limit:z.number().int().min(1).max(100).default(50),expectedPreviewHash:z.string().length(64),jobIds:z.array(z.string().min(4).max(36)).max(20),queueAi:z.boolean().default(false)})).mutation(({ctx,input})=>actOnCandidateJobs(ctx.user.id,ctx.actor.id,input)),
+  refreshPlan:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36)})).query(({ctx,input})=>getRankingRefresh(ctx.user.id,input.jobId)),
+  configureRefresh:protectedProcedure.input(rankingRefreshInput).mutation(({ctx,input})=>configureRankingRefresh(ctx.user.id,ctx.actor.id,input)),
   listForJob: protectedProcedure.input(z.object({ jobId: z.string().min(4) })).query(async ({ ctx, input }) => {
     const db = await requireDb();
     const jobRows = await db.select().from(jobs).where(eq(jobs.id, input.jobId)).limit(1);
@@ -605,8 +612,8 @@ export const matchingRouter = router({
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "match.evidence_recorded", resourceType: "match", resourceId: id, metadata: { candidateId: input.candidateId, jobId: input.jobId, lowConfidence } });
     return { id, lowConfidence };
   }),
-  previewPool:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),offset:z.number().int().min(0).max(100000).default(0),scanLimit:z.number().int().min(1).max(200).default(100),query:z.string().trim().min(1).max(120).optional()})).query(({ctx,input})=>previewRankedPool(ctx.user.id,input)),
-  actOnPool:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),offset:z.number().int().min(0).max(100000).default(0),scanLimit:z.number().int().min(1).max(200).default(100),query:z.string().trim().min(1).max(120).optional(),expectedPreviewHash:z.string().length(64),candidateIds:z.array(z.string().min(4).max(36)).max(20),queueAi:z.boolean().default(false)})).mutation(({ctx,input})=>actOnRankedPool(ctx.user.id,ctx.actor.id,input)),
+  previewPool:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),offset:z.number().int().min(0).max(100000).default(0),scanLimit:z.number().int().min(1).max(200).default(100),scope:z.enum(['page','global']).default('page'),query:z.string().trim().min(1).max(120).optional()})).query(({ctx,input})=>previewRankedPool(ctx.user.id,input)),
+  actOnPool:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),offset:z.number().int().min(0).max(100000).default(0),scanLimit:z.number().int().min(1).max(200).default(100),scope:z.enum(['page','global']).default('page'),query:z.string().trim().min(1).max(120).optional(),expectedPreviewHash:z.string().length(64),candidateIds:z.array(z.string().min(4).max(36)).max(20),queueAi:z.boolean().default(false)})).mutation(({ctx,input})=>actOnRankedPool(ctx.user.id,ctx.actor.id,input)),
   rankedSnapshots:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36)})).query(({ctx,input})=>listRankedSnapshots(ctx.user.id,input.jobId)),
   queueScoreMatch:protectedProcedure.input(z.object({candidateId:z.string().min(4).max(36),jobId:z.string().min(4).max(36)})).mutation(({ctx,input})=>queueCurrentMatch(ctx.user.id,ctx.actor.id,input)),
   requestShareApproval: protectedProcedure

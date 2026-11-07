@@ -1,0 +1,29 @@
+# Global and multi-job ranking with bounded unattended refresh
+
+Date: 7 November 2026 (Asia/Calcutta). Target: `https://freelancehr.overseasjob.in`.
+
+## Connected scopes
+
+Global candidate ordering evaluates every matching owned profile before sorting and then paginates the sorted result. It supports up to 1000 profiles per name-filtered dataset; exceeding that support limit fails explicitly rather than dropping records. Suppression is excluded from recommendations and counted in coverage. Page review remains available with its explicit partial coverage; a later inspected page alone never claims full coverage. Global dataset hashes and saved full snapshots are independent of display pagination, while action hashes bind the displayed page. Off-page selections and stale source actions are rejected. The existing review-priority formula remains the authority; no semantic or employer scorecard is invented.
+
+Candidate-to-many-job ranking inspects and ranks all matching open owned requirements before display pagination, up to 500 title-filtered requirements. Cancelled/filled/archived roles and suppressed candidates are excluded. Selected job scores and saved historical snapshots reuse the canonical per-pair context/queue and current-preview guards, with at most 20 selected jobs. Candidate privacy erasure redacts the new historical multi-job snapshot ledger as well as the existing profile evidence and pool snapshots.
+
+An owner can configure a refresh plan bound to the exact job requirement fingerprint and pipeline state. The plan includes a name filter, 15–1440 minute interval, at most 100 runs and expiry within 30 days. By default it only records global deterministic review snapshots. Optional AI requires explicit permission, a per-run selection limit of 1–10, minimum priority and a total budget of 1–100 new tasks. Existing global AI budgets, provider limits, free-only routing and source/consent checks still apply. Only fresh, consented, review-ready profiles enter unattended AI selection. Existing current score tasks are skipped so they cannot crowd out newly ready profiles, and they do not spend the plan's new-task budget. The same canonical queue identity is used by manual, single-job, multi-job and refresh callers.
+
+## Durable execution and authority
+
+`rank_refresh` is one new deterministic job type in the existing physical MySQL queue and worker. It has no separate timer, cron, provider or workflow database. The initial cycle is due immediately; each committed run creates at most one later task from execution time, with no catch-up burst. Workspace locking, leases, cycle sequence/due checks, immutable run identity, audit rollback, run counters and exact configuration retries bound execution. The worker must already be enabled; configuration never turns it on silently. Paused/emergency-stopped workers cannot execute delegated ranking work. Deterministic refresh is not blocked by the AI request budget.
+
+Changing or disabling a plan cancels unused refresh tasks and unused AI tasks minted by that plan, while preserving pre-existing manual work. Plan-issued AI payloads carry a separate authority reference without changing canonical score identity. The scope is checked before inference and before applying a result. Revocation cannot recall a provider request already in flight; the resulting advisory score is discarded. Job state/requirement changes or expiry stop the old authority and require a fresh owner review. Reaching the scan-run limit stops later scans; already-issued tasks may finish within their unrevoked grant expiry. Run history remains readable across plan revisions.
+
+Explicit manual requests may recover a cancelled/blocked/permanently-failed unchanged score task without creating another task identity; running leases and accepted results remain intact. Unattended refresh does not restart stopped score tasks or rotate credentials around provider limits. The next scheduled cycle remains visible through the existing queue/control plane.
+
+## Verification
+
+Local suite: 824 passed, 74 skipped. Disposable MySQL 8.4: all 579 tests across 30 files passed. The focused new suite passed 23 tests with 2 SQL-only skips. TypeScript, production build, four hosting entry checks and canonical tracker validation passed. Live acceptance is pending deployment. Regressions cover a best profile beyond the old 200-profile page, sorting before display pagination, full-snapshot identity across pages, explicit supported-size failures, cross-workspace access, terminal/suppressed exclusion, stale candidate/job actions, snapshot erasure, owner scope, interval/expiry/run budgets, AI selection/budget fairness, current-task reuse, consent/freshness/conflict exclusions, revocation before/during inference, manual recovery, lost leases, zero-AI-budget managed execution, duplicate SQL commands and atomic audit rollback.
+
+## Limits and remaining roadmap
+
+This is global ordering within the supported owned dataset, not external talent-market discovery or an unbounded-scale index. Larger catalogs require explicit narrowing/page review and future scalable indexing; no partial result is labeled global. Matching remains advisory and source statements remain independently unverified. No new capability sends messages, shares profiles, progresses hiring states, rejects a person or authorizes business sourcing. First-run live acceptance does not establish elapsed recurring-cycle behavior; due-time/second-cycle/expiry behavior is separately covered by regression tests.
+
+Employer-weighted scorecards, semantic equivalence, richer freshness decay, authenticated candidate self-service, full submission-history arbitration, independent evidence verification, outcome-calibrated learning/A-B evaluation, document/OCR/inbox ingestion and authenticated client sign-off remain open. No whole advanced module is complete.

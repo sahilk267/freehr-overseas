@@ -787,8 +787,8 @@
           "id": "M15-F01",
           "description": "One full context builder for requirements, parsed evidence, current salary/expectations, notice, availability, work model and relevant authorization facts.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md",
-          "implementation_note": "A shared context builder now serves owned ranked pools and both per-pair/batch AI scoring, including current statements, clean parsed evidence, explicit compensation units, notice and availability. Authorization/credential packs, comprehensive chronology and oversized-input compaction remain open."
+          "evidence_ref": "qa/2026-11-07-global-ranking-refresh.md",
+          "implementation_note": "One context builder serves inspected/global pools, candidate-to-many-job ranking and manual/delegated AI scoring. Current statements, clean parsed evidence and explicit units remain version-bound; authorization/credential packs and comprehensive chronology remain open."
         },
         {
           "id": "M15-F02",
@@ -801,8 +801,8 @@
           "id": "M15-F03",
           "description": "Candidate-to-many-jobs and job-to-many-candidates retrieval/ranking, freshness decay, duplicates and submission conflicts.",
           "status": "implementing",
-          "implementation_note": "Bounded paginated job-to-candidate review ranking, suppression exclusion, statement expiry cap, current-preview-bound historical snapshots and at-most-20 selected AI queue commands are implemented. Each page ranks independently. Global/multi-job ordering, richer decay and submission arbitration remain open.",
-          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
+          "implementation_note": "Global ordering now inspects all matching owned profiles before display pagination (up to 1000), and candidate-to-many-job ranking inspects all matching open owned roles (up to 500). Exceeding supported bounds fails explicitly. Full dataset snapshots and current displayed-page action hashes share the canonical context/queue. External discovery, larger indexes, richer decay and submission arbitration remain open.",
+          "evidence_ref": "qa/2026-11-07-global-ranking-refresh.md"
         },
         {
           "id": "M15-F04",
@@ -815,13 +815,15 @@
           "id": "M15-F05",
           "description": "No automatic final hiring rejection; a lawful eligibility flag is distinguishable from client disposition and can be corrected or reviewed.",
           "status": "implementing",
-          "implementation_note": "Ranked review and conflict flags cannot change candidate disposition. Closed/withdrawn matches cannot be reopened by automatic scores; shortlisted progression is preserved and profile corrections can trigger review. Full downstream governed disposition acceptance remains open.",
-          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
+          "implementation_note": "Review flags cannot change candidate disposition. Suppression/terminal role exclusion, closed-match preservation, current-source and delegated-authority fencing apply across manual and unattended ranking/scoring. Full governed downstream disposition acceptance remains open.",
+          "evidence_ref": "qa/2026-11-07-global-ranking-refresh.md"
         },
         {
           "id": "M15-F06",
           "description": "Outcome-versioned re-ranking, held-out quality metrics and approved A/B tests; no learning directly from biased historical decisions without evaluation.",
-          "status": "planned"
+          "status": "implementing",
+          "implementation_note": "Owner-scoped periodic source-version refresh now reuses the existing queue/worker, with exact job state/fingerprint, filter, expiry, run limits, optional AI task budgets and source/consent checks. Immutable run history, revocation fencing and current-task deduplication are implemented. Outcome learning, held-out quality and approved A-B evaluation remain open.",
+          "evidence_ref": "qa/2026-11-07-global-ranking-refresh.md"
         }
       ],
       "events": "match.assessed, match.needs_evidence, ranking.updated",
@@ -2255,7 +2257,7 @@
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Combined candidate-evidence/compensation/ranked-review/current-AI batch advances scoped M12/M13/M14/M15 work. The same worker and queue own scoring; bounded page coverage and review-only flags are explicit. No full module is complete.",
+    "note": "Supported global and candidate-to-many-job ranking plus bounded owner-authorized refresh now share the canonical context and physical worker queue. Explicit dataset support limits, delegated AI budgets and source/authority lifecycle controls do not complete the remaining advanced roadmap.",
     "updated_at": "2026-11-07"
   }
 }

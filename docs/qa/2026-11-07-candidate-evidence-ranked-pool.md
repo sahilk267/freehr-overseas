@@ -29,6 +29,10 @@ All six evidence/ranking/scoring routes rejected anonymous access. Suppressed an
 
 The synthetic job was cancelled, its company suppressed, two candidate profiles withdrawn and the third remained suppressed. The score task was completed. The persistent worker remained enabled with a recent heartbeat, no emergency stop and no last error. No recipient messages, invitations, sharing or payments were sent.
 
+## Subsequent global/refresh increment
+
+[Global ranking and refresh acceptance](2026-11-07-global-ranking-refresh.md) advances supported global ordering, candidate-to-many-job snapshots and bounded unattended refresh through the existing context/queue. The following open-scope statement describes this foundation at its original release.
+
 ## Remaining scope
 
 Candidate self-service/authenticated corrections, independently verified statements, lawful work-authorization/credential/language packs, semantic skill equivalence, employer-weighted scorecard evaluation, salary basis/variable-pay/FX normalization, global/multi-job ranking, richer freshness decay, market datasets, document replacement propagation to existing scores, external sourcing, submission-history arbitration, unattended score refresh and held-out model quality remain open. OCR, authenticated client sign-off, automatic attachment collection and other roadmap modules also remain open. No whole advanced module is complete.
