@@ -1,3 +1,5 @@
+import {CandidateReviewPanel} from './CandidateReviewPanel';
+import {DocumentLifecyclePanel} from './DocumentLifecyclePanel';
 import {CandidateJobsPanel} from './CandidateJobsPanel';
 import {useState,type FormEvent} from 'react';
 import {trpc} from '@/lib/trpc';
@@ -13,7 +15,7 @@ function EvidenceForm({id}:{id:string}){
  if(!q.data)return <p role={q.error?'alert':undefined}>{q.error?.message??'Loading candidate evidence…'}</p>;
  const d=q.data,f=d.fields;
  const submit=(e:FormEvent<HTMLFormElement>)=>{e.preventDefault();const data=new FormData(e.currentTarget),text=(name:string)=>String(data.get(name)??'').trim(),number=(name:string)=>text(name)===''?undefined:Number(text(name)),list=(name:string)=>text(name).split('\n').map(s=>s.trim()).filter(Boolean);save.mutate({candidateId:id,expectedRevision:d.revision,expectedFingerprint:d.fingerprint,fields:{skills:list('skills'),locations:list('locations'),workModels:data.getAll('workModels') as ('remote'|'hybrid'|'onsite')[],totalExperienceYears:number('experience'),noticePeriodDays:number('notice'),availableFrom:text('available')?new Date(text('available')):undefined,compensation:number('amount')===undefined?undefined:{amount:number('amount')!,currency:text('currency'),period:text('period') as 'monthly'},observedAt:new Date(text('observed')),validUntil:new Date(text('expires')),sourceNote:text('source')},reason:text('reason')});};
- return <div className="space-y-3"><p className="text-sm">Evidence version {d.revision} · {d.fresh?'Current statement':'Missing or expired statement'}. Owner-recorded statements are not independently verified; saving does not grant consent.</p>
+ return <div className="space-y-3"><p className="text-sm">Evidence version {d.revision} · {d.fresh?'Current statement':'Missing or expired statement'}. Recorded/adopted statements are not independently verified; saving does not grant consent.</p>
  <form key={d.revision+':'+d.fingerprint} onSubmit={submit} className="grid gap-3 md:grid-cols-2">
   <div><Label htmlFor={`skills-${id}`}>Explicitly stated skills (one per line)</Label><Textarea id={`skills-${id}`} name="skills" defaultValue={f?.skills.join('\n')??''}/></div>
   <div><Label htmlFor={`locations-${id}`}>Permitted work / relocation locations (one per line)</Label><Textarea id={`locations-${id}`} name="locations" defaultValue={f?.locations.join('\n')??''}/></div>
@@ -33,5 +35,5 @@ function EvidenceForm({id}:{id:string}){
 }
 export function CandidateEvidenceWorkspace({candidates}:{candidates:{id:string;name:string}[]}){
  const [id,setId]=useState('');
- return <section aria-label="Candidate evidence profile" className="space-y-4 rounded-xl border bg-white p-5"><h2 className="font-semibold">Candidate evidence & compensation units</h2><Label htmlFor="evidence-candidate">Candidate for evidence review</Label><select id="evidence-candidate" value={id} onChange={e=>setId(e.target.value)} className="w-full rounded-md border p-2"><option value="">Choose candidate</option>{candidates.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>{id&&<><EvidenceForm key={id} id={id}/><CandidateJobsPanel key={'jobs-'+id} candidateId={id}/></>}</section>;
+ return <section aria-label="Candidate evidence profile" className="space-y-4 rounded-xl border bg-white p-5"><h2 className="font-semibold">Candidate evidence & compensation units</h2><Label htmlFor="evidence-candidate">Candidate for evidence review</Label><select id="evidence-candidate" value={id} onChange={e=>setId(e.target.value)} className="w-full rounded-md border p-2"><option value="">Choose candidate</option>{candidates.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>{id&&<><EvidenceForm key={id} id={id}/><CandidateReviewPanel key={'review-'+id} candidateId={id}/><DocumentLifecyclePanel key={'docs-'+id} candidateId={id}/><CandidateJobsPanel key={'jobs-'+id} candidateId={id}/></>}</section>;
 }

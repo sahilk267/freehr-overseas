@@ -1,0 +1,23 @@
+# Candidate screening, source-bound employer assessment and document lifecycle
+
+Date: 7 November 2026. Target: `https://freelancehr.overseasjob.in`.
+
+## Connected implementation
+
+Private role-bound candidate forms ask for job-related examples from the current scorecard and missing mandatory skills, with up to 24 questions and an explicit omitted-question count. Optional typed facts and answers are self-reported. Expiring fragment capabilities are hashed at rest, removed from the browser URL, read through POST with no-store headers, revocable and purpose-bound. Explicit processing consent applies only to the role and expiry; it cannot authorize general CV processing, unrelated roles, marketing or profile sharing. Up to five immutable response versions permit correction. Owner-only source review, selective adoption and the existing canonical evidence transaction prevent automatic profile edits or fabricated identity verification. One screening case remains evidence-pending with confidence zero; later answers are retained in the ledger without reopening terminal cases.
+
+Employer criteria use their actual weights and 0–5 owner ratings. Unknown criteria retain their full weight as a score interval, rather than normalizing known ratings to 100. Zero is a known rating, not missing data. Required missing/zero criteria request review without rejecting anyone. Literal quotes bind ratings to a current profile, current clean parsed document, exact candidate question/response version or explicit owner observation. Literal quote containment establishes source correspondence, not semantic correctness or independent fact verification. Current source signatures fence saved assessments, ranked snapshots and queued model result application. The existing retrieval priority is separate from the employer assessment.
+
+Document replacement requires two owned same-candidate clean/current parsed sources and a current fingerprint. It marks the older source superseded, records replacement provenance, retains historical objects and cancels unused old parsing tasks. Source generations invalidate active match confidence and late result application. CV parsing failures are visible; explicit retry reuses the canonical queue identity and cannot restart accepted/running work. Scanning and parsing recheck current source, suppression and general processing permission. Bounded PDF/DOCX/TXT extraction fails explicitly on unsupported/overflow content; this does not implement image OCR.
+
+Candidate review emails reuse the existing approval outbox, permitted candidate conversation, talent sender, communication consent, immutable digest and dispatch checks. Preparing mail rotates the manual capability and stores a derived-link marker, not a readable token. Revocation/correction/expiry/source changes block materialization. Inbound quoted candidate links are redacted. Statutory deletion redacts new review, document-change and scorecard metadata through the existing privacy workflow. No independent queue, sender, screening table or hiring-decision engine was added.
+
+## Validation and release
+
+Local acceptance: 848 tests passed with 78 SQL/environment-specific skips. All 607 disposable MySQL regressions passed across 33 files, including concurrent response/adoption/source replacement and audit-failure rollback. Typecheck, production build, all four Hostinger entry checks and tracker consistency passed. Production acceptance is pending deployment and browser verification.
+
+## Remaining scope
+
+This increment does not complete a whole advanced module. The [full remaining register](../REMAINING_IMPLEMENTATION_REGISTER.csv) enumerates every non-complete feature package, implemented notes, source evidence and module acceptance gates. The machine-readable registry and implementation backlog remain authoritative for package state.
+
+Authenticated candidate identity/accounts, independent salary/employment/credential verification, OCR/layout/page/span extraction, assessment-provider/proctoring acceptance, accessible work samples, voice/conversational branching, complete autonomous clarification/follow-up, semantic equivalence and held-out calibration remain open. Existing source permissions and owner approvals still apply. Client-authenticated requirement sign-off/e-sign, licensed external acquisition/sourcing, genuine provider-confirmed delivery, offer acceptance and verified payment reconciliation need their respective implementation and external acceptance; self-reported answers cannot substitute for those receipts. Revenue is not guaranteed. No real recipient message, profile share, invitation or payment is authorized by this test record.

@@ -1,6 +1,8 @@
+import {withWorkspaceTransaction,lockedSelect} from './database';
+import {recordCandidateDocumentChange} from './candidateEvidenceLifecycle';
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { candidateDocuments } from "../../drizzle/schema";
+import { candidateDocuments,candidates } from "../../drizzle/schema";
 import { recordAudit, requireDb } from "../db";
 import { readPrivateDocument } from "./privateStorage";
 
@@ -128,54 +130,13 @@ export async function scanCandidateDocument(documentId: string, ownerId: number)
   const bytes = await readPrivateDocument(document.storageKey);
   const scanResult = scanDocumentBytes(bytes, document.mimeType, document.sha256);
 
-  if (scanResult.clean) {
-    await db
-      .update(candidateDocuments)
-      .set({
-        scanState: "clean",
-        updatedAt: new Date(),
-      })
-      .where(eq(candidateDocuments.id, document.id));
-
-    await recordAudit({
-      ownerId,
-      actorType: "system",
-      action: "candidate.document_scanned",
-      resourceType: "candidate_document",
-      resourceId: document.id,
-      previousState: document.scanState,
-      nextState: "clean",
-      metadata: {
-        sha256: document.sha256,
-        sizeBytes: document.sizeBytes,
-        findings: [],
-      },
-    });
-  } else {
-    await db
-      .update(candidateDocuments)
-      .set({
-        scanState: "flagged",
-        parseState: "blocked",
-        updatedAt: new Date(),
-      })
-      .where(eq(candidateDocuments.id, document.id));
-
-    await recordAudit({
-      ownerId,
-      actorType: "system",
-      action: "candidate.document_scan_flagged",
-      resourceType: "candidate_document",
-      resourceId: document.id,
-      previousState: document.scanState,
-      nextState: "flagged",
-      metadata: {
-        reason: scanResult.reason,
-        findings: scanResult.findings,
-        sha256: document.sha256,
-      },
-    });
-  }
-
-  return scanResult;
+  return withWorkspaceTransaction(ownerId,async tx=>{
+    const candidate=(await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.ownerId,ownerId),eq(candidates.id,document.candidateId))).limit(1)))[0];
+    const current=(await tx.select().from(candidateDocuments).where(and(eq(candidateDocuments.ownerId,ownerId),eq(candidateDocuments.id,document.id))).limit(1))[0];
+    if(!candidate||candidate.deletedAt||['deleted','deletion_pending'].includes(candidate.profileState)||!current||current.storageKey!==document.storageKey||current.sha256!==document.sha256)throw Error('Document or candidate changed during scan.');
+    await tx.update(candidateDocuments).set({scanState:scanResult.status,...(!scanResult.clean?{parseState:(current.provenance as any)?.supersededBy?'superseded':'blocked'}:{}),updatedAt:new Date()}).where(eq(candidateDocuments.id,document.id));
+    if(current.scanState!==scanResult.status)await recordCandidateDocumentChange(tx,ownerId,current.candidateId,{documentId:current.id,reason:'Security scan status changed',status:scanResult.status});
+    await recordAudit({ownerId,actorType:'system',action:scanResult.clean?'candidate.document_scanned':'candidate.document_scan_flagged',resourceType:'candidate_document',resourceId:document.id,previousState:current.scanState,nextState:scanResult.status,metadata:{sha256:scanResult.sha256,sizeBytes:scanResult.sizeBytes,findings:scanResult.findings,reason:scanResult.reason}},tx);
+    return scanResult;
+  });
 }

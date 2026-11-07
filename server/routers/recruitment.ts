@@ -1,3 +1,6 @@
+import {weightedScorecardInput} from '../../shared/weightedScorecard';
+import {getWeightedScorecard,saveWeightedScorecard} from '../services/weightedScorecard';
+import {supersedeCandidateDocument,retryCandidateDocumentParsing} from '../services/documentLifecycle';
 import {rankingRefreshInput} from '../../shared/rankingRefresh';
 import {getRankingRefresh,configureRankingRefresh} from '../services/rankingRefresh';
 import {previewCandidateJobs,actOnCandidateJobs} from '../services/candidateJobRanking';
@@ -510,6 +513,8 @@ export const candidatesRouter = router({
     return { id };
   }),
   documents: router({
+    retryParse:protectedProcedure.input(z.object({documentId:z.string().min(4).max(36),expectedFingerprint:z.string().length(64)})).mutation(({ctx,input})=>retryCandidateDocumentParsing(ctx.user.id,ctx.actor.id,input)),
+    supersede:protectedProcedure.input(z.object({oldDocumentId:z.string().min(4).max(36),newDocumentId:z.string().min(4).max(36),expectedFingerprint:z.string().length(64),reason:z.string().trim().min(8).max(2000)})).mutation(({ctx,input})=>supersedeCandidateDocument(ctx.user.id,ctx.actor.id,input)),
     list: protectedProcedure.input(z.object({ candidateId: z.string().min(4).optional() }).optional()).query(async ({ ctx, input }) => {
       const db = await requireDb();
       if (input?.candidateId) {
@@ -584,6 +589,8 @@ export const candidatesRouter = router({
 });
 
 export const matchingRouter = router({
+  weightedScorecard:protectedProcedure.input(z.object({candidateId:z.string().min(4).max(36),jobId:z.string().min(4).max(36)})).query(({ctx,input})=>getWeightedScorecard(ctx.user.id,input.candidateId,input.jobId)),
+  saveWeightedScorecard:protectedProcedure.input(weightedScorecardInput).mutation(({ctx,input})=>saveWeightedScorecard(ctx.user.id,ctx.actor.id,input)),
   candidateJobs:protectedProcedure.input(z.object({candidateId:z.string().min(4).max(36),query:z.string().trim().min(1).max(120).optional(),offset:z.number().int().min(0).max(100000).default(0),limit:z.number().int().min(1).max(100).default(50)})).query(({ctx,input})=>previewCandidateJobs(ctx.user.id,input)),
   actOnCandidateJobs:protectedProcedure.input(z.object({candidateId:z.string().min(4).max(36),query:z.string().trim().min(1).max(120).optional(),offset:z.number().int().min(0).max(100000).default(0),limit:z.number().int().min(1).max(100).default(50),expectedPreviewHash:z.string().length(64),jobIds:z.array(z.string().min(4).max(36)).max(20),queueAi:z.boolean().default(false)})).mutation(({ctx,input})=>actOnCandidateJobs(ctx.user.id,ctx.actor.id,input)),
   refreshPlan:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36)})).query(({ctx,input})=>getRankingRefresh(ctx.user.id,input.jobId)),

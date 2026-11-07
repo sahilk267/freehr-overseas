@@ -302,6 +302,7 @@ export const candidateWorkflowsRouter = router({
           storageUrl: "",
           originalName: "redacted.bin",
           parsedData: null,
+          provenance:{redacted:true},
           scanState: "redacted",
           parseState: "redacted",
         }).where(eq(candidateDocuments.id, doc.id));
@@ -320,10 +321,13 @@ export const candidateWorkflowsRouter = router({
       }
 
       // Redact the new evidence ledger and candidate rows in historical ranking snapshots.
-      const evidenceEvents = await db.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ctx.user.id),eq(workflowEvents.aggregateId,candidate.id),inArray(workflowEvents.eventType,['candidate.evidence_saved','match.jobs_ranked'])));
+      const evidenceEvents = await db.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ctx.user.id),eq(workflowEvents.aggregateId,candidate.id),inArray(workflowEvents.eventType,['candidate.evidence_saved','match.jobs_ranked','candidate.document_changed'])));
       for(const event of evidenceEvents)await db.update(workflowEvents).set({metadata:{redacted:true,reason:'candidate_privacy_erasure'}}).where(eq(workflowEvents.id,event.id));
       const rankingEvents = await db.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ctx.user.id),eq(workflowEvents.eventType,'match.pool_ranked')));
       for(const event of rankingEvents){const metadata=event.metadata as any;if(Array.isArray(metadata.rows)&&metadata.rows.some((r:any)=>r.candidateId===candidate.id))await db.update(workflowEvents).set({metadata:{...metadata,rows:metadata.rows.filter((r:any)=>r.candidateId!==candidate.id),candidateRowsRedacted:true}}).where(eq(workflowEvents.id,event.id));}
+
+      const reviewEvents=await db.select().from(workflowEvents).where(eq(workflowEvents.ownerId,ctx.user.id));
+      for(const e of reviewEvents){if((e.eventType.startsWith('candidate.review_')||e.eventType==='match.scorecard_assessed')&&(e.metadata as any)?.candidateId===candidate.id)await db.update(workflowEvents).set({metadata:{redacted:true,reason:'candidate_privacy_erasure'}}).where(eq(workflowEvents.id,e.id));}
 
       // 10. Update candidate record with redacted PII and terminal deleted state
       await db.update(candidates).set({

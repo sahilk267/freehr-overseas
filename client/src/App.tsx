@@ -1,3 +1,4 @@
+import CandidateReviewPage from './pages/CandidateReviewPage';
 import DiscoveryResponsePage from "./pages/DiscoveryResponsePage";
 import InterviewResponsePage from "./pages/InterviewResponsePage";
 import AvailabilityResponsePage from "./pages/AvailabilityResponsePage";
@@ -36,6 +37,7 @@ const ControlPlane = withDashboard(ControlPlanePage);
 
 function Router() {
   return <Switch>
+    <Route path="/candidate-review" component={CandidateReviewPage} />
     <Route path="/interview-response" component={InterviewResponsePage} />
     <Route path="/discovery-response" component={DiscoveryResponsePage} />
     <Route path="/availability" component={AvailabilityResponsePage} />

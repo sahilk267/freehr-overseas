@@ -1,3 +1,5 @@
+import {candidateReviewActivity} from './candidateReview';
+import {weightedScorecardInTransaction} from './weightedScorecard';
 import {TRPCError} from '@trpc/server';
 import {and,eq} from 'drizzle-orm';
 import {consents,jobs,matches} from '../../drizzle/schema';
@@ -16,10 +18,12 @@ export async function buildMatchContext(tx:any,ownerId:number,candidateId:string
  if(d.suppressed)throw new TRPCError({code:'PRECONDITION_FAILED',message:'Suppressed candidates are excluded from matching.'});
  const previousMatch=(await tx.select().from(matches).where(and(eq(matches.ownerId,ownerId),eq(matches.candidateId,candidateId),eq(matches.jobId,jobId))).limit(1))[0];
  const grants=await tx.select().from(consents).where(and(eq(consents.ownerId,ownerId),eq(consents.candidateId,candidateId),eq(consents.status,'granted')));
- const processingConsent=grants.some((c:any)=>['platform_processing','recruitment_communication'].includes(c.consentType)&&(!c.expiresAt||new Date(c.expiresAt)>new Date()));
+ const processingConsent=grants.some((c:any)=>['platform_processing','recruitment_communication'].includes(c.consentType)&&(!c.jobId||c.jobId===jobId)&&(!c.companyId||c.companyId===job.companyId)&&(!c.expiresAt||new Date(c.expiresAt)>new Date()));
+ const reviewActivity=await candidateReviewActivity(tx,ownerId,candidateId,jobId);
  const f=d.fresh?d.fields:null,intake=job.intake as any??{},missing:string[]=[],conflicts:string[]=[];
+ if(reviewActivity?.metadata.status==='submitted')missing.push('Current candidate questionnaire response awaits owner review and adoption.');
  const closedPair=Boolean(previousMatch&&['closed','withdrawn'].includes(previousMatch.status));if(closedPair)conflicts.push('This candidate-job match is closed or withdrawn; automated rescoring cannot reopen it.');
- const clean=d.documents.filter((x:any)=>x.scanState==='clean'&&x.parseState==='parsed'&&x.parsedData);
+ const clean=d.documents.filter((x:any)=>x.scanState==='clean'&&x.parseState==='parsed'&&!x.supersededBy&&x.parsedData);
  const parsedSkills=clean.flatMap((x:any)=>Array.isArray(x.parsedData.skills)?x.parsedData.skills.filter((s:any)=>typeof s==='string'):[]);
  const skills:string[]=f?f.skills:[...new Set<string>(parsedSkills)].slice(0,80);
  const experienceValues=[...new Set<number>(clean.map((x:any)=>x.parsedData.totalExperienceYears).filter((n:any)=>typeof n==='number'&&n>=0&&n<=60))];
@@ -50,12 +54,14 @@ export async function buildMatchContext(tx:any,ownerId:number,candidateId:string
  // This priority is a retrieval aid, never a scorecard, eligibility decision or disposition.
  const components={skillEvidence:must.length?Math.round(70*matched.length/must.length):0,minimumExperience:experience!==null&&typeof job.experienceMinYears==='number'&&experience>=job.experienceMinYears?20:0,compensation:compensation.status==='within_budget'?10:0};
  const priority=d.fresh?Object.values(components).reduce((a,b)=>a+b,0):Math.min(50,Object.values(components).reduce((a,b)=>a+b,0));
- const fingerprint=workflowHash({candidate:d.fingerprint,processingConsent});
- return {job,candidate:d.candidate,evidence:d,processingConsent,canQueueAi:processingConsent&&!closedPair,candidateFingerprint:fingerprint,requirementFingerprint:jobRequirementFingerprint(job),policy:MATCH_POLICY,
+ const employerScorecard=await weightedScorecardInTransaction(tx,ownerId,job,d);
+ const scoringMissing=[...missing,...conflicts,...(employerScorecard.criteria.length&&(!employerScorecard.current||employerScorecard.result?.unknownWeight)?['Employer-weighted scorecard has unknown or stale source ratings.']:[]),...(employerScorecard.result?.reviewRequired?.length?['Required scorecard criteria need owner review; no automatic rejection is authorized.']:[])];
+ const fingerprint=workflowHash({candidate:d.fingerprint,processingConsent,...(reviewActivity?{reviewActivity:reviewActivity.revision}:{}),...(employerScorecard.signature?{scorecard:employerScorecard.signature}:{})});
+ return {job,candidate:d.candidate,evidence:d,processingConsent,canQueueAi:processingConsent&&!closedPair,candidateFingerprint:fingerprint,requirementFingerprint:jobRequirementFingerprint(job),policy:MATCH_POLICY,employerScorecard,
   assessment:{eligibility:conflicts.length?'conflict_review' as const:missing.length?'needs_evidence' as const:'review_ready' as const,reviewPriority:priority,components,matchedSkills:matched,missingSkills,missingEvidence:missing,conflicts,compensation,finalDisposition:false as const},
   payload:{candidateId,jobId,requirementFingerprint:jobRequirementFingerprint(job),candidateContextFingerprint:fingerprint,policy:MATCH_POLICY,
-   compensationComparison:{...compensation,allowed:compensation.status!=='unknown'},requiredMissingEvidence:[...missing,...conflicts].map(s=>s.slice(0,500)),
-   candidate:{headline:d.candidate.headline,location:d.candidate.location,availability:d.candidate.availability,recordedStatement:f,statementSource:'owner_recorded; not independently verified',skills,experienceYears:experience,evidence:clean.slice(0,3).map((x:any)=>({documentId:x.documentId,sha256:x.sha256,parsedData:x.parsedData})),documentsTruncated:d.documentsTruncated||clean.length>3},
+   compensationComparison:{...compensation,allowed:compensation.status!=='unknown'},employerScorecard:employerScorecard.current?{revision:employerScorecard.revision,...employerScorecard.result,independentlyVerified:false}:{status:'unassessed_or_stale'},requiredMissingEvidence:scoringMissing.map(s=>s.slice(0,500)),
+   candidate:{headline:d.candidate.headline,location:d.candidate.location,availability:d.candidate.availability,recordedStatement:f,statementSource:d.source+'; not independently verified',skills,experienceYears:experience,evidence:clean.slice(0,3).map((x:any)=>({documentId:x.documentId,sha256:x.sha256,parsedData:x.parsedData})),documentsTruncated:d.documentsTruncated||clean.length>3},
    job:{title:job.title,description:intake.description,location:job.location,mustHaveSkills:must,niceToHaveSkills:job.niceToHaveSkills,scorecard:job.scorecard,experienceMinYears:job.experienceMinYears,experienceMaxYears:job.experienceMaxYears,compensationMin:job.compensationMin,compensationMax:job.compensationMax,currency:job.currency,currencyRecorded:Boolean(intake.currencyExplicit),compensationPeriod:intake.compensationPeriod??null,trainableSkills:intake.trainableSkills??[],responsibilities:intake.responsibilities??[],workModel:job.workModel}},
  };
 }

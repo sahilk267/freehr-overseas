@@ -40,3 +40,9 @@ W6,M15,Global supported-dataset ordering before display pagination,verified_live
 W6,M15,Candidate-to-many-job snapshots and shared batch scoring,verified_live_desktop_and_stale_guards,qa/2026-11-07-global-ranking-refresh.md,Submission-history arbitration and independent evidence verification
 W6,M05,Owner-scoped unattended ranking and optional AI budgets,verified_live_first_cycle_and_free_provider,qa/2026-11-07-global-ranking-refresh.md,Elapsed recurring production acceptance and outcome-calibrated learning
 W6,M15,Explicit stopped-score recovery and delegated revocation,verified_sql_recovery_and_live_revocation,qa/2026-11-07-global-ranking-refresh.md,Provider-specific recovery and broader model-quality evaluation
+W6,M13,Private candidate evidence forms and selective canonical adoption,implemented_acceptance_in_progress,qa/2026-11-07-candidate-screening-scorecards.md,Authenticated identity and independent fact verification
+W6,M16,Role-specific questions and immutable answer correction case,implemented_acceptance_in_progress,qa/2026-11-07-candidate-screening-scorecards.md,Adaptive conversation and provider assessment and accessible work samples
+W6,M15,Employer-weighted source-bound evidence intervals,implemented_acceptance_in_progress,qa/2026-11-07-candidate-screening-scorecards.md,Semantic equivalence and held-out calibration and independent verification
+W6,M14,Document supersession and visible same-task parsing recovery,implemented_acceptance_in_progress,qa/2026-11-07-candidate-screening-scorecards.md,OCR and page-span provenance and broad parser acceptance
+W6,M07,Candidate review links through shared approval outbox,implemented_acceptance_in_progress,qa/2026-11-07-candidate-screening-scorecards.md,Real recipient delivery acceptance and broader channels
+W6,M25,Full non-complete package remaining register,implemented_acceptance_in_progress,qa/2026-11-07-candidate-screening-scorecards.md,Complete external and module acceptance

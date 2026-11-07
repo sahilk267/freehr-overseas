@@ -116,6 +116,7 @@ describe("W0 correctness regressions (also executable against disposable MySQL)"
 
   it("quarantines uploads until scan completion, then extracts and parses without persistent raw CV payloads", async () => {
     const { candidate } = await fixture();
+    await caller.recruitment.candidates.grantConsent({candidateId:candidate.id,consentType:"platform_processing",noticeVersion:"synthetic-cv-processing-fixture"});
     infer.mockClear();
     const uploaded = await caller.recruitment.candidates.documents.upload({ candidateId: candidate.id, originalName: "cv.txt", mimeType: "text/plain", documentType: "cv", dataBase64: Buffer.from("TypeScript engineer with six years of API development.").toString("base64") });
     const initial = (await db.select().from(automationQueue).where(eq(automationQueue.ownerId, ownerId))).filter((j: any) => j.payload.documentId === uploaded.id);
@@ -166,6 +167,7 @@ describe("W0 correctness regressions (also executable against disposable MySQL)"
   it("records one failed AI attempt when domain result application fails, instead of stranding a running task", async () => {
     await db.update(automationQueue).set({ status: "cancelled" }).where(and(eq(automationQueue.ownerId, ownerId), eq(automationQueue.status, "queued")));
     const { candidate } = await fixture();
+    await caller.recruitment.candidates.grantConsent({candidateId:candidate.id,consentType:"platform_processing",noticeVersion:"synthetic-late-cv-fixture"});
     const uploaded = await caller.recruitment.candidates.documents.upload({ candidateId: candidate.id, originalName: "late-cv.txt", mimeType: "text/plain", documentType: "cv", dataBase64: Buffer.from("TypeScript engineer with six years of API development.").toString("base64") });
     await processOneQueuedJob(ownerId);
     const task = (await db.select().from(automationQueue).where(eq(automationQueue.ownerId, ownerId))).find((j: any) => j.jobType === "parse_cv" && j.payload.documentId === uploaded.id);

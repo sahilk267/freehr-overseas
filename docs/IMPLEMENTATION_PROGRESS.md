@@ -2,6 +2,10 @@
 
 Updated 7 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
+## Combined batch: candidate screening, employer scorecards and document replacement
+
+[Connected implementation report](qa/2026-11-07-candidate-screening-scorecards.md) records private self-report forms/corrections, selective canonical profile adoption, one evidence-pending screening case, source-bound employer-weighted intervals, document supersession/visible parsing retry and shared approval-outbox preparation. Scoped consent, stale-source/queued-result guards and privacy redaction cover the new paths. Local and live acceptance is tracked in that report. The [complete remaining register](REMAINING_IMPLEMENTATION_REGISTER.csv) enumerates all non-complete feature packages; no full advanced module is complete.
+
 ## Combined batch: global ranking and unattended refresh
 
 [Global ranking/refresh report](qa/2026-11-07-global-ranking-refresh.md) records full supported-dataset ordering before display pagination, candidate-to-many-job review, bounded owner-authorized refresh on the existing worker and explicit same-task recovery. Source fingerprints, consent/suppression, scoped AI budgets, expiry/revocation and historical run identity are preserved without a parallel engine. Validation: 824 unit tests and all 579 MySQL tests passed, plus types/build/four hosting entry checks. Global/multi-job desktop review, mobile bounded authority, the first managed refresh/free-model score, task/snapshot reuse, revocation/history and stale-action guards passed live on `0260833`. Synthetic records were closed and the persistent worker remained healthy. Support limits and untested elapsed-production intervals are explicit in the report; no module is complete.

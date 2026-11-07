@@ -348,8 +348,8 @@
           "id": "M07-F02",
           "description": "One dispatch gateway for outreach, follow-ups, interview reminders, profile shares, offers and invoices; no direct provider sends in domain workers.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "One shared dispatch gateway serves campaigns, follow-ups and purpose-bound interview/confirmation/discovery links. Discovery adds no provider sender or timer; real recipient delivery acceptance and remaining channels remain pending."
+          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md",
+          "implementation_note": "Candidate evidence requests reuse the shared approval outbox, talent sender, current communication permission, content digest, derived token rotation and dispatch materialization. No second sender or timer. Real recipient delivery and broader channel acceptance remain open."
         },
         {
           "id": "M07-F03",
@@ -695,8 +695,8 @@
           "id": "M13-F04",
           "description": "Candidate onboarding and self-service corrections; collect purpose-appropriate consent via M04 rather than manufacture it.",
           "status": "implementing",
-          "implementation_note": "Versioned owner-recorded evidence correction with source, observation/expiry and optimistic locks is implemented. Saving never grants consent or reactivates suppression. Authenticated candidate self-service and candidate-led onboarding remain open.",
-          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
+          "implementation_note": "Private expiring role-bound candidate forms collect self-reported facts and corrections with explicit scoped processing notice. Selected owner adoption reuses canonical evidence revisions and preserves unrelated validity. Link possession is not verified identity; authenticated candidate accounts remain open.",
+          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md"
         },
         {
           "id": "M13-F05",
@@ -750,7 +750,9 @@
         {
           "id": "M14-F04",
           "description": "Each extracted fact links to document version/page/span, parser/model version and confidence; contradictions require clarification.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md",
+          "implementation_note": "Employer ratings bind literal quotes to current profile, clean parsed document ID, candidate response/question/version or explicit owner observation. Full extracted-fact PDF page/span/layout provenance and confidence evaluation remain open."
         },
         {
           "id": "M14-F05",
@@ -762,8 +764,8 @@
           "id": "M14-F06",
           "description": "Candidate corrections and document replacements invalidate stale profiles/matches; retryable extraction with visible failure reasons.",
           "status": "implementing",
-          "implementation_note": "Candidate evidence revisions invalidate active matches and source fingerprints fence queued scoring after profile/document changes. Existing-score invalidation after document replacement and full extraction retry lifecycle remain open.",
-          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
+          "implementation_note": "Owned clean parsed replacement explicitly supersedes prior source without deleting historical objects. Document generation invalidates active match confidence and queued fingerprints; visible parse errors and explicit same-task retry require current general processing consent. Broader OCR/language/recovery acceptance remains open.",
+          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md"
         }
       ],
       "events": "document.clean, document.flagged, extraction.completed, document.superseded",
@@ -794,8 +796,8 @@
           "id": "M15-F02",
           "description": "Deterministic eligibility rules separated from semantic similarity; weighted explainable scorecards and skill equivalence.",
           "status": "implementing",
-          "implementation_note": "Deterministic missing/conflict review flags and fixed 70/20/10 retrieval priority are separate from semantic AI scoring. Missing skills are unknown; no final disposition is inferred. Employer-weighted scorecard evaluation, semantic equivalence and held-out quality remain open.",
-          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md"
+          "implementation_note": "Separate employer criteria weights support 0–5 evidence ratings, unknown-weight score intervals and required-criterion review flags. Quotes are source-checked and source changes stale assessments. Fixed retrieval priority remains separate. Semantic equivalence and held-out quality remain open.",
+          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md"
         },
         {
           "id": "M15-F03",
@@ -808,8 +810,8 @@
           "id": "M15-F04",
           "description": "Explicit unknown/missing/conflicting evidence, calibration, human-readable trade-offs and evidence-collection requests.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-07-candidate-evidence-ranked-pool.md",
-          "implementation_note": "Current source/statement/consent fingerprints, explicit missing/conflicting facts, conservative compensation checks and required review evidence guard model outputs. General confidence calibration and automated evidence-collection requests remain open."
+          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md",
+          "implementation_note": "Pending candidate responses require review; source quotes, unknown criteria and source corrections fence scoring and preserve explicit unknown weight. Independent fact verification, automated clarification strategies and calibrated confidence remain open."
         },
         {
           "id": "M15-F05",
@@ -849,17 +851,23 @@
         {
           "id": "M16-F01",
           "description": "Candidate-facing structured chat/forms and optional authorized voice; job-specific adaptive questions and missing-evidence follow-up.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md",
+          "implementation_note": "Structured candidate form questions derive from current employer criteria and missing mandatory skills. Five source-bound response/correction versions, expiry/revocation and latest-response review are implemented. Voice, conversational branching and complete follow-up automation remain open."
         },
         {
           "id": "M16-F02",
           "description": "Experience verification, salary/notice/availability alignment, motivation and role-relevant work samples with accessible alternatives.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md",
+          "implementation_note": "Candidate forms collect self-reported experience, expectations, notice, locations and availability. Identity, salary, employment and accessible work-sample verification remain open; no independent verification is claimed."
         },
         {
           "id": "M16-F03",
           "description": "Assessment integrations, evidence rubrics, fraud/anomaly flags with review, answer provenance and candidate correction.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md",
+          "implementation_note": "Immutable answer provenance, candidate corrections and source-bound owner employer rubrics are implemented. External assessment providers, proctoring, fraud/anomaly review and accessible alternatives remain open."
         },
         {
           "id": "M16-F04",

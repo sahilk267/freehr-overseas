@@ -1,3 +1,5 @@
+import {recordCandidateDocumentChange,hasGeneralCandidateProcessingConsent} from './candidateEvidenceLifecycle';
+import {candidateSuppressed} from './candidateEvidence';
 import {executeRankingRefresh,assertRankingRefreshAuthority} from './rankingRefresh';
 import {buildMatchContext} from './matchContext';
 import {jobExtractionAiInput,recordJobExtractionResult} from "./jobExtraction";
@@ -13,7 +15,7 @@ import { evaluateInvoiceCollection } from "./invoiceCollections";
 import { processDueCampaigns } from "./campaigns";
 import { blockFollowUpFailure } from "./followupEvents";
 import { and, asc, eq, inArray, lte, notInArray, sql } from "drizzle-orm";
-import { aiModelRoutes, aiUsage, approvals, automationQueue, candidateDocuments, candidates, contacts, conversations, emailDispatches, interviews, invoices, jobs, matches, messages, suppressionList, workspaceSettings } from "../../drizzle/schema";
+import { aiModelRoutes, aiUsage, approvals, automationQueue, candidateDocuments, candidates, consents, contacts, conversations, emailDispatches, interviews, invoices, jobs, matches, messages, suppressionList, workspaceSettings } from "../../drizzle/schema";
 import { createId, hashContactValue, recordAudit, requireDb } from "../db";
 import { OpenRouterConfigurationError, OpenRouterTransientError, OpenRouterValidationError, type AiTaskType } from "./openrouter";
 import { runControlledAiTask } from "./aiRouting";
@@ -60,7 +62,8 @@ export async function handleAiTaskResult(
     if (documentId) {
       const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, documentId), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];
       const candidate = candidateId ? (await db.select().from(candidates).where(and(eq(candidates.id, candidateId), eq(candidates.ownerId, ownerId))).limit(1))[0] : null;
-      if (!doc || doc.scanState !== "clean" || !candidate || candidate.deletedAt || candidate.withdrawnAt || ["deleted", "deletion_pending", "withdrawn"].includes(candidate.profileState)) throw new NonRetryableJobError("CV result discarded: document or candidate is no longer eligible.");
+      if (!doc || doc.scanState !== "clean" || (doc.provenance as any)?.supersededBy || doc.parseState==='superseded' || !candidate || candidateSuppressed(candidate)) throw new NonRetryableJobError("CV result discarded: document or candidate is no longer eligible.");
+      if(!await hasGeneralCandidateProcessingConsent(db,ownerId,doc.candidateId))throw new NonRetryableJobError('Candidate CV processing consent changed before result application.');
       await db
         .update(candidateDocuments)
         .set({
@@ -86,6 +89,7 @@ export async function handleAiTaskResult(
         }
       }
 
+      await recordCandidateDocumentChange(db,ownerId,doc.candidateId,{documentId:doc.id,reason:'Parsed document source changed'});
       await recordAudit({
         ownerId,
         actorType: "system",
@@ -149,12 +153,13 @@ export async function handleAiTaskResult(
       const currentJob=(await db.select().from(jobs).where(and(eq(jobs.ownerId,ownerId),eq(jobs.id,jobId))).limit(1))[0];
       if(!currentJob||['cancelled','archived','filled'].includes(currentJob.pipelineState))throw new NonRetryableJobError('Scoring result has no current active owned requirement.');
       if(typeof payload.requirementFingerprint==='string'&&payload.requirementFingerprint!==jobRequirementFingerprint(currentJob))throw new NonRetryableJobError('Requirements changed. Queue a fresh score for the current job version.');
-      if(typeof payload.candidateContextFingerprint==='string'){try{await assertRankingRefreshAuthority(db,ownerId,payload.rankingRefreshAuthority);const context=await buildMatchContext(db,ownerId,candidateId,jobId);if(!context.processingConsent||context.candidateFingerprint!==payload.candidateContextFingerprint)throw new NonRetryableJobError('Candidate evidence or processing consent changed. Queue a fresh score.');}catch(e){if(e instanceof TRPCError)throw new NonRetryableJobError(e.message);throw e;}}
+      let currentRequiredMissing:string[]=[];
+      if(typeof payload.candidateContextFingerprint==='string'){try{await assertRankingRefreshAuthority(db,ownerId,payload.rankingRefreshAuthority);const context=await buildMatchContext(db,ownerId,candidateId,jobId);currentRequiredMissing=context.payload.requiredMissingEvidence;if(!context.processingConsent||context.candidateFingerprint!==payload.candidateContextFingerprint)throw new NonRetryableJobError('Candidate evidence or processing consent changed. Queue a fresh score.');}catch(e){if(e instanceof TRPCError)throw new NonRetryableJobError(e.message);throw e;}}
       const priorMatch=(await db.select().from(matches).where(and(eq(matches.ownerId,ownerId),eq(matches.candidateId,candidateId),eq(matches.jobId,jobId))).limit(1))[0];
       if(priorMatch&&['closed','withdrawn'].includes(priorMatch.status))throw new NonRetryableJobError('Closed or withdrawn matching work cannot be reopened by an AI result.');
       const matchId = payload.matchId ? String(payload.matchId) : createId("mat_");
       const requiredMissing=Array.isArray(payload.requiredMissingEvidence)?payload.requiredMissingEvidence.filter((v):v is string=>typeof v==="string"&&v.length>0&&v.length<=500).slice(0,12):[];
-      const missingEvidence=[...new Set([...(matchScore.missingEvidence??[]),...requiredMissing,...(typeof payload.requirementFingerprint==='string'?[]:['Requirement version binding is missing; review this legacy score before use.']),...(typeof payload.candidateContextFingerprint==='string'?[]:['Candidate evidence version binding is missing; review this legacy score before use.'])])];
+      const missingEvidence=[...new Set([...(matchScore.missingEvidence??[]),...requiredMissing,...currentRequiredMissing,...(typeof payload.requirementFingerprint==='string'?[]:['Requirement version binding is missing; review this legacy score before use.']),...(typeof payload.candidateContextFingerprint==='string'?[]:['Candidate evidence version binding is missing; review this legacy score before use.'])])];
       const lowConf = Boolean(matchScore.lowConfidence) || (matchScore.confidence ?? 0) < 70 || Boolean(missingEvidence.length);
       await db
         .insert(matches)
@@ -436,7 +441,7 @@ export async function processOneQueuedJob(ownerId: number) {
       const scanResult = await scanCandidateDocument(payload.documentId, ownerId);
       if (scanResult.clean) {
         const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, payload.documentId), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];
-        if (doc?.documentType === "cv" && doc.parseState === "queued") await db.insert(automationQueue).values({ id: createId("que_"), ownerId, jobType: "parse_cv", status: "queued", attempts: 0, maxAttempts: 3, priority: 10, scheduledAt: new Date(Math.floor(Date.now() / 1000) * 1000), payload: { documentId: doc.id, candidateId: doc.candidateId }, idempotencyKey: `parse_cv:${doc.id}` }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
+        if (doc?.documentType === "cv" && doc.parseState === "queued" && !(doc.provenance as any)?.supersededBy) await db.insert(automationQueue).values({ id: createId("que_"), ownerId, jobType: "parse_cv", status: "queued", attempts: 0, maxAttempts: 3, priority: 10, scheduledAt: new Date(Math.floor(Date.now() / 1000) * 1000), payload: { documentId: doc.id, candidateId: doc.candidateId }, idempotencyKey: `parse_cv:${doc.id}` }).onDuplicateKeyUpdate({ set: { updatedAt: new Date() } });
       }
       await db.update(automationQueue).set({ status: "completed", result: scanResult, completedAt: new Date(), lockToken: null, lockedAt: null, lastError: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
       await recordAudit({ ownerId, actorType: "system", action: "automation.completed", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: "completed", metadata: { taskType: "scan_document", scanStatus: scanResult.status, findings: scanResult.findings } });
@@ -455,7 +460,7 @@ export async function processOneQueuedJob(ownerId: number) {
   if (job.jobType === "parse_cv" && (job.payload as Record<string, unknown>)?.documentId) {
     const documentId = String((job.payload as Record<string, unknown>).documentId);
     const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, documentId), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];
-    if (!doc || doc.scanState !== "clean") {
+    if (!doc || doc.scanState !== "clean" || (doc.provenance as any)?.supersededBy || doc.parseState==='superseded') {
       await db.update(automationQueue).set({ status: "blocked", lastError: "CV parsing blocked: document was flagged by security scan.", lockToken: null, lockedAt: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
       await recordAudit({ ownerId, actorType: "system", action: "automation.blocked", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: "blocked", metadata: { taskType: "parse_cv", reason: "document_flagged" } });
       return { status: "blocked" as const, jobId: job.id };
@@ -480,7 +485,8 @@ export async function processOneQueuedJob(ownerId: number) {
       const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, String(aiInput.documentId)), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];
       const candidate = doc ? (await db.select().from(candidates).where(and(eq(candidates.id, doc.candidateId), eq(candidates.ownerId, ownerId))).limit(1))[0] : null;
       if (!doc || !candidate || candidate.deletedAt || candidate.withdrawnAt || ["deleted", "deletion_pending", "withdrawn"].includes(candidate.profileState)) throw new NonRetryableJobError("CV parsing blocked for an ineligible candidate.");
-      aiInput = { candidateId: doc.candidateId, documentId: doc.id, cvText: await extractDocumentText(await readPrivateDocument(doc.storageKey), doc.mimeType) };
+      if(!await hasGeneralCandidateProcessingConsent(db,ownerId,doc.candidateId))throw new NonRetryableJobError('Current general candidate processing consent is required for CV AI extraction.');
+      aiInput = { candidateId: doc.candidateId, documentId: doc.id, cvText: await extractDocumentText(await readPrivateDocument(doc.storageKey), doc.mimeType,{strictDocx:true,maxPdfPages:100,rejectOverflow:true,maxChars:12000}) };
     }
     const response = await runControlledAiTask({
       taskType: job.jobType as AiTaskType,
@@ -516,6 +522,8 @@ export async function processOneQueuedJob(ownerId: number) {
         : "permanently_failed";
     const nextRun = isRetryable ? new Date(Date.now() + calculateBackoff(job.attempts + 1)) : now;
     const message = error instanceof Error ? error.message : "Unknown automation error.";
+    if(job.jobType==='parse_cv'&&job.payload?.documentId){await withWorkspaceTransaction(ownerId,async tx=>{const doc=(await tx.select().from(candidateDocuments).where(and(eq(candidateDocuments.ownerId,ownerId),eq(candidateDocuments.id,String(job.payload.documentId)))).limit(1))[0];const c=doc?(await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.ownerId,ownerId),eq(candidates.id,doc.candidateId))).limit(1)))[0]:null;if(doc&&c&&!candidateSuppressed(c)&&doc.scanState==='clean'&&!(doc.provenance as any)?.supersededBy&&doc.parseState!=='redacted'){await tx.update(candidateDocuments).set({parseState:'failed',provenance:{...(doc.provenance as any??{}),lastParseError:message.slice(0,500)}}).where(eq(candidateDocuments.id,doc.id));await recordCandidateDocumentChange(tx,ownerId,doc.candidateId,{documentId:doc.id,reason:'Document parsing failed'});}});}
+
     await db.insert(aiUsage).values({ id: usageId, ownerId, routeId: route?.id ?? null, queueJobId: job.id, taskType: job.jobType, requestedModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite", status: nextStatus, errorCode: error instanceof OpenRouterValidationError ? "invalid_output" : isConfig ? "configuration" : "provider" }).onDuplicateKeyUpdate({ set: { status: nextStatus, errorCode: "result_application_failed" } });
     await db.update(automationQueue).set({ status: nextStatus, scheduledAt: nextRun, lastError: message.slice(0, 4000), lockToken: null, lockedAt: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
     await recordAudit({ ownerId, actorType: "system", action: "automation.failed", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: nextStatus, metadata: { taskType: job.jobType, error: message } });
