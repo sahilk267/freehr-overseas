@@ -46,3 +46,8 @@ W6,M15,Employer-weighted source-bound evidence intervals,verified_local_sql_and_
 W6,M14,Document supersession and visible same-task parsing recovery,verified_local_sql_and_combined_live,qa/2026-11-07-candidate-screening-scorecards.md,OCR and page-span provenance and broad parser acceptance
 W6,M07,Candidate review links through shared approval outbox,verified_local_sql_preparation_no_live_send,qa/2026-11-07-candidate-screening-scorecards.md,Real recipient delivery acceptance and broader channels
 W6,M25,Full non-complete package remaining register,verified_local_sql_and_combined_live,qa/2026-11-07-candidate-screening-scorecards.md,Complete external and module acceptance
+W6,M16,Source-bound targeted clarification and immutable response history,implemented_acceptance_in_progress,qa/2026-11-07-screening-clarification-followups.md,Voice and independent assessment and full downstream round orchestration
+W6,M16,Owner evidence-review completion separate from profile adoption,implemented_acceptance_in_progress,qa/2026-11-07-screening-clarification-followups.md,Authenticated identity and full downstream disposition acceptance
+W6,M06,Screening reminders through canonical follow-up and outbox,implemented_acceptance_in_progress,qa/2026-11-07-screening-clarification-followups.md,Genuine recipient delivery and preference-based cadence
+W6,M05,Private review expiry and 24-hour owner review deadline tasks,implemented_acceptance_in_progress,qa/2026-11-07-screening-clarification-followups.md,Elapsed production deadlines and reviewed legacy backfill
+W6,M07,Exact-role permitted candidate email thread reuse,implemented_acceptance_in_progress,qa/2026-11-07-screening-clarification-followups.md,Full external inbox and recipient delivery acceptance

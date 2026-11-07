@@ -1,3 +1,4 @@
+import {candidateReviewFollowupState,reviewEvent} from './candidateReviewState';
 import {hasCandidateCommunicationPermission} from "./communicationPermission";
 import { invoiceCollectionFacts, ACTIVE_COLLECTION_STATES } from "./collectionFacts";
 import { and, desc, eq, inArray } from "drizzle-orm";
@@ -15,7 +16,7 @@ const scenarioIds = FOLLOW_UP_SCENARIOS.map(scenario => scenario[0]) as [string,
 export const followUpInput = z.object({
   scenarioId: z.enum(scenarioIds), objective: z.string().trim().min(3).max(500),
   conversationId: z.string().min(4).optional(), candidateId: z.string().min(4).optional(), contactId: z.string().min(4).optional(),
-  senderIdentityId: z.string().min(4), resourceType: z.enum(["conversation", "interview", "invoice"]).default("conversation"), resourceId: z.string().min(4).optional(),
+  senderIdentityId: z.string().min(4), resourceType: z.enum(["conversation", "interview", "invoice", "candidate_review"]).default("conversation"), resourceId: z.string().min(4).optional(),
   timezone: z.string().min(2).max(64).default("Asia/Kolkata"), businessDaysOnly: z.boolean().default(false),
   startsAt: z.date().optional(), deadlineAt: z.date(), responseWindowMinutes: z.number().int().min(1).max(43200).default(1440),
   steps: z.array(z.object({ delayMinutes: z.number().int().min(0).max(43200), subject: z.string().trim().min(1).max(255), body: z.string().trim().min(8).max(12000) })).min(1).max(6),
@@ -51,7 +52,13 @@ export async function followUpEligibility(tx: any, plan: FollowUpPlan, now = new
     if (!job || ["cancelled", "archived", "filled", "paused"].includes(job.pipelineState)) return { state: "cancelled", reason: "Related job is no longer active." };
   }
   let fingerprint: string;
-  if (plan.resourceType === "interview") {
+  if (plan.resourceType === "candidate_review") {
+    if(!await reviewEvent(tx,plan.ownerId,"candidate.review_link_shared",plan.resourceId))return {state:"blocked",reason:"Record that this private review link was already shared before enrolling screening reminders."};
+    const review=await candidateReviewFollowupState(tx,plan.ownerId,plan.resourceId,now);
+    if(review.state!=="eligible")return review;
+    if(conversation.channel!=="email"||conversation.contactId||conversation.candidateId!==review.candidateId||conversation.jobId!==review.jobId||plan.deadlineAt>review.expiresAt)return {state:"cancelled",reason:"Candidate review recipient, role or deadline changed."};
+    fingerprint=review.fingerprint;
+  } else if (plan.resourceType === "interview") {
     const interview = (await lockedSelect(tx.select().from(interviews).where(and(eq(interviews.id, plan.resourceId), eq(interviews.ownerId, plan.ownerId))).limit(1)))[0];
     if (!interview || interview.candidateId !== conversation.candidateId || interview.jobId !== conversation.jobId) return { state: "cancelled", reason: "Interview relationship is invalid." };
     if (!interview.scheduledAt || interview.scheduledAt <= now || ["cancelled", "closed", "completed", "feedback_pending", "feedback_received", "no_show", "reminder_sent"].includes(interview.status)) return { state: "completed", reason: "Interview reminder is no longer applicable." };
@@ -87,6 +94,7 @@ export async function enrollFollowUp(ownerId: number, raw: z.input<typeof follow
 export async function enrollFollowUpInTransaction(tx: any, ownerId: number, raw: z.input<typeof followUpInput>, actorId?: number) {
   const input = followUpInput.parse(raw);
   if ((input.scenarioId === "FU18" && input.resourceType !== "interview") || (input.resourceType === "interview" && input.scenarioId !== "FU18") || (["FU26", "FU27"].includes(input.scenarioId) && input.resourceType !== "invoice") || (input.resourceType === "invoice" && !["FU26", "FU27"].includes(input.scenarioId))) throw new TRPCError({ code: "BAD_REQUEST", message: "This scenario requires its interview or invoice resource." });
+  if(input.resourceType==="candidate_review"&&!["FU10","FU11","FU13"].includes(input.scenarioId))throw new TRPCError({code:"BAD_REQUEST",message:"Choose a candidate screening follow-up scenario."});
   validateTimezone(input.timezone);
   const startsAt = new Date((input.startsAt ?? new Date()).getTime() + input.steps[0].delayMinutes * 60_000);
   if (input.deadlineAt <= startsAt || input.deadlineAt.getTime() > Date.now() + 366 * 86400000) throw new TRPCError({ code: "BAD_REQUEST", message: "Deadline must follow the start and be within one year." });

@@ -19,5 +19,5 @@ export const FOLLOW_UP_SCENARIOS = [
 
 export type FollowUpScenario = typeof FOLLOW_UP_SCENARIOS[number][0];
 export type FollowUpStep = { delayMinutes: number; subject: string; body: string };
-export type FollowUpResource = "conversation" | "interview" | "invoice";
+export type FollowUpResource = "conversation" | "interview" | "invoice" | "candidate_review";
 export const ACTIVE_FOLLOW_UP_STATES = ["scheduled", "waiting", "approval_pending", "paused", "blocked"] as const;

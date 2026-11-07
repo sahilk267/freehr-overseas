@@ -2,6 +2,10 @@
 
 Updated 7 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
+## Combined batch: screening clarification, shared reminders and owner-review deadlines
+
+[Screening lifecycle report](qa/2026-11-07-screening-clarification-followups.md) records three bounded targeted clarification rounds, immutable response history, review completion without profile adoption, exact-role permitted email-thread reuse, shared FU11/FU13 reminders and durable expiry/24-hour owner-review incidents. Source changes, corrections, pause/emergency stop and unused/uncertain outbox states are guarded. Local and live acceptance is maintained in the report; the complete advanced roadmap remains open.
+
 ## Combined batch: candidate screening, employer scorecards and document replacement
 
 [Connected implementation report](qa/2026-11-07-candidate-screening-scorecards.md) records private self-report forms/corrections, selective canonical profile adoption, one evidence-pending screening case, source-bound employer-weighted intervals, document supersession/visible parsing retry and shared approval-outbox preparation. Scoped consent, stale-source/queued-result guards and privacy redaction cover the new paths. Acceptance: 849 unit tests and all 608 disposable MySQL tests passed, plus types/build/four hosting entry checks/tracker validation. Anonymous mobile correction, selected owner adoption, weighted 48–88 intervals, actual managed parsing on two free models and source replacement/stale-score guards passed on `cd9cd28`; accessible dropdown labels passed on `8f2189b`. All synthetic records/links were closed and the worker remained healthy. Real recipient mail and independent verification remain unverified. The [complete remaining register](REMAINING_IMPLEMENTATION_REGISTER.csv) enumerates all non-complete feature packages; no full advanced module is complete.

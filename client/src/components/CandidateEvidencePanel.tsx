@@ -1,7 +1,7 @@
 import {CandidateReviewPanel} from './CandidateReviewPanel';
 import {DocumentLifecyclePanel} from './DocumentLifecyclePanel';
 import {CandidateJobsPanel} from './CandidateJobsPanel';
-import {useState,type FormEvent} from 'react';
+import {useEffect,useState,type FormEvent} from 'react';
 import {trpc} from '@/lib/trpc';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -35,5 +35,7 @@ function EvidenceForm({id}:{id:string}){
 }
 export function CandidateEvidenceWorkspace({candidates}:{candidates:{id:string;name:string}[]}){
  const [id,setId]=useState('');
- return <section aria-label="Candidate evidence profile" className="space-y-4 rounded-xl border bg-white p-5"><h2 className="font-semibold">Candidate evidence & compensation units</h2><Label htmlFor="evidence-candidate">Candidate for evidence review</Label><select id="evidence-candidate" value={id} onChange={e=>setId(e.target.value)} className="w-full rounded-md border p-2"><option value="">Choose candidate</option>{candidates.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>{id&&<><EvidenceForm key={id} id={id}/><CandidateReviewPanel key={'review-'+id} candidateId={id}/><DocumentLifecyclePanel key={'docs-'+id} candidateId={id}/><CandidateJobsPanel key={'jobs-'+id} candidateId={id}/></>}</section>;
+ const requested=new URLSearchParams(window.location.search).get('review')??'',location=trpc.candidateReviews.locate.useQuery({id:requested||'none'},{enabled:Boolean(requested),retry:false});
+ useEffect(()=>{if(location.data)setId(location.data.candidateId);},[location.data]);
+ return <section id="candidate-evidence" aria-label="Candidate evidence profile" className="space-y-4 rounded-xl border bg-white p-5"><h2 className="font-semibold">Candidate evidence & compensation units</h2><Label htmlFor="evidence-candidate">Candidate for evidence review</Label><select id="evidence-candidate" value={id} onChange={e=>setId(e.target.value)} className="w-full rounded-md border p-2"><option value="">Choose candidate</option>{id&&!candidates.some(c=>c.id===id)&&<option value={id}>Candidate for selected review</option>}{candidates.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>{location.error&&<p role="alert">{location.error.message}</p>}{id&&<><EvidenceForm key={id} id={id}/><CandidateReviewPanel key={'review-'+id} candidateId={id}/><DocumentLifecyclePanel key={'docs-'+id} candidateId={id}/><CandidateJobsPanel key={'jobs-'+id} candidateId={id}/></>}</section>;
 }

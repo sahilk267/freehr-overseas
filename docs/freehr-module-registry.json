@@ -276,21 +276,22 @@
           "id": "M06-F01",
           "description": "One engine for prospect, proposal, consent, candidate response, screening, client feedback, interview, offer, joining, guarantee and collection follow-ups.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
+          "implementation_note": "Screening/clarification reminders now bind the canonical private candidate review to the existing follow-up engine, sender gateway and queue. Reminder content refers to a previously shared link; actual sharing is an explicit unverified owner statement. Full scenario-specific outcome acceptance remains open."
         },
         {
           "id": "M06-F02",
           "description": "Event/condition-based enrollment with timezone, business-day calendar, holidays, quiet hours, relevance window, deadline and maximum attempts.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "W3 adds owner-opted-in overdue invoice and missed-promise source adapters in review mode; most lifecycle adapters, pre-due reminders and regional holidays remain open."
+          "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
+          "implementation_note": "New candidate reviews enqueue expiry and response-version-bound 24-hour owner-review deadlines in the existing physical queue. Timers respect managed pause/emergency stop, distinguish missing response from owner backlog, and never send contact messages. Legacy requests created before this increment are not backfilled; broad holiday/outcome gates remain open."
         },
         {
           "id": "M06-F03",
           "description": "Stop/pause/replan on reply, opt-out, bounce, withdrawal, accepted offer, paid invoice, role closure, reschedule, manual ownership or changed evidence.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "W2 refreshed replan evidence and blocked unresolved-attempt bypass. W3 adds invoice-wide holds, pending financial-review freezes, open promises, reply review and receipt-driven invalidation."
+          "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
+          "implementation_note": "Candidate response/revocation/clarification/completion stops resource-bound reminders and unused mail authority. Current source, exact role/thread, communication permission, recipient and expiry are rechecked before preparation and send. Attempted/uncertain dispatches remain available for reconciliation. Broader scenario acceptance remains open."
         },
         {
           "id": "M06-F04",
@@ -313,8 +314,8 @@
           "id": "M06-F07",
           "description": "Exactly one active logical follow-up per purpose/recipient/resource/version/step; retries preserve its identity; uncertain delivery enters reconciliation.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "W3 prevents competing active invoice sequences across FU26/FU27, recipient changes and W2 edits; unresolved historic dispatches remain blocking."
+          "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
+          "implementation_note": "Candidate screening reminders reuse version-bound follow-up enrollment, outbox/dispatch identities and bounded grants. Targeted clarification commands yield one child per parent response and exact retries do not disclose the secret again. Cross-account collision arbitration and full delivery acceptance remain open."
         },
         {
           "id": "M06-F08",
@@ -852,8 +853,8 @@
           "id": "M16-F01",
           "description": "Candidate-facing structured chat/forms and optional authorized voice; job-specific adaptive questions and missing-evidence follow-up.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md",
-          "implementation_note": "Structured candidate form questions derive from current employer criteria and missing mandatory skills. Five source-bound response/correction versions, expiry/revocation and latest-response review are implemented. Voice, conversational branching and complete follow-up automation remain open."
+          "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
+          "implementation_note": "Private typed forms support bounded targeted clarification on selected existing questions, immutable parent-response binding and at most three follow-on rounds. Expiry and response correction fence older work. Voice, richer conversational branching and independently verified accessible assessments remain open."
         },
         {
           "id": "M16-F02",
@@ -873,13 +874,15 @@
           "id": "M16-F04",
           "description": "Multiple screening rounds under one candidacy; case history preserves unique constraints without duplicate-row collisions.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
+          "implementation_note": "Owner-only version history and linked clarification rounds retain immutable answers under the same candidate/job screening case. Review completion can close evidence collection without adopting profile facts or changing a final screening/hiring disposition. Full downstream round orchestration remains open."
         },
         {
           "id": "M16-F05",
           "description": "Separate evidence score, recruiter recommendation, owner authorization and client's final hiring disposition.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
+          "implementation_note": "Owner evidence-review completion, profile adoption, weighted judgments and final disposition remain distinct. A reviewed questionnaire never marks identity verified or screening passed. Owner can review source-current expired responses; changed sources block completion. Full governed downstream acceptance remains open."
         },
         {
           "id": "M16-F06",

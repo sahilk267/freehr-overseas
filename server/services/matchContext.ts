@@ -21,7 +21,7 @@ export async function buildMatchContext(tx:any,ownerId:number,candidateId:string
  const processingConsent=grants.some((c:any)=>['platform_processing','recruitment_communication'].includes(c.consentType)&&(!c.jobId||c.jobId===jobId)&&(!c.companyId||c.companyId===job.companyId)&&(!c.expiresAt||new Date(c.expiresAt)>new Date()));
  const reviewActivity=await candidateReviewActivity(tx,ownerId,candidateId,jobId);
  const f=d.fresh?d.fields:null,intake=job.intake as any??{},missing:string[]=[],conflicts:string[]=[];
- if(reviewActivity?.metadata.status==='submitted')missing.push('Current candidate questionnaire response awaits owner review and adoption.');
+ if(['submitted','clarification_pending'].includes(reviewActivity?.metadata.status))missing.push('Current candidate questionnaire response or clarification awaits owner evidence review.');
  const closedPair=Boolean(previousMatch&&['closed','withdrawn'].includes(previousMatch.status));if(closedPair)conflicts.push('This candidate-job match is closed or withdrawn; automated rescoring cannot reopen it.');
  const clean=d.documents.filter((x:any)=>x.scanState==='clean'&&x.parseState==='parsed'&&!x.supersededBy&&x.parsedData);
  const parsedSkills=clean.flatMap((x:any)=>Array.isArray(x.parsedData.skills)?x.parsedData.skills.filter((s:any)=>typeof s==='string'):[]);
