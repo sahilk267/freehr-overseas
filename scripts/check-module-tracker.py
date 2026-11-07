@@ -34,6 +34,25 @@ for row in rows:
         errors.append('Registry/backlog mismatch: ' + key)
 for key in features.keys() - seen:
     errors.append('Missing backlog package: ' + key)
+# The comprehensive remaining register must cover every unfinished package once.
+remaining = list(csv.DictReader((root / 'docs/REMAINING_IMPLEMENTATION_REGISTER.csv').open()))
+remaining_seen = set()
+expected_remaining = {key for key, (_, feature) in features.items() if feature['status'] != 'complete'}
+for row in remaining:
+    key = row['package_id']
+    if key in remaining_seen:
+        errors.append('Duplicate remaining package: ' + key)
+    remaining_seen.add(key)
+    if key not in expected_remaining:
+        errors.append('Unknown or complete remaining package: ' + key)
+        continue
+    module_id, feature = features[key]
+    if (row['module_id'], row['status'], row['planned_scope'], row['evidence_ref']) != (module_id, feature['status'], feature['description'], feature.get('evidence_ref', '')):
+        errors.append('Registry/remaining register mismatch: ' + key)
+    if not row['full_module_acceptance_gate'].strip():
+        errors.append('Missing remaining acceptance gate: ' + key)
+for key in expected_remaining - remaining_seen:
+    errors.append('Missing remaining package: ' + key)
 if errors:
     raise SystemExit('\n'.join(errors))
-print(f'PASS: {len(modules)} modules, {len(features)} unique feature packages, matching backlog statuses and existing evidence links.')
+print(f'PASS: {len(modules)} modules, {len(features)} unique feature packages, matching backlog/remaining statuses and existing evidence links.')

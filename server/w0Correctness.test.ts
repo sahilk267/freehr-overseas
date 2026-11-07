@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { SignJWT } from "jose";
 import { appRouter } from "./routers";
 import { createId, ensureWorkspace, requireDb } from "./db";
-import { approvals, automationQueue, candidateDocuments, conversations, emailIdentities, invoices, payments, screenings, shortlists, users, aiUsage, candidates, workspaceSettings, messages } from "../drizzle/schema";
+import { approvals, automationQueue, candidateDocuments, conversations, emailIdentities, invoices, payments, consents, screenings, shortlists, users, aiUsage, candidates, workspaceSettings, messages } from "../drizzle/schema";
 import { buildFastifyServer } from "./hostinger";
 import { createCalendarSubscriptionToken } from "./services/calendarFeed";
 import { createInterviewIcs } from "./services/calendar";
@@ -131,6 +131,22 @@ describe("W0 correctness regressions (also executable against disposable MySQL)"
     expect((await db.select().from(candidateDocuments).where(eq(candidateDocuments.id, uploaded.id)))[0]).toMatchObject({ scanState: "clean", parseState: "parsed" });
     const second = await caller.recruitment.candidates.documents.upload({ candidateId: candidate.id, originalName: "cv.txt", mimeType: "text/plain", documentType: "other", dataBase64: Buffer.from("A different immutable document.").toString("base64") });
     expect(second.storageUrl).not.toBe(uploaded.storageUrl);
+  });
+
+  it("blocks CV inference before sending text when processing consent is revoked or the candidate is suppressed", async () => {
+    for (const guard of ["consent", "suppression"]) {
+      await db.update(automationQueue).set({status:"cancelled"}).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.status,"queued")));
+      const {candidate}=await fixture();
+      await caller.recruitment.candidates.grantConsent({candidateId:candidate.id,consentType:"platform_processing",noticeVersion:"synthetic-preflight-cv-guard"});
+      const uploaded=await caller.recruitment.candidates.documents.upload({candidateId:candidate.id,originalName:"guard-cv.txt",mimeType:"text/plain",documentType:"cv",dataBase64:Buffer.from("Synthetic TypeScript CV; no inference allowed after permission changes.").toString("base64")});
+      await processOneQueuedJob(ownerId);
+      if(guard==="consent") await db.update(consents).set({status:"withdrawn"}).where(eq(consents.candidateId,candidate.id));
+      else await db.update(candidates).set({doNotContactAt:new Date(),profileState:"do_not_contact"}).where(eq(candidates.id,candidate.id));
+      infer.mockClear();
+      expect(await processOneQueuedJob(ownerId)).toMatchObject({status:"permanently_failed"});
+      expect(infer).not.toHaveBeenCalled();
+      expect((await db.select().from(candidateDocuments).where(eq(candidateDocuments.id,uploaded.id)))[0].parseState).not.toBe("parsed");
+    }
   });
 
   it("passes requirements and clean parsed CV evidence into queued scoring", async () => {

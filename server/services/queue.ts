@@ -484,7 +484,7 @@ export async function processOneQueuedJob(ownerId: number) {
     if (job.jobType === "parse_cv" && aiInput.documentId) {
       const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, String(aiInput.documentId)), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];
       const candidate = doc ? (await db.select().from(candidates).where(and(eq(candidates.id, doc.candidateId), eq(candidates.ownerId, ownerId))).limit(1))[0] : null;
-      if (!doc || !candidate || candidate.deletedAt || candidate.withdrawnAt || ["deleted", "deletion_pending", "withdrawn"].includes(candidate.profileState)) throw new NonRetryableJobError("CV parsing blocked for an ineligible candidate.");
+      if (!doc || !candidate || candidateSuppressed(candidate)) throw new NonRetryableJobError("CV parsing blocked for an ineligible candidate.");
       if(!await hasGeneralCandidateProcessingConsent(db,ownerId,doc.candidateId))throw new NonRetryableJobError('Current general candidate processing consent is required for CV AI extraction.');
       aiInput = { candidateId: doc.candidateId, documentId: doc.id, cvText: await extractDocumentText(await readPrivateDocument(doc.storageKey), doc.mimeType,{strictDocx:true,maxPdfPages:100,rejectOverflow:true,maxChars:12000}) };
     }

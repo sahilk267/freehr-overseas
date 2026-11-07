@@ -1,0 +1,136 @@
+{
+  "date": "2026-11-07",
+  "target": "https://freelancehr.overseasjob.in",
+  "implementationCommit": "cd9cd28313b827c93781e2067319e715b1f6af35",
+  "accessibilityCommit": "8f2189b4eeca4bdbe2bc79c91f5c3f830d73b21b",
+  "local": {
+    "unitPassed": 849,
+    "unitSkipped": 78,
+    "mysqlPassed": 608,
+    "mysqlFiles": 33,
+    "focusedPassed": 24,
+    "focusedSqlSkipped": 4,
+    "typecheck": true,
+    "productionBuild": true,
+    "hostingEntrySmokes": 4,
+    "trackerConsistency": true
+  },
+  "live": {
+    "browser": {
+      "checkedAt": "2026-11-07T14:50:04.989Z",
+      "tests": [
+        {
+          "name": "desktop owner creates one private role-bound candidate request in canonical workspace",
+          "status": "PASS"
+        },
+        {
+          "name": "anonymous mobile candidate supplies typed facts, explicit role-only notice and source-versioned correction with capability removed from URL",
+          "status": "PASS"
+        },
+        {
+          "name": "two candidate responses do not automatically edit owner profile",
+          "status": "PASS"
+        },
+        {
+          "name": "desktop selected adoption creates one canonical self-report evidence revision without verified-identity claim",
+          "status": "PASS"
+        },
+        {
+          "name": "owner employer rubric uses 60% assessed weight and 48\u201388 interval, preserving unknown required criteria on desktop/mobile",
+          "status": "PASS"
+        }
+      ],
+      "recipientMailSent": false,
+      "runtimeErrors": 0
+    },
+    "api": {
+      "checkedAt": "2026-11-07T14:51:07.603Z",
+      "tests": [
+        {
+          "name": "anonymous owner-only questionnaire, adoption, source retry and employer scorecard routes rejected",
+          "status": "PASS"
+        },
+        {
+          "name": "public response forbids authority fields, projects no private IDs and fails after revocation/wrong token",
+          "status": "PASS"
+        },
+        {
+          "name": "employer assessment rejects a quote absent from its selected source",
+          "status": "PASS"
+        }
+      ],
+      "recipientMailSent": false
+    },
+    "provider": {
+      "startedAt": "2026-11-07T14:50:51.185Z",
+      "syntheticOnly": true,
+      "recipientMailSent": false,
+      "uploadedDocuments": 2,
+      "immutableIdsDistinct": true,
+      "actualManagedScanningAndParsing": true,
+      "taskOutcomes": [
+        {
+          "type": "parse_cv",
+          "status": "completed",
+          "attempts": 1,
+          "selectedModel": null
+        },
+        {
+          "type": "parse_cv",
+          "status": "completed",
+          "attempts": 1,
+          "selectedModel": null
+        },
+        {
+          "type": "scan_document",
+          "status": "completed",
+          "attempts": 1,
+          "selectedModel": null
+        },
+        {
+          "type": "scan_document",
+          "status": "completed",
+          "attempts": 1,
+          "selectedModel": null
+        }
+      ],
+      "ownerReplacementUi": true,
+      "historicalObjectRetained": true,
+      "assessmentStaleAfterReplacement": true,
+      "supersededSourceRetryRejected": true,
+      "runtimeErrors": 0,
+      "providerModels": [
+        "nvidia/nemotron-3.5-super-vl:free",
+        "cohere/north-mini-code:free"
+      ]
+    },
+    "accessibleNames": {
+      "checkedAt": "2026-11-07T14:53:33.869Z",
+      "tests": [
+        {
+          "name": "explicit accessible names identify candidate pay-period and owner criterion/source dropdowns on deployed build",
+          "status": "PASS"
+        }
+      ],
+      "buildCommit": "8f2189b4eeca4bdbe2bc79c91f5c3f830d73b21b",
+      "runtimeErrors": 0
+    },
+    "cleanup": {
+      "checkedAt": "2026-11-07T14:54:06.319Z",
+      "syntheticOnly": true,
+      "recipientMailSent": false,
+      "revokedRequests": 4,
+      "linksRevoked": true,
+      "candidateWithdrawn": true,
+      "jobCancelled": true,
+      "companySuppressed": true,
+      "worker": {
+        "enabled": true,
+        "persistentDatabase": true,
+        "heartbeatRecent": true,
+        "emergencyStop": false,
+        "lastError": null
+      }
+    }
+  }
+}
