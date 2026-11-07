@@ -1,0 +1,107 @@
+{
+  "target": "https://freelancehr.overseasjob.in",
+  "checkedAt": "2026-11-07T13:36:45.814Z",
+  "implementationCommit": "026083363d3230e3115d6d8edc82a15f67f3ab64",
+  "syntheticOnly": true,
+  "recipientMailSent": false,
+  "manualWorkerRun": false,
+  "coverageLimits": {
+    "globalOwnedProfiles": 1000,
+    "candidateOpenJobs": 500,
+    "liveFixtureProfiles": 3,
+    "liveOpenJobs": 2,
+    "liveRefreshCycles": 1,
+    "elapsedLaterCycles": "SQL and synthetic-clock regression coverage; not exercised over a production interval",
+    "sourceTruth": "Owner statements and advisory scores are not independently verified evidence or final hiring decisions."
+  },
+  "localValidation": {
+    "unitPassed": 824,
+    "unitSkipped": 74,
+    "mysqlPassed": 579,
+    "mysqlFiles": 30,
+    "focusedPassed": 23,
+    "focusedSqlSkipped": 2,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingerEntryChecks": 4,
+    "moduleTracker": "PASS"
+  },
+  "desktop": {
+    "checkedAt": "2026-11-07T13:34:16.172Z",
+    "tests": [
+      {
+        "name": "desktop global mode inspects full filtered pool before display pagination, excludes suppression and reuses one full dataset snapshot across pages",
+        "status": "PASS"
+      },
+      {
+        "name": "candidate-to-many-job UI ranks all matching open roles before pagination and saves a historical snapshot without AI or progression",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "runtimeErrors": 0
+  },
+  "mobile": {
+    "checkedAt": "2026-11-07T13:35:22.087Z",
+    "tests": [
+      {
+        "name": "mobile owner authority binds filtered global refresh to one run and one optional AI task without layout overflow",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "runtimeErrors": 0
+  },
+  "provider": {
+    "checkedAt": "2026-11-07T13:35:56.844Z",
+    "tests": [
+      {
+        "name": "managed global refresh reuses the full snapshot, mints exactly one authority-bound free-model score and stops at the one-run limit",
+        "status": "PASS"
+      },
+      {
+        "name": "the final issued task finishes within its unrevoked grant and manual scoring reuses its canonical identity without progression",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false,
+    "manualWorkerRun": false,
+    "model": "nvidia/nemotron-3.5-super-vl:free",
+    "matchStatus": "evidence_validated",
+    "refreshRuns": 1,
+    "newAiTasks": 1,
+    "snapshotReused": true,
+    "buildCommit": "026083363d3230e3115d6d8edc82a15f67f3ab64"
+  },
+  "api": {
+    "checkedAt": "2026-11-07T13:36:21.038Z",
+    "tests": [
+      {
+        "name": "four new ranking/refresh APIs reject anonymous access and plan-disable retries retain historical run evidence",
+        "status": "PASS"
+      },
+      {
+        "name": "stale plan revisions and changed job-ranking snapshots cannot authorize fresh actions; no later cycle remains scheduled",
+        "status": "PASS"
+      }
+    ],
+    "recipientMailSent": false
+  },
+  "cleanup": {
+    "checkedAt": "2026-11-07T13:36:45.814Z",
+    "syntheticOnly": true,
+    "recipientMailSent": false,
+    "allJobsCancelled": true,
+    "companySuppressed": true,
+    "allCandidatesSuppressedOrWithdrawn": true,
+    "authorityRevoked": true,
+    "historicalRuns": 1,
+    "worker": {
+      "enabled": true,
+      "persistentDatabase": true,
+      "heartbeatRecent": true,
+      "emergencyStop": false,
+      "lastError": null
+    }
+  }
+}

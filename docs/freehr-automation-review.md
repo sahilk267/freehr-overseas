@@ -4,7 +4,7 @@
 
 The [global ranking and refresh report](qa/2026-11-07-global-ranking-refresh.md) extends the [candidate-evidence/matching foundation](qa/2026-11-07-candidate-evidence-ranked-pool.md) with supported global ordering before display pagination, candidate-to-many-job ranking and bounded owner-authorized refresh. `candidateJobRanking.ts` and `rankingRefresh.ts` use the existing context, canonical score command, workflow ledger and physical worker queue. One deterministic `rank_refresh` task adds no second timer, sender or decision engine. Manual stopped-task recovery preserves identity, and delegated revocation is checked before inference and result application. No candidate/job FSM state or automatic final rejection is introduced.
 
-Current validation, supported bounds and open gates are recorded in the linked report. Employer-weighted scorecards, scalable external retrieval, candidate self-service and the remaining advanced roadmap stay open; no module is complete.
+Acceptance: 824 unit tests, 579 MySQL tests, types/build/four hosting entry checks and combined desktop/mobile/first managed refresh/free-provider checks passed. Live implementation commit: `0260833`. Synthetic records were closed and authority revoked. Supported bounds, historical evidence and elapsed-cycle coverage limits are in the linked report. Employer-weighted scorecards, scalable external retrieval, candidate self-service and the remaining advanced roadmap stay open; no module is complete.
 
 The dated audit/design counts below remain historical baseline evidence; current status is maintained in the module registry, implementation backlog, phase tracker and linked acceptance report.
 
