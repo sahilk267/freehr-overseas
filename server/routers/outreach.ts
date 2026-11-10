@@ -1,3 +1,5 @@
+import {amendAgreement,withdrawAgreementDraft,createAgreement,agreementHistory,getAgreement,reviseAgreement,agreementReviseInput,bindAgreementToJob,jobCommercialOptions,recordAgreementAcceptance} from '../services/commercialAgreements';
+import {agreementTermsSchema} from '../../shared/commercialAgreement';
 import { cancelReplyEmail, prepareReplyEmail } from "../services/replyMail";
 import { completeReplyAction, clientReplyCase, receiveReply, recordReplyAction, REPLY_ACTIONS } from "../services/replyTriage";
 import {redactAvailabilityLinks} from "../services/privateLinkRedaction";
@@ -45,29 +47,19 @@ export const outreachRouter = router({
   }),
 });
 
+const agreementDraftFlatInput=z.object({companyId:z.string().min(4),requestKey:z.string().min(8).max(100).optional(),feeType:z.enum(['percentage','fixed']),feeValue:z.string(),currency:z.string().default('INR'),guaranteeDays:z.number().default(90),paymentTermsDays:z.number().default(30),ownershipDays:z.number().default(180),termsText:z.string(),taxRateBasisPoints:z.number().default(0)}).superRefine((v,ctx)=>{const {companyId,requestKey,...terms}=v;const r=agreementTermsSchema.safeParse(terms);if(!r.success)for(const issue of r.error.issues)ctx.addIssue({...issue,path:issue.path} as any);});
 export const agreementsRouter = router({
   list: protectedProcedure.input(z.object({ limit: z.number().int().min(1).max(100).default(50) }).default({ limit: 50 })).query(async ({ ctx, input }) => {
     const db = await requireDb();
     return db.select().from(feeProposals).where(eq(feeProposals.ownerId, ctx.user.id)).orderBy(desc(feeProposals.updatedAt)).limit(input.limit);
   }),
-  draft: protectedProcedure.input(z.object({ companyId: z.string().min(4), feeType: z.enum(["percentage", "fixed"]), feeValue: z.string().trim().min(1).max(32), currency: z.string().trim().min(3).max(8).default("INR"), guaranteeDays: z.number().int().min(0).max(365).default(DEFAULT_GUARANTEE_DAYS), paymentTermsDays: z.number().int().min(1).max(180).default(30), ownershipDays: z.number().int().min(1).max(730).default(180), termsText: z.string().trim().min(50).max(12000) })).mutation(async ({ ctx, input }) => {
-    const fee = Number(input.feeValue);
-    if (!/^\d+(?:\.\d+)?$/.test(input.feeValue) || !Number.isFinite(fee) || fee <= 0 || (input.feeType === "percentage" && fee > 100)) throw new TRPCError({ code: "BAD_REQUEST", message: "Enter a positive fee; a percentage fee cannot exceed 100%." });
-    const db = await requireDb();
-    const company = (await db.select().from(companies).where(and(eq(companies.id, input.companyId), eq(companies.ownerId, ctx.user.id))).limit(1))[0];
-    if (!company) throw new TRPCError({ code: "NOT_FOUND", message: "Company was not found." });
-    const id = createId("fee_");
-    await db.insert(feeProposals).values({ id, ownerId: ctx.user.id, companyId: input.companyId, feeType: input.feeType, feeValue: input.feeValue, currency: input.currency, guaranteeDays: input.guaranteeDays, paymentTermsDays: input.paymentTermsDays, ownershipDays: input.ownershipDays, termsText: input.termsText, state: "draft" });
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "agreement.drafted", resourceType: "fee_proposal", resourceId: id, nextState: "draft" });
-    return { id };
-  }),
-  recordAcceptance: protectedProcedure.input(z.object({ proposalId: z.string().min(4), acceptedBy: z.string().email(), acceptanceEvidence: z.string().trim().min(10).max(2000) })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
-    const proposal = (await db.select().from(feeProposals).where(and(eq(feeProposals.id, input.proposalId), eq(feeProposals.ownerId, ctx.user.id))).limit(1))[0];
-    if (!proposal) throw new TRPCError({ code: "NOT_FOUND", message: "Fee proposal was not found." });
-    await db.update(feeProposals).set({ state: "accepted", acceptedAt: new Date(), acceptedBy: input.acceptedBy }).where(eq(feeProposals.id, proposal.id));
-    await db.update(companies).set({ pipelineState: "converted" }).where(and(eq(companies.id, proposal.companyId), eq(companies.ownerId, ctx.user.id)));
-    await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "agreement.acceptance_recorded", resourceType: "fee_proposal", resourceId: proposal.id, previousState: proposal.state, nextState: "accepted", metadata: { acceptedBy: input.acceptedBy, acceptanceEvidence: input.acceptanceEvidence } });
-    return { success: true };
-  }),
+  amend:protectedProcedure.input(z.object({id:z.string().min(4).max(36),expectedTermsHash:z.string().length(64),requestKey:z.string().min(8).max(100),reason:z.string().trim().min(8).max(2000)})).mutation(({ctx,input})=>amendAgreement(ctx.user.id,ctx.actor.id,input)),
+  withdrawDraft:protectedProcedure.input(z.object({id:z.string().min(4).max(36),expectedVersion:z.number().int().positive(),expectedTermsHash:z.string().length(64),reason:z.string().trim().min(8).max(2000)})).mutation(({ctx,input})=>withdrawAgreementDraft(ctx.user.id,ctx.actor.id,input)),
+  detail:protectedProcedure.input(z.object({id:z.string().min(4).max(36)})).query(({ctx,input})=>getAgreement(ctx.user.id,input.id)),
+  history:protectedProcedure.input(z.object({id:z.string().min(4).max(36)})).query(({ctx,input})=>agreementHistory(ctx.user.id,input.id)),
+  revise:protectedProcedure.input(agreementReviseInput).mutation(({ctx,input})=>reviseAgreement(ctx.user.id,ctx.actor.id,input)),
+  jobOptions:protectedProcedure.input(z.object({proposalId:z.string().min(4).max(36)})).query(({ctx,input})=>jobCommercialOptions(ctx.user.id,input.proposalId)),
+  bindJob:protectedProcedure.input(z.object({jobId:z.string().min(4).max(36),proposalId:z.string().min(4).max(36),expectedTermsHash:z.string().length(64),expectedJobFingerprint:z.string().length(64),reason:z.string().trim().min(8).max(2000)})).mutation(({ctx,input})=>bindAgreementToJob(ctx.user.id,ctx.actor.id,input)),
+  draft:protectedProcedure.input(agreementDraftFlatInput).mutation(({ctx,input})=>{const {companyId,requestKey,...terms}=input;return createAgreement(ctx.user.id,ctx.actor.id,{companyId,requestKey,terms});}),
+  recordAcceptance:protectedProcedure.input(z.object({proposalId:z.string().min(4),acceptedBy:z.string().email(),acceptanceEvidence:z.string().trim().min(10).max(2000),expectedVersion:z.number().int().positive().optional(),expectedTermsHash:z.string().length(64).optional()})).mutation(({ctx,input})=>recordAgreementAcceptance(ctx.user.id,ctx.actor.id,input)),
 });

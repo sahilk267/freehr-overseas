@@ -353,6 +353,7 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
       it("valid draft invoice moves to approval_pending, and approved decision sets status to issued", async () => {
         const db = await requireDb();
         const invoiceId = createId("inv_iss_1_");
+        await db.insert(placements).values({id:'plc_inv',ownerId,companyId:'cmp_inv',jobId:'job_inv',candidateId:'can_inv',status:'invoice_eligible'}).onDuplicateKeyUpdate({set:{ownerId}});
         await db.insert(invoices).values({
           id: invoiceId,
           ownerId,

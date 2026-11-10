@@ -1,3 +1,5 @@
+import {invoiceDraftLifecycle,cancelInvoiceDraft} from '../services/invoiceDraftLifecycle';
+import {bindPlacementCommercial,placementBindingInput,placementCommercialRead,draftContractInvoice,contractInvoiceInput,commercialContext,commercialGuaranteeDates,checkCommercialInvoice} from '../services/commercialObligations';
 import {weightedScorecardInput} from '../../shared/weightedScorecard';
 import {getWeightedScorecard,saveWeightedScorecard} from '../services/weightedScorecard';
 import {supersedeCandidateDocument,retryCandidateDocumentParsing} from '../services/documentLifecycle';
@@ -796,6 +798,8 @@ export const feedbackRouter = router({
 });
 
 export const placementsRouter = router({
+ commercial:protectedProcedure.input(z.object({id:z.string().min(4).max(36)})).query(({ctx,input})=>placementCommercialRead(ctx.user.id,input.id)),
+ bindCommercial:protectedProcedure.input(placementBindingInput).mutation(({ctx,input})=>bindPlacementCommercial(ctx.user.id,ctx.actor.id,input)),
   list: protectedProcedure.input(paginationInput).query(async ({ ctx, input }) => {
     const db = await requireDb();
     const rows = await db
@@ -1020,6 +1024,7 @@ export const placementsRouter = router({
         .limit(1);
       const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
 
+      const commercial=await commercialContext(db,ctx.user.id,placement);if(commercial.enabled&&(input.annualCompensation!==placement.annualCompensation||input.currency!==placement.currency))throw new TRPCError({code:"PRECONDITION_FAILED",message:"The frozen compensation cannot be changed by the legacy offer command."});
       assertTransition("placement", placement.status, "offer_issued");
 
       const offerIssuedAt = new Date();
@@ -1073,6 +1078,7 @@ export const placementsRouter = router({
       const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
 
       if (input.decision === "accepted") {
+        await commercialContext(db,ctx.user.id,placement);
         assertTransition("placement", placement.status, "offer_accepted");
         const offerAcceptedAt = new Date();
         await db
@@ -1134,6 +1140,7 @@ export const placementsRouter = router({
         .where(eq(placements.id, input.id))
         .limit(1);
       const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
+      if(input.state!=="closed")await commercialContext(db,ctx.user.id,placement);
       assertTransition("placement", placement.status, input.state);
 
       if (
@@ -1169,12 +1176,12 @@ export const placementsRouter = router({
       };
 
       if (input.state === "joining_confirmed") {
-        const { guaranteeStartAt, guaranteeEndAt } = calculateGuaranteeDates(now);
+        const { guaranteeStartAt, guaranteeEndAt } = await commercialGuaranteeDates(db,ctx.user.id,placement,now);
         updateData.joiningConfirmedAt = now;
         updateData.guaranteeStartAt = guaranteeStartAt;
         updateData.guaranteeEndAt = guaranteeEndAt;
       } else if (input.state === "guarantee_active" && !placement.guaranteeStartAt) {
-        const { guaranteeStartAt, guaranteeEndAt } = calculateGuaranteeDates(now);
+        const { guaranteeStartAt, guaranteeEndAt } = await commercialGuaranteeDates(db,ctx.user.id,placement,now);
         updateData.guaranteeStartAt = guaranteeStartAt;
         updateData.guaranteeEndAt = guaranteeEndAt;
       }
@@ -1201,12 +1208,15 @@ export const placementsRouter = router({
 });
 
 export const invoicesRouter = router({
+ draftLifecycle:protectedProcedure.input(z.object({id:z.string().min(4).max(36)})).query(({ctx,input})=>invoiceDraftLifecycle(ctx.user.id,input.id)),
+ cancelDraft:protectedProcedure.input(z.object({id:z.string().min(4).max(36),expectedFingerprint:z.string().length(64),reason:z.string().trim().min(8).max(2000)})).mutation(({ctx,input})=>cancelInvoiceDraft(ctx.user.id,ctx.actor.id,input)),
+ draftFromContract:protectedProcedure.input(contractInvoiceInput).mutation(({ctx,input})=>draftContractInvoice(ctx.user.id,ctx.actor.id,input)),
   list: protectedProcedure.input(paginationInput).query(async ({ ctx, input }) => {
     const db = await requireDb();
     return db.select().from(invoices).where(eq(invoices.ownerId, ctx.user.id)).orderBy(desc(invoices.updatedAt)).limit(input.limit);
   }),
   draft: protectedProcedure.input(z.object({ placementId: z.string().min(4), companyId: z.string().min(4), invoiceNumber: z.string().trim().min(3).max(64), amount: z.number().int().positive(), taxAmount: z.number().int().nonnegative().default(0), dueAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
-    const db = await requireDb();
+    return withWorkspaceTransaction(ctx.user.id,async db=>{
     const rows = await db.select().from(placements).where(eq(placements.id, input.placementId)).limit(1);
     const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
     const companyRows = await db.select().from(companies).where(eq(companies.id, input.companyId)).limit(1);
@@ -1215,7 +1225,9 @@ export const invoicesRouter = router({
       throw new TRPCError({ code: "BAD_REQUEST", message: "Placement client does not match the specified invoice client." });
     }
     if (!["invoice_eligible", "guarantee_active"].includes(placement.status)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A placement must be invoice-eligible before a draft invoice can be created." });
+    const commercial=await checkCommercialInvoice(db,ctx.user.id,placement,input.amount,input.taxAmount,placement.currency);if(commercial.enabled&&input.dueAt)throw new TRPCError({code:"BAD_REQUEST",message:"Contract due dates are derived from the issue time. Leave the draft due date blank."});
     const existingInvoices = await db.select().from(invoices).where(and(eq(invoices.placementId, input.placementId), eq(invoices.ownerId, ctx.user.id)));
+    if(commercial.enabled&&existingInvoices.some(inv=>inv.issuedAt||inv.paidAt||['paid','credited','written_off','closed'].includes(inv.status)))throw new TRPCError({code:'PRECONDITION_FAILED',message:'This commercial obligation already has issued or settled billing history. Use a reviewed credit/correction workflow.'});
     const activeInvoice = existingInvoices.find(inv => !["credited", "written_off", "cancelled", "closed"].includes(inv.status));
     if (activeInvoice) {
       if (activeInvoice.status === "paid") {
@@ -1230,6 +1242,7 @@ export const invoicesRouter = router({
     await db.insert(invoices).values({ id, ownerId: ctx.user.id, companyId: input.companyId, placementId: input.placementId, invoiceNumber: input.invoiceNumber, currency: placement.currency ?? "INR", amount: input.amount, taxAmount: input.taxAmount, dueAt: input.dueAt ?? null, status: "draft" });
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "invoice.drafted", resourceType: "invoice", resourceId: id, nextState: "draft" });
     return { id };
+    });
   }),
   requestIssueApproval: protectedProcedure.input(idInput).mutation(async ({ ctx, input }) => {
     const db = await requireDb();

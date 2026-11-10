@@ -327,7 +327,7 @@ export const candidateWorkflowsRouter = router({
       for(const event of rankingEvents){const metadata=event.metadata as any;if(Array.isArray(metadata.rows)&&metadata.rows.some((r:any)=>r.candidateId===candidate.id))await db.update(workflowEvents).set({metadata:{...metadata,rows:metadata.rows.filter((r:any)=>r.candidateId!==candidate.id),candidateRowsRedacted:true}}).where(eq(workflowEvents.id,event.id));}
 
       const reviewEvents=await db.select().from(workflowEvents).where(eq(workflowEvents.ownerId,ctx.user.id));
-      for(const e of reviewEvents){if((e.eventType.startsWith('candidate.review_')||e.eventType==='match.scorecard_assessed')&&(e.metadata as any)?.candidateId===candidate.id)await db.update(workflowEvents).set({metadata:{redacted:true,reason:'candidate_privacy_erasure'}}).where(eq(workflowEvents.id,e.id));}
+      for(const e of reviewEvents){if((e.eventType.startsWith('candidate.review_')||e.eventType==='match.scorecard_assessed'||e.eventType==='commercial.placement_bound')&&(e.metadata as any)?.candidateId===candidate.id)await db.update(workflowEvents).set({metadata:{redacted:true,reason:'candidate_privacy_erasure'}}).where(eq(workflowEvents.id,e.id));}
 
       // 10. Update candidate record with redacted PII and terminal deleted state
       await db.update(candidates).set({

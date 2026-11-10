@@ -379,6 +379,7 @@ describe("Release Blocker Remediation Suite (RB-07, RB-08, RB-09, RB-10, RB-11, 
     it("2. side-effect failure rolls back approval state and emits execution_failed audit", async () => {
       const db = await requireDb();
       const approvalId = createId("apr_tx_fail_");
+      await db.insert(placements).values({id:'non_existent_placement_tx',ownerId,companyId:'cmp_tx_failure',jobId:'job_tx_failure',candidateId:'can_tx_failure',status:'joining_pending'});
       await db.insert(approvals).values({
         id: approvalId,
         ownerId,

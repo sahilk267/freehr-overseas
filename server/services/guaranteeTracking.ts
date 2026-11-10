@@ -15,6 +15,7 @@ export function calculateGuaranteeDates(
   joiningConfirmedAt: Date,
   durationDays = DEFAULT_GUARANTEE_DAYS,
 ): { guaranteeStartAt: Date; guaranteeEndAt: Date } {
+  if(!Number.isInteger(durationDays)||durationDays<0||durationDays>730||!Number.isFinite(joiningConfirmedAt.getTime()))throw Error("Use a valid joining date and guarantee duration of 0–730 days.");
   const guaranteeStartAt = new Date(joiningConfirmedAt.getTime());
   const guaranteeEndAt = new Date(
     guaranteeStartAt.getTime() + durationDays * 24 * 60 * 60 * 1000,
@@ -78,7 +79,7 @@ export function computeGuaranteeStatus(
     };
   }
 
-  const durationDays = Math.max(1, Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)));
+  const durationDays = Math.max(0, Math.round((end.getTime() - start.getTime()) / (24 * 60 * 60 * 1000)));
   const nowMs = now.getTime();
   const endMs = end.getTime();
   const startMs = start.getTime();

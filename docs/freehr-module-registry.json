@@ -122,8 +122,8 @@
           "id": "M03-F04",
           "description": "Versioned source facts, timestamps, freshness, conflicting-claim handling, evidence access/retention labels and correction propagation.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "W2 stores immutable follow-up definition snapshots and paginated history; general source-fact provenance/freshness/conflict handling remains pending."
+          "evidence_ref": "qa/2026-11-11-commercial-obligations.md",
+          "implementation_note": "Commercial proposal versions, acceptance receipts, amendments, job/placement binding and billing source hashes are retained in the shared workflow ledger. Candidate erasure redacts new compensation snapshots and late joining cannot restore them. General source-fact reconciliation and full privacy/retention acceptance remain open."
         },
         {
           "id": "M03-F05",
@@ -574,7 +574,9 @@
         {
           "id": "M11-F02",
           "description": "Contingency, retained, milestone and contract-placement fee models; guarantees, replacement/refund clauses, candidate ownership and non-circumvention.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-11-commercial-obligations.md",
+          "implementation_note": "Versioned percentage/fixed contingency terms now capture guarantee, payment/ownership days and explicit tax rates. Deterministic minor-unit fee/tax calculation is implemented. Retainers, milestones, full guarantee/refund clauses and negotiated client authority remain open."
         },
         {
           "id": "M11-F03",
@@ -584,12 +586,16 @@
         {
           "id": "M11-F04",
           "description": "Versioned documents with exact terms hash, authenticated client sign-off/e-sign, authorized signatory and amendment history.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-11-commercial-obligations.md",
+          "implementation_note": "Immutable terms hashes/history, source-bound owner-recorded acceptance, separate amendment drafts, draft withdrawal and one active amendment continuation are implemented. Existing placement obligations keep their prior terms; future role bindings cannot use a parent with a newer accepted amendment. Authenticated client sign-off/e-sign and external signatory verification remain open."
         },
         {
           "id": "M11-F05",
           "description": "Contract-to-job binding and machine-readable billing/guarantee obligations; M21 owns calculations and money, M20 guarantee execution.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-11-commercial-obligations.md",
+          "implementation_note": "An opted-in draft role binds an exact accepted proposal receipt. Pending placements freeze explicit salary minor units and commercial terms; joining approvals and invoice issue commands consume this snapshot. Legacy unbound flows remain separate. Full multi-model contracts and verified external acceptance remain open."
         },
         {
           "id": "M11-F06",
@@ -1093,7 +1099,9 @@
         {
           "id": "M20-F04",
           "description": "Guarantee windows, exclusions, replacement/refund eligibility and deadlines derived from accepted engagement, not hard-coded 90 days.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-11-commercial-obligations.md",
+          "implementation_note": "Opted-in bound placements derive guarantee dates from frozen agreement days, including zero days; joining confirmation rechecks the source and active candidate. Legacy unbound placements retain the historical 90-day default. Exclusions, refund eligibility, complete replacement execution and legacy migration remain open."
         },
         {
           "id": "M20-F05",
@@ -1133,7 +1141,9 @@
         {
           "id": "M21-F01",
           "description": "Contract-derived contingency/retainer/milestone billing, placement salary basis, currency/minor units, tax configuration and sequential invoice numbering.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-11-commercial-obligations.md",
+          "implementation_note": "Contract-bound contingency invoices derive exact fee/tax, explicit currency, atomic workspace/year sequential draft numbers and due dates at issuance through the existing approval command. Manual overrides/rebilling are fenced; unissued cancellation revokes unused issuance authority. Retainer/milestone billing, jurisdiction/legal configuration and broader financial acceptance remain open."
         },
         {
           "id": "M21-F02",

@@ -1,3 +1,4 @@
+import {commercialGuaranteeDates,commercialInvoiceIssue} from './commercialObligations';
 import {validateReplyEmail} from "./replyMail";
 import type {ReplyMailScope} from "./replyMailScope";
 import {materializeAvailabilityEmail,revokePreparedPrivateLink} from "./availabilityMail";
@@ -169,7 +170,9 @@ export async function applySideEffect(
   // 3) placement_confirmation
   if (approval.actionType === "placement_confirmation") {
     const payload = approval.payload as { joiningEvidence?: string[] } | null;
-    const { guaranteeStartAt, guaranteeEndAt } = calculateGuaranteeDates(decidedAt);
+    const placement=(await db.select().from(placements).where(and(eq(placements.ownerId,approval.ownerId),eq(placements.id,approval.resourceId))).limit(1))[0];
+    if(!placement)throw Error("Owned placement was not found.");
+    const { guaranteeStartAt, guaranteeEndAt } = await commercialGuaranteeDates(db,approval.ownerId,placement,decidedAt);
     await db
       .update(placements)
       .set({
@@ -189,11 +192,14 @@ export async function applySideEffect(
 
   // 4) invoice_issue
   if (approval.actionType === "invoice_issue") {
+    const invoice=(await db.select().from(invoices).where(and(eq(invoices.ownerId,approval.ownerId),eq(invoices.id,approval.resourceId))).limit(1))[0];if(!invoice)throw Error("Owned invoice was not found.");
+    const commercial=await commercialInvoiceIssue(db,approval.ownerId,invoice,decidedAt);
     await db
       .update(invoices)
       .set({
         status: "issued",
         issuedAt: decidedAt,
+        ...commercial,
       })
       .where(
         and(

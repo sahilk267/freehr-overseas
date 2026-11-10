@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 import { and, desc, eq } from "drizzle-orm";
 import {
   approvals,
@@ -26,6 +26,8 @@ describe("approvalEngine and decide() endpoints", () => {
   } as never;
 
   const caller = recruitmentRouter.createCaller(ownerCtx);
+  beforeAll(async()=>{const db=await requireDb();await db.insert(companies).values({id:'cmp_test_dummy',ownerId,name:'Synthetic approval fixture client'}).onDuplicateKeyUpdate({set:{ownerId}});await db.insert(candidates).values({id:'can_test_dummy',ownerId,fullName:'Synthetic approval fixture candidate'}).onDuplicateKeyUpdate({set:{ownerId}});await db.insert(jobs).values({id:'job_test_dummy',ownerId,companyId:'cmp_test_dummy',title:'Synthetic approval fixture role'}).onDuplicateKeyUpdate({set:{ownerId}});await db.insert(placements).values({id:'plc_test_dummy',ownerId,companyId:'cmp_test_dummy',jobId:'job_test_dummy',candidateId:'can_test_dummy',status:'invoice_eligible'}).onDuplicateKeyUpdate({set:{ownerId}});});
+
 
   async function getAuditForApproval(approvalId: string, action?: string) {
     const db = await requireDb();
