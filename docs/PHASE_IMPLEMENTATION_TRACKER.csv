@@ -51,4 +51,4 @@ W6,M16,Owner evidence-review completion separate from profile adoption,verified_
 W6,M06,Screening reminders through canonical follow-up and outbox,verified_local_sql_and_combined_live,qa/2026-11-07-screening-clarification-followups.md,Genuine recipient delivery and preference-based cadence
 W6,M05,Private review expiry and 24-hour owner review deadline tasks,verified_local_sql_elapsed_live_unverified,qa/2026-11-07-screening-clarification-followups.md,Elapsed production deadlines and reviewed legacy backfill
 W6,M07,Exact-role permitted candidate email thread reuse,verified_local_sql_and_combined_live,qa/2026-11-07-screening-clarification-followups.md,Full external inbox and recipient delivery acceptance
-W6,M15,Superseded questionnaire source invalidates employer assessment,verified_local_sql_and_live_source_guard,qa/2026-11-07-screening-clarification-followups.md,Independent evidence verification and calibrated confidence
+W6,M15,Superseded questionnaire source invalidates employer assessment,verified_local_sql_and_combined_live,qa/2026-11-07-screening-clarification-followups.md,Independent evidence verification and calibrated confidence

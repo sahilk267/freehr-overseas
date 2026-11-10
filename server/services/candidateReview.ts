@@ -28,6 +28,15 @@ export async function createCandidateReviewInTransaction(tx:any,ownerId:number,a
   if(d.suppressed||['cancelled','filled','archived','paused'].includes(j.pipelineState))throw new TRPCError({code:'PRECONDITION_FAILED',message:'A current candidate and open owned role are required.'});
   const key=workflowHash([ownerId,input.requestKey]),requestHash=workflowHash({...input,...(clarification?{clarification}:{}),candidateFingerprint:d.fingerprint,requirementFingerprint:jobRequirementFingerprint(j)}),prior=await event(tx,ownerId,'candidate.review_identity',key);
   if(prior){if(prior.metadata.requestHash!==requestHash)throw new TRPCError({code:'CONFLICT',message:'Review request identity belongs to another evidence snapshot.'});return {id:prior.metadata.inviteId as string,alreadyExists:true,fragment:null};}
+  if(!clarification){
+   const requests=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,'candidate.review_invited')));
+   for(const existing of requests){
+    const m=existing.metadata;
+    if(m.candidateId!==d.candidateId||m.jobId!==j.id||m.candidateFingerprint!==d.fingerprint||m.requirementFingerprint!==jobRequirementFingerprint(j)||new Date(m.expiresAt)<=new Date())continue;
+    const authority=await event(tx,ownerId,'candidate.review_authority',existing.aggregateId);
+    if(authority?.metadata.tokenHash)throw new TRPCError({code:'CONFLICT',message:'A current screening request already exists for this candidate and role. Review, clarify or revoke it before creating another.'});
+   }
+  }
   const known=new Set((d.fresh?d.fields?.skills??[]:[]).map(s=>s.toLowerCase())),skills=(Array.isArray(j.mustHaveSkills)?j.mustHaveSkills:[]).filter((s:any)=>typeof s==='string'&&!known.has(s.toLowerCase()));
   const all=clarification?.questions??[...(Array.isArray(j.scorecard)?j.scorecard:[]).map((c:any,i:number)=>({id:'criterion_'+i,prompt:'Describe job-related work or an accessible work sample demonstrating: '+c.criterion})),...skills.map((s:string,i:number)=>({id:'skill_'+i,prompt:'Give a concrete job-related example of your experience with '+s+'. If unknown, say what evidence is missing.'}))];
   for(const q of all)ensureSafeAiText(q.prompt);

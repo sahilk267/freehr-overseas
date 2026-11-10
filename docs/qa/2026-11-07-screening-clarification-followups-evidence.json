@@ -58,6 +58,24 @@
       ],
       "recipientMailSent": false,
       "supersededParentAssessmentFixtureRecorded": true
+    },
+    "historicalSourceGuard": {
+      "checkedAt": "2026-11-10T20:19:21.376Z",
+      "buildCommit": "1226c48b7317869d1a4bdd2dd0c3da2af504d093",
+      "tests": [
+        {
+          "name": "new release marks a persisted parent-response assessment stale after targeted clarification and rejects new ratings from that superseded parent; owner history remains available",
+          "status": "PASS"
+        }
+      ],
+      "recipientMailSent": false,
+      "worker": {
+        "enabled": true,
+        "persistentDatabase": true,
+        "heartbeatRecent": true,
+        "emergencyStop": false,
+        "lastError": null
+      }
     }
   }
 }

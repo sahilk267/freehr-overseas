@@ -315,7 +315,7 @@
           "description": "Exactly one active logical follow-up per purpose/recipient/resource/version/step; retries preserve its identity; uncertain delivery enters reconciliation.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
-          "implementation_note": "Candidate screening reminders reuse version-bound follow-up enrollment, outbox/dispatch identities and bounded grants. Targeted clarification commands yield one child per parent response and exact retries do not disclose the secret again. Cross-account collision arbitration and full delivery acceptance remain open."
+          "implementation_note": "Candidate screening reminders reuse version-bound follow-up enrollment, outbox/dispatch identities and bounded grants. Targeted clarification commands yield one child per parent response and exact retries do not disclose the secret again. Cross-account collision arbitration and full delivery acceptance remain open. One active source-current screening request per candidate/role is enforced across distinct root request keys; concurrent creation cannot fork duplicate active cases. Exact retries still reuse identity, and explicit clarification remains a linked continuation."
         },
         {
           "id": "M06-F08",
@@ -854,7 +854,7 @@
           "description": "Candidate-facing structured chat/forms and optional authorized voice; job-specific adaptive questions and missing-evidence follow-up.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
-          "implementation_note": "Private typed forms support bounded targeted clarification on selected existing questions, immutable parent-response binding and at most three follow-on rounds. Expiry and response correction fence older work. Voice, richer conversational branching and independently verified accessible assessments remain open."
+          "implementation_note": "Private typed forms support bounded targeted clarification on selected existing questions, immutable parent-response binding and at most three follow-on rounds. Expiry and response correction fence older work. Voice, richer conversational branching and independently verified accessible assessments remain open. One active source-current screening request per candidate/role is enforced across distinct root request keys; concurrent creation cannot fork duplicate active cases. Exact retries still reuse identity, and explicit clarification remains a linked continuation."
         },
         {
           "id": "M16-F02",
