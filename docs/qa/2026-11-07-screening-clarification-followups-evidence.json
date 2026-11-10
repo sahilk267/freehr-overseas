@@ -2,6 +2,8 @@
   "date": "2026-11-07",
   "target": "https://freelancehr.overseasjob.in",
   "functionalImplementationCommit": "4f9f5a80a4b036f1644d906d7fe8d539d1cdc9c1",
+  "finalValidationDate": "2026-11-11",
+  "validationTimezone": "Asia/Calcutta",
   "local": {
     "unitPassed": 865,
     "unitSkipped": 81,
@@ -76,6 +78,38 @@
         "emergencyStop": false,
         "lastError": null
       }
+    },
+    "cleanup": {
+      "checkedAt": "2026-11-10T20:22:58.339Z",
+      "syntheticOnly": true,
+      "recipientMailSent": false,
+      "closedRequests": 4,
+      "candidateWithdrawn": true,
+      "jobCancelled": true,
+      "companySuppressed": true,
+      "unusedDispatchesCancelled": true,
+      "worker": {
+        "enabled": true,
+        "persistentDatabase": true,
+        "heartbeatRecent": true,
+        "emergencyStop": false,
+        "lastError": null
+      }
+    },
+    "activeRequestDedupe": {
+      "checkedAt": "2026-11-10T20:22:54.752Z",
+      "buildCommit": "21f294543ea47a5c6d079f547819bfb40fa34550",
+      "tests": [
+        {
+          "name": "exact root retries reuse identity; a different key cannot fork an active request; explicit revocation permits replacement; concurrent fresh keys create exactly one replacement",
+          "status": "PASS"
+        },
+        {
+          "name": "owner workspace has exactly one active pending screening request after competing commands",
+          "status": "PASS"
+        }
+      ],
+      "recipientMailSent": false
     }
   }
 }
