@@ -53,9 +53,9 @@ W6,M05,Private review expiry and 24-hour owner review deadline tasks,verified_lo
 W6,M07,Exact-role permitted candidate email thread reuse,verified_local_sql_and_combined_live,qa/2026-11-07-screening-clarification-followups.md,Full external inbox and recipient delivery acceptance
 W6,M15,Superseded questionnaire source invalidates employer assessment,verified_local_sql_and_combined_live,qa/2026-11-07-screening-clarification-followups.md,Independent evidence verification and calibrated confidence
 W6,M16,One source-current active screening request across competing root keys,verified_local_sql_and_live_concurrency,qa/2026-11-07-screening-clarification-followups.md,Larger catalog indexing and authenticated candidate accounts
-W7,M11,Exact commercial terms history and owner-recorded acceptance,implemented_acceptance_in_progress,qa/2026-11-11-commercial-obligations.md,Authenticated client signature and external commercial acceptance
-W7,M11,Immutable amendment lineage and role commercial binding,implemented_acceptance_in_progress,qa/2026-11-11-commercial-obligations.md,Active-role amendments and multi-model engagements
-W7,M20,Frozen placement compensation and agreement guarantee duration,implemented_acceptance_in_progress,qa/2026-11-11-commercial-obligations.md,Authenticated joining and full guarantee exclusions and replacement
-W7,M21,Contract fee tax numbering and due-at-issue calculation,implemented_acceptance_in_progress,qa/2026-11-11-commercial-obligations.md,Provider payments and jurisdiction-specific financial acceptance
-W7,M21,Unissued draft cancellation and stale billing prevention,implemented_acceptance_in_progress,qa/2026-11-11-commercial-obligations.md,Issued corrections and full external financial reconciliation
-W7,M04,New compensation snapshot erasure and late joining guard,implemented_acceptance_in_progress,qa/2026-11-11-commercial-obligations.md,Full privacy inventory and legal-hold/retention policy
+W7,M11,Exact commercial terms history and owner-recorded acceptance,verified_local_sql_and_combined_live,qa/2026-11-11-commercial-obligations.md,Authenticated client signature and external commercial acceptance
+W7,M11,Immutable amendment lineage and role commercial binding,verified_local_sql_and_combined_live,qa/2026-11-11-commercial-obligations.md,Active-role amendments and multi-model engagements
+W7,M20,Frozen placement compensation and agreement guarantee duration,verified_local_sql_and_combined_live,qa/2026-11-11-commercial-obligations.md,Authenticated joining and full guarantee exclusions and replacement
+W7,M21,Contract fee tax numbering and due-at-issue calculation,verified_local_sql_and_combined_live,qa/2026-11-11-commercial-obligations.md,Provider payments and jurisdiction-specific financial acceptance
+W7,M21,Unissued draft cancellation and stale billing prevention,verified_local_sql_and_combined_live,qa/2026-11-11-commercial-obligations.md,Issued corrections and full external financial reconciliation
+W7,M04,New compensation snapshot erasure and late joining guard,verified_local_and_sql_privacy,qa/2026-11-11-commercial-obligations.md,Full privacy inventory and legal-hold/retention policy

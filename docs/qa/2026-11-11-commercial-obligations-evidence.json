@@ -1,0 +1,85 @@
+{
+  "date": "2026-11-11",
+  "timezone": "Asia/Calcutta",
+  "target": "https://freelancehr.overseasjob.in",
+  "implementationCommit": "f7a076efcd465215d25b78cfe21d94088518d3ea",
+  "local": {
+    "unitPassed": 878,
+    "unitSkipped": 83,
+    "mysqlPassed": 642,
+    "mysqlFiles": 35,
+    "typecheck": true,
+    "productionBuild": true,
+    "hostingEntrySmokes": 4,
+    "trackerConsistency": true
+  },
+  "live": {
+    "browser": {
+      "checkedAt": "2026-11-10T21:00:13.008Z",
+      "tests": [
+        {
+          "name": "owner desktop creates/revises proposal, records unverified owner acceptance and binds an exact draft role",
+          "status": "PASS"
+        },
+        {
+          "name": "owner freezes explicit salary minor units; fee/tax and sixty-day source terms agree on desktop/mobile",
+          "status": "PASS"
+        },
+        {
+          "name": "synthetic internal joining approval applies contract sixty-day duration and owner UI creates one exact unissued invoice draft",
+          "status": "PASS"
+        },
+        {
+          "name": "Finance browser safely cancels the unissued draft without invoice issuance, recipient send or payment",
+          "status": "PASS"
+        },
+        {
+          "name": "separate amendment/withdrawal preserves accepted parent and frozen placement fee",
+          "status": "PASS"
+        }
+      ],
+      "syntheticOnly": true,
+      "recipientMailSent": false,
+      "paymentCreated": false,
+      "runtimeErrors": 0
+    },
+    "api": {
+      "checkedAt": "2026-11-10T21:01:50.395Z",
+      "tests": [
+        {
+          "name": "all twelve commercial/detail/history/binding/draft/cancellation paths reject anonymous access",
+          "status": "PASS"
+        },
+        {
+          "name": "accepted-term edits, conflicting signatory evidence, manual fee override and missing owned records are rejected without another invoice",
+          "status": "PASS"
+        }
+      ],
+      "recipientMailSent": false,
+      "paymentCreated": false,
+      "acceptanceSource": "owner_recorded",
+      "clientSignatureVerified": false
+    },
+    "cleanup": {
+      "checkedAt": "2026-11-10T21:02:00.110Z",
+      "syntheticOnly": true,
+      "recipientMailSent": false,
+      "paymentCreated": false,
+      "invoiceIssued": false,
+      "invoiceDraftCancelled": true,
+      "placementClosed": true,
+      "candidateWithdrawn": true,
+      "roleCancelled": true,
+      "companyClosed": true,
+      "amendmentDraftWithdrawn": true,
+      "acceptedSyntheticHistoryRetained": true,
+      "worker": {
+        "enabled": true,
+        "persistentDatabase": true,
+        "heartbeatRecent": true,
+        "emergencyStop": false,
+        "lastError": null
+      }
+    }
+  }
+}
