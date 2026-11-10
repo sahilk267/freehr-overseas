@@ -4,7 +4,7 @@
 
 The [screening clarification/follow-up report](qa/2026-11-07-screening-clarification-followups.md) extends private candidate evidence with source-bound targeted clarification, immutable answer history, review completion without profile changes, canonical permitted email threads, shared screening reminders and source-bound expiry/owner-review incidents. Existing screening cases, workflow ledger, follow-up/outbox engines and physical worker queue are reused. Review completion is not screening approval or verified identity. Public expiry does not erase retained owner-review evidence.
 
-Release validation is recorded in the linked report. The [full remaining register](REMAINING_IMPLEMENTATION_REGISTER.csv) lists every unfinished package and acceptance gate. External verification, elapsed production deadlines, genuine delivery and the remaining advanced roadmap stay open; no module is complete.
+Acceptance: 865 unit tests and all 627 MySQL regressions passed, plus types/build/four Hostinger entry checks/tracker consistency. Desktop/mobile exact-role reminders, actual managed outbox preparation, response cancellation, targeted clarification/history and review completion passed on `4f9f5a8`. Source supersession and cleanup evidence are recorded in the linked report. The [full remaining register](REMAINING_IMPLEMENTATION_REGISTER.csv) lists every unfinished package and acceptance gate. External verification, elapsed production deadlines, genuine delivery and the remaining advanced roadmap stay open; no module is complete.
 
 The dated audit/design counts below remain historical baseline evidence; current status is maintained in the module registry, implementation backlog, phase tracker and linked acceptance report.
 

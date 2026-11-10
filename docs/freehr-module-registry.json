@@ -811,8 +811,8 @@
           "id": "M15-F04",
           "description": "Explicit unknown/missing/conflicting evidence, calibration, human-readable trade-offs and evidence-collection requests.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md",
-          "implementation_note": "Pending candidate responses require review; source quotes, unknown criteria and source corrections fence scoring and preserve explicit unknown weight. Independent fact verification, automated clarification strategies and calibrated confidence remain open."
+          "evidence_ref": "qa/2026-11-07-screening-clarification-followups.md",
+          "implementation_note": "Targeted clarification invalidates active match confidence and source-bound AI context. Assessments quoting a superseded parent questionnaire become stale and cannot be newly rated from that old source. Unknown criteria retain full weight; independent verification and confidence calibration remain open."
         },
         {
           "id": "M15-F05",

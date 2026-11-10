@@ -14,7 +14,7 @@ import {appendWorkflowEvent,workflowHash} from './workflowStore';
 import {availabilityTokenHash} from './availabilityMailScope';
 import {reviewDenied as denied,reviewEvent as event,reviewRequest as request,reviewScope as scope} from './candidateReviewState';
 import {scheduleCandidateReviewDeadline,stopCandidateReviewWork,resolveCandidateReviewIncidents} from './candidateReviewLifecycle';
-export async function candidateReviewOwnerRecords(tx:any,ownerId:number,id:string){const r=await request(tx,ownerId,id);return {request:r,response:await event(tx,ownerId,'candidate.review_responded',id)};}
+export async function candidateReviewOwnerRecords(tx:any,ownerId:number,id:string){const r=await request(tx,ownerId,id);return {request:r,response:await event(tx,ownerId,'candidate.review_responded',id),supersededBy:(await event(tx,ownerId,'candidate.review_clarified',id))?.metadata.childId??null};}
 export async function candidateReviewActivity(tx:any,ownerId:number,candidateId:string,jobId:string){return event(tx,ownerId,'candidate.review_activity',workflowHash([candidateId,jobId]));}
 export async function recordCandidateReviewActivity(tx:any,ownerId:number,candidateId:string,jobId:string,metadata:Record<string,unknown>){const id=workflowHash([candidateId,jobId]),prior=await candidateReviewActivity(tx,ownerId,candidateId,jobId);await appendWorkflowEvent(tx,ownerId,'candidate.review_activity',id,(prior?.revision??0)+1,{candidateId,jobId,...metadata});}
 export async function createCandidateReview(ownerId:number,actorId:number,input:{candidateId:string;jobId:string;requestKey:string;expiresHours:number}){

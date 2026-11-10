@@ -1,3 +1,4 @@
+import {TRPCError} from '@trpc/server';
 import {and,eq,inArray} from 'drizzle-orm';
 import {automationQueue,emailDispatches,incidents,workspaceSettings} from '../../drizzle/schema';
 import {createId,recordAudit} from '../db';
@@ -8,7 +9,7 @@ import {reviewEvent,reviewRequest,reviewScope} from './candidateReviewState';
 export async function scheduleCandidateReviewDeadline(tx:any,ownerId:number,id:string,kind:'expiry'|'review',revision:number,at:Date){
  const key=`candidate_review_deadline:${id}:${kind}:${revision}`;
  const existing=(await tx.select().from(automationQueue).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.idempotencyKey,key))).limit(1))[0];
- if(!existing)await tx.insert(automationQueue).values({id:createId('que_'),ownerId,jobType:'candidate_review_deadline',status:'queued',scheduledAt:at,priority:15,maxAttempts:3,idempotencyKey:key,payload:{inviteId:id,kind,responseRevision:revision}});
+ if(!existing)await tx.insert(automationQueue).values({id:createId('que_'),ownerId,jobType:'candidate_review_deadline',status:'queued',scheduledAt:at,priority:15,maxAttempts:3,idempotencyKey:key,payload:{candidateId:(await reviewRequest(tx,ownerId,id)).metadata.candidateId,inviteId:id,kind,responseRevision:revision}});
 }
 export async function resolveCandidateReviewIncidents(tx:any,ownerId:number,id:string,reason:string){
  await tx.update(incidents).set({status:'resolved',resolvedAt:new Date(),containmentNotes:reason}).where(and(eq(incidents.ownerId,ownerId),eq(incidents.affectedResourceType,'candidate_review'),eq(incidents.affectedResourceId,id),inArray(incidents.status,['detected','triaged','contained','investigated'])));
@@ -35,7 +36,7 @@ export async function executeCandidateReviewDeadline(ownerId:number,raw:any){
   if(kind==='expiry'&&!a?.metadata.tokenHash)return {status:'skipped'};
   const due=kind==='expiry'?new Date(r.metadata.expiresAt):new Date(new Date(response.metadata.receivedAt).getTime()+24*3600000);
   if(due>new Date())return {status:'deferred',nextActionAt:due};
-  let current=true;try{await reviewScope(tx,ownerId,r,true);}catch(e){if(!(e instanceof Error)||!('code' in e))throw e;current=false;}
+  let current=true;try{await reviewScope(tx,ownerId,r,true);}catch(e){if(!(e instanceof TRPCError)||!['UNAUTHORIZED','NOT_FOUND','CONFLICT','PRECONDITION_FAILED'].includes(e.code))throw e;current=false;}
   if(kind==='expiry'&&a?.metadata.tokenHash)await appendWorkflowEvent(tx,ownerId,'candidate.review_authority',id,a.revision+1,{candidateId:r.metadata.candidateId,tokenHash:'',revoked:true,reason:'Private review expired'});
   await stopCandidateReviewWork(tx,ownerId,id,kind==='expiry'?'Private review expired.':'Candidate response needs owner review.',Boolean(response),!current);
   let incidentId:string|null=null;

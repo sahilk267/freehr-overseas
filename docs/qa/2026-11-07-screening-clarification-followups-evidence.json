@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-07",
+  "target": "https://freelancehr.overseasjob.in",
+  "functionalImplementationCommit": "4f9f5a80a4b036f1644d906d7fe8d539d1cdc9c1",
+  "local": {
+    "unitPassed": 865,
+    "unitSkipped": 81,
+    "mysqlPassed": 627,
+    "mysqlFiles": 34,
+    "typecheck": true,
+    "productionBuild": true,
+    "hostingEntrySmokes": 4,
+    "trackerConsistency": true
+  },
+  "live": {
+    "browser": {
+      "checkedAt": "2026-11-07T15:41:34.005Z",
+      "tests": [
+        {
+          "name": "desktop opens one permitted exact-role candidate thread and enrolls screening reminders in canonical review-mode follow-up engine",
+          "status": "PASS"
+        },
+        {
+          "name": "actual managed worker prepares canonical screening outbox without approving or sending recipient mail",
+          "status": "PASS"
+        },
+        {
+          "name": "anonymous candidate response automatically completes its reminder plan and cancels the unused message/approval/dispatch",
+          "status": "PASS"
+        },
+        {
+          "name": "incident-style owner deep link selects exact request; immutable history supports one targeted SQL clarification and revokes prior capability",
+          "status": "PASS"
+        },
+        {
+          "name": "anonymous mobile child request reveals only selected question and accepts two immutable clarification response versions",
+          "status": "PASS"
+        },
+        {
+          "name": "owner completes reviewed clarification with canonical profile unchanged and no final hiring disposition",
+          "status": "PASS"
+        }
+      ],
+      "recipientMailSent": false,
+      "runtimeErrors": 0
+    },
+    "api": {
+      "checkedAt": "2026-11-07T15:43:15.002Z",
+      "tests": [
+        {
+          "name": "all six new owner history/location/clarification/completion/thread/reminder routes deny anonymous access",
+          "status": "PASS"
+        },
+        {
+          "name": "conflicting clarification, false link-sharing statement, closed capability and missing owned history are rejected; canonical profile remains unchanged",
+          "status": "PASS"
+        }
+      ],
+      "recipientMailSent": false,
+      "supersededParentAssessmentFixtureRecorded": true
+    }
+  }
+}
