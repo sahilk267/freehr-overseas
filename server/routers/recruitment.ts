@@ -1,3 +1,4 @@
+import { stripeConfiguration, invoiceCheckoutStatus, reconcileStripeCheckout } from "../services/stripePayments";
 import {invoiceDraftLifecycle,cancelInvoiceDraft} from '../services/invoiceDraftLifecycle';
 import {bindPlacementCommercial,placementBindingInput,placementCommercialRead,draftContractInvoice,contractInvoiceInput,commercialContext,commercialGuaranteeDates,checkCommercialInvoice} from '../services/commercialObligations';
 import {weightedScorecardInput} from '../../shared/weightedScorecard';
@@ -1263,6 +1264,9 @@ export const invoicesRouter = router({
   generateDocument: protectedProcedure.input(idInput).query(async ({ ctx, input }) => {
     return generateInvoiceDocument(input.id, ctx.user.id);
   }),
+  checkoutReadiness: protectedProcedure.query(()=>{const c=stripeConfiguration();return {configured:c.configured,mode:c.mode};}),
+  checkoutStatus: protectedProcedure.input(idInput).query(({ctx,input}) => invoiceCheckoutStatus(ctx.user.id,input.id)),
+  reconcileCheckout: protectedProcedure.input(z.object({id:z.string().min(4),intentId:z.string().min(4).max(36),sessionId:z.string().regex(/^cs_[A-Za-z0-9_]+$/).max(255).optional()})).mutation(({ctx,input})=>reconcileStripeCheckout(ctx.user.id,input.id,input.intentId,input.sessionId)),
   createPaymentLink: protectedProcedure.input(z.object({ id: z.string().min(4), provider: z.string().default("stripe") })).mutation(async ({ ctx, input }) => {
     return createInvoicePaymentLink(input.id, ctx.user.id, input.provider);
   }),

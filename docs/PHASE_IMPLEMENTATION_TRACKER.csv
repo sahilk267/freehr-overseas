@@ -59,3 +59,7 @@ W7,M20,Frozen placement compensation and agreement guarantee duration,verified_l
 W7,M21,Contract fee tax numbering and due-at-issue calculation,verified_local_sql_and_combined_live,qa/2026-11-11-commercial-obligations.md,Provider payments and jurisdiction-specific financial acceptance
 W7,M21,Unissued draft cancellation and stale billing prevention,verified_local_sql_and_combined_live,qa/2026-11-11-commercial-obligations.md,Issued corrections and full external financial reconciliation
 W7,M04,New compensation snapshot erasure and late joining guard,verified_local_and_sql_privacy,qa/2026-11-11-commercial-obligations.md,Full privacy inventory and legal-hold/retention policy
+W8,M21,Durable provider checkout and exact request recovery,verified_local_sql_live_provider_open,qa/2026-11-11-verified-payment-checkout.md,Configured real provider API acceptance; no live Stripe credentials used
+W8,M21,Raw signed provider events and atomic canonical receipt allocation,verified_local_sql_live_provider_open,qa/2026-11-11-verified-payment-checkout.md,Independent bank settlement; unallocated credit and automated refund allocation
+W8,M21;M06,Provider overpayment/refund review and collection holds,verified_local_sql_live_provider_open,qa/2026-11-11-verified-payment-checkout.md,Financial adjustment disposition and provider elapsed acceptance
+W8,M21,Owner Finance checkout and provider reconciliation controls,verified_local_sql_live_provider_open,qa/2026-11-11-verified-payment-checkout.md,Live configured Stripe acceptance and payment/accounting export

@@ -168,19 +168,9 @@ export async function createInvoicePaymentLink(
   ownerId: number,
   provider = "stripe"
 ) {
-  const db = await requireDb();
-  const [invoice] = await db
-    .select()
-    .from(invoices)
-    .where(and(eq(invoices.id, invoiceId), eq(invoices.ownerId, ownerId)))
-    .limit(1);
-
-  if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found." });
-  if (invoice.status === "paid") {
-    throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This invoice has already been marked as paid." });
-  }
-
-  throw new TRPCError({ code: "PRECONDITION_FAILED", message: "No payment gateway checkout adapter is configured. No payment link was created; use an evidenced bank receipt instead." });
+  const { createStripeCheckout } = await import("./stripePayments");
+  if (provider !== "stripe") throw new TRPCError({code:"BAD_REQUEST",message:"Unsupported checkout provider."});
+  return createStripeCheckout(ownerId, invoiceId);
 }
 
 export async function recordInvoicePayment(
@@ -188,10 +178,19 @@ export async function recordInvoicePayment(
   ownerId: number,
   details: { amount?: number; provider: string; providerEventId: string; note?: string },
 ) {
+  if (details.provider === "stripe_verified") throw new TRPCError({code:"BAD_REQUEST", message:"Verified Stripe receipts can only be recorded by the signed provider integration."});
   const db = await requireDb();
   await ensureWorkspace(ownerId);
   const result = await db.transaction(async (tx: any) => {
     await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, ownerId)).limit(1));
+    return recordInvoicePaymentInTransaction(tx, invoiceId, ownerId, details);
+
+  });
+  if (!result.alreadyRecorded) await recordAudit({ ownerId, actorType: "user", actorId: String(ownerId), action: result.status === "paid" ? "invoice.paid" : "invoice.partially_paid", resourceType: "invoice", resourceId: invoiceId, nextState: result.status, metadata: { paymentId: result.paymentId, provider: details.provider, providerEventId: details.providerEventId, remainingBalance: result.remainingBalance, note: details.note } });
+  return result;
+}
+
+export async function recordInvoicePaymentInTransaction(tx: any, invoiceId: string, ownerId: number, details: {amount?: number; provider: string; providerEventId: string; note?: string}) {
     const [invoice] = await lockedSelect(tx.select().from(invoices).where(and(eq(invoices.id, invoiceId), eq(invoices.ownerId, ownerId))).limit(1));
     if (!invoice) throw new TRPCError({ code: "NOT_FOUND", message: "Invoice not found." });
     const existing = (await tx.select().from(payments).where(and(eq(payments.provider, details.provider), eq(payments.providerEventId, details.providerEventId))).limit(1))[0];
@@ -219,7 +218,4 @@ export async function recordInvoicePayment(
     await scheduleCollectionEvaluation(tx, ownerId, invoiceId, `collection_receipt:${paymentId}`, now);
     await stopRelatedFollowUps(tx, ownerId, { resourceType: "invoice", resourceId: invoiceId }, status === "paid" ? "Invoice paid." : "Payment changed the balance; review collection content.", status === "paid" ? "completed" : "cancelled");
     return { success: true, paymentId, status, alreadyRecorded: false, remainingBalance: remaining - paidAmount };
-  });
-  if (!result.alreadyRecorded) await recordAudit({ ownerId, actorType: "user", actorId: String(ownerId), action: result.status === "paid" ? "invoice.paid" : "invoice.partially_paid", resourceType: "invoice", resourceId: invoiceId, nextState: result.status, metadata: { paymentId: result.paymentId, provider: details.provider, providerEventId: details.providerEventId, remainingBalance: result.remainingBalance, note: details.note } });
-  return result;
 }

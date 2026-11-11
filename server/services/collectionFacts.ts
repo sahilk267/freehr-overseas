@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { approvals, conversations, messages, emailDispatches, followUpPlans, invoiceCollectionSettings, invoicePaymentPromises, payments } from "../../drizzle/schema";
+import { approvals, conversations, messages, emailDispatches, followUpPlans, invoiceCollectionSettings, invoicePaymentPromises, payments, workflowEvents } from "../../drizzle/schema";
 import { lockedSelect } from "./database";
 import { localClock } from "./workflowTiming";
 import { workflowHash } from "./workflowStore";
@@ -49,7 +49,10 @@ export async function invoiceCollectionFacts(tx: any, ownerId: number, invoice: 
   const plans = await tx.select().from(followUpPlans).where(and(eq(followUpPlans.ownerId, ownerId), eq(followUpPlans.resourceType, "invoice"), eq(followUpPlans.resourceId, invoice.id)));
   const unresolved = plans.length ? await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, ownerId), inArray(emailDispatches.planId, plans.map((p: typeof followUpPlans.$inferSelect) => p.id)), inArray(emailDispatches.status, ["dispatching", "reconciliation_required"]))).limit(1) : [];
   const hasUnreviewedReply = rules ? (await collectionReplyCursor(tx, ownerId, rules.contactId, lock)).some(id => !rules.replyCursor.includes(id)) : false;
-  const reason = !COLLECTIBLE_STATES.includes(invoice.status) ? "Invoice is not collectible." : remaining === 0 ? "No outstanding invoice balance." : financialReview ? "A financial dispute or adjustment is awaiting owner review." : rules && (!rules.enabled || rules.onHold) ? rules.onHold ? "Collections are on owner hold." : "Collection follow-ups are disabled." : promiseState === "open" ? "A payment promise is still within its agreed time." : unresolved.length ? "A previous collection attempt requires delivery reconciliation." : hasUnreviewedReply ? "Client replied; review collection settings before another collection cycle." : null;
+  const providerReviews = await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.aggregateId,invoice.id),eq(workflowEvents.eventType,'payment.review_required')));
+  let providerReview=false;
+  for(const review of providerReviews){const resolution=(await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.aggregateId,review.metadata.intentId),eq(workflowEvents.eventType,'payment.review_resolved'))).limit(1))[0];if(!resolution)providerReview=true;}
+  const reason = !COLLECTIBLE_STATES.includes(invoice.status) ? "Invoice is not collectible." : remaining === 0 ? "No outstanding invoice balance." : providerReview ? "A provider payment requires financial reconciliation." : financialReview ? "A financial dispute or adjustment is awaiting owner review." : rules && (!rules.enabled || rules.onHold) ? rules.onHold ? "Collections are on owner hold." : "Collection follow-ups are disabled." : promiseState === "open" ? "A payment promise is still within its agreed time." : unresolved.length ? "A previous collection attempt requires delivery reconciliation." : hasUnreviewedReply ? "Client replied; review collection settings before another collection cycle." : null;
   const fingerprint = workflowHash(["invoice", invoice.id, invoice.amount, invoice.taxAmount ?? 0, invoice.currency, invoice.dueAt?.toISOString() ?? null, paid, rules?.revision ?? null, promise ? [promise.id, promise.revision, promise.amount, promise.baselinePaid, promise.dueAt.toISOString(), promiseState] : null]);
   return { paid, total, remaining, rules, promise, promiseState, hasUnreviewedReply, promisedRemaining: promise ? Math.max(0, promise.amount - Math.max(0, paid - promise.baselinePaid)) : 0, reason, fingerprint, plans };
 }

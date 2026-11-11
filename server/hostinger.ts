@@ -1,3 +1,4 @@
+import {processStripeWebhook} from "./services/stripePayments";
 import { completeGoogleCalendar, GOOGLE_CALENDAR_CALLBACK } from "./services/googleCalendar";
 import "dotenv/config";
 import { readAuthorizedCalendarFeed, calendarErrorStatus } from "./services/calendarFeed";
@@ -61,6 +62,14 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
     bodyLimit: 10 * 1024 * 1024,
   });
 
+  await app.register(async scope => {
+    scope.removeContentTypeParser('application/json');
+    scope.addContentTypeParser('application/json', {parseAs:'buffer',bodyLimit:256*1024}, (_req,body,done)=>done(null,body));
+    scope.post('/api/webhooks/stripe', {bodyLimit:256*1024,logLevel:'silent'}, async(request,reply)=>{
+      const result=await processStripeWebhook(request.body as Buffer, typeof request.headers['stripe-signature']==='string'?request.headers['stripe-signature']:undefined);
+      return reply.header('Cache-Control','no-store').status(result.statusCode).send(result.body);
+    });
+  });
   await app.register(cors, { origin: process.env.APP_BASE_URL ?? false, credentials: true });
   app.post<{ Params: { sourceId: string } }>("/api/integrations/intake/:sourceId", { bodyLimit: 256 * 1024 }, async (request, reply) => {
     const result = await processIntakeWebhook({ sourceId: request.params.sourceId, authorization: request.headers.authorization, body: request.body });

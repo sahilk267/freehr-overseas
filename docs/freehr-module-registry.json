@@ -1155,27 +1155,29 @@
           "id": "M21-F03",
           "description": "Genuine gateway checkout or bank instructions through configured providers; signed events, settlement proof and reconciliation.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-11-verified-payment-checkout.md",
+          "implementation_note": "Configured Stripe adapter creates actual provider Checkout sessions with durable exact-body idempotency, signed raw-body events and owned provider-session reconciliation. Missing configuration fails closed; sandbox payments never settle real invoices. Local mocked-provider and disposable SQL acceptance is separate from live Stripe acceptance. Provider credentials/webhook setup, real provider acceptance and independent bank settlement remain open."
         },
         {
           "id": "M21-F04",
           "description": "Append-only financial entries, atomic payment allocation, partial/overpayment/unallocated credit, refunds, chargebacks and duplicate-event protection.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md"
+          "evidence_ref": "qa/2026-11-11-verified-payment-checkout.md",
+          "implementation_note": "Verified live Stripe payment intents allocate atomically through the existing receipt command under the workspace lock; duplicate callbacks add zero. Overpayment/state mismatches retain observed evidence, pause chasing and require review. Refund/dispute notifications are review evidence only. Unallocated credits, automatic refund/chargeback allocation, settlement and full financial subledger acceptance remain open."
         },
         {
           "id": "M21-F05",
           "description": "Separate client payment promises, manual evidence, verified receipts, cleared funds, fee splits and recruiter payout eligibility.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "W3 separates evidenced client promises from receipts and clearing; newly recorded receipts since the promise baseline determine coverage. Fee splits, external clearing and payout eligibility remain open."
+          "evidence_ref": "qa/2026-11-11-verified-payment-checkout.md",
+          "implementation_note": "Owner-recorded bank evidence and signed Stripe receipts use separate reserved source labels; sandbox payments cannot mark real invoices paid. Provider-paid and bank-settled remain distinct. Existing promise coverage remains canonical. External clearing, commission splits and payout eligibility remain open."
         },
         {
           "id": "M21-F06",
           "description": "Accounts receivable aging, promise-to-pay plans, dispute freezes and M06-controlled dunning; no AI-derived paid status.",
           "status": "implementing",
-          "evidence_ref": "IMPLEMENTATION_PROGRESS.md",
-          "implementation_note": "W3 adds timezone-based AR aging, opted-in bounded FU26/FU27 review sequences, promise history and pending-dispute freezes; pre-due/acknowledgment flows and jurisdiction/custom cadence remain open. AI reconciliation is advisory only."
+          "evidence_ref": "qa/2026-11-11-verified-payment-checkout.md",
+          "implementation_note": "Existing timezone-based aging, bounded FU26/FU27 review sequences, promise history and pending-dispute freezes now also hold collection work for unresolved provider payment/adjustment reviews. Pre-due acknowledgment, custom cadence and complete elapsed provider acceptance remain open."
         },
         {
           "id": "M21-F07",

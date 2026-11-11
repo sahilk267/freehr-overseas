@@ -1,3 +1,4 @@
+import {processStripeWebhook} from "../services/stripePayments";
 import { completeGoogleCalendar, GOOGLE_CALENDAR_CALLBACK } from "../services/googleCalendar";
 import "dotenv/config";
 import { readAuthorizedCalendarFeed, calendarErrorStatus } from "../services/calendarFeed";
@@ -60,6 +61,10 @@ async function startServer() {
     server.once("close", () => { void stopBackground(); });
   });
   // Configure body parser with larger size limit for file uploads
+  app.post('/api/webhooks/stripe', express.raw({type:'application/json',limit:'256kb'}), async(req,res)=>{
+    const result=await processStripeWebhook(req.body,req.get('stripe-signature'));
+    res.setHeader('Cache-Control','no-store');res.status(result.statusCode).json(result.body);
+  });
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
