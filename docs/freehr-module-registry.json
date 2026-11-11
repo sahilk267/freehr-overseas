@@ -1156,7 +1156,7 @@
           "description": "Genuine gateway checkout or bank instructions through configured providers; signed events, settlement proof and reconciliation.",
           "status": "implementing",
           "evidence_ref": "qa/2026-11-11-verified-payment-checkout.md",
-          "implementation_note": "Configured Stripe adapter creates actual provider Checkout sessions with durable exact-body idempotency, signed raw-body events and owned provider-session reconciliation. Missing configuration fails closed; sandbox payments never settle real invoices. Local mocked-provider and disposable SQL acceptance is separate from live Stripe acceptance. Provider credentials/webhook setup, real provider acceptance and independent bank settlement remain open."
+          "implementation_note": "Configured Stripe adapter creates actual provider Checkout sessions with durable exact-body idempotency, signed raw-body events and owned provider-session reconciliation. Missing configuration fails closed; sandbox payments never settle real invoices. One existing managed-queue task per confirmed session automatically retries missed-webhook reconciliation with pause/stop, five-attempt and seven-day bounds. Local mocked-provider and disposable SQL acceptance is separate from live Stripe acceptance. Provider credentials/webhook setup, real provider acceptance and independent bank settlement remain open."
         },
         {
           "id": "M21-F04",

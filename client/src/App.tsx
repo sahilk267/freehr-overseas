@@ -35,8 +35,13 @@ const Exceptions = withDashboard(ExceptionsPage);
 const Team = withDashboard(TeamPage);
 const ControlPlane = withDashboard(ControlPlanePage);
 
+function PaymentReturnPage() {
+  return <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-5 px-6 py-12 text-slate-800"><p className="text-sm font-semibold tracking-wide">FreelanceHR</p><h1 className="text-3xl font-semibold">You have returned from checkout</h1><p>Returning here does not confirm a successful payment. Your agency will confirm your invoice payment after checking with the payment provider.</p><p>Keep your provider receipt and contact your agency representative if you need help. You may close this page.</p></main>;
+}
+
 function Router() {
   return <Switch>
+    <Route path="/payment-return" component={PaymentReturnPage} />
     <Route path="/candidate-review" component={CandidateReviewPage} />
     <Route path="/interview-response" component={InterviewResponsePage} />
     <Route path="/discovery-response" component={DiscoveryResponsePage} />

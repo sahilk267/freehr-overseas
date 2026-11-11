@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { TRPCError } from '@trpc/server';
 import { and, eq } from 'drizzle-orm';
-import { approvals, invoices, payments, workflowEvents } from '../../drizzle/schema';
+import { approvals, automationQueue, invoices, payments, workflowEvents, workspaceSettings } from '../../drizzle/schema';
 import { createId, recordAudit, requireDb } from '../db';
 import { withWorkspaceTransaction } from './database';
 import { commercialEvent } from './commercialAgreements';
@@ -46,16 +46,16 @@ export async function createStripeCheckout(ownerId:number,invoiceId:string) {
     const previous=history.filter((e:any)=>e.metadata.invoiceId===invoiceId);
     for(const p of previous){const terminal=await commercialEvent(tx,ownerId,'payment.checkout_terminal',p.aggregateId);if(!terminal){if(p.metadata.amount!==amount||p.metadata.currency!==i.currency||p.metadata.mode!==c.mode||p.metadata.origin!==c.origin||p.metadata.accountFingerprint!==accountFingerprint())throw fail('Existing checkout must be reconciled or expired before changing its amount or account mode.');return {...p.metadata,intentId:p.aggregateId,createdAt:p.createdAt};}}
     const intentId=createId('chk_'), expiresAt=Math.floor(Date.now()/1000)+3600;
-    const m={intentId,ownerId,invoiceId,amount,currency:i.currency,mode:c.mode,origin:c.origin,accountFingerprint:accountFingerprint(),expiresAt,invoiceNumber:i.invoiceNumber};
+    const m={intentId,ownerId,invoiceId,amount,currency:i.currency,mode:c.mode,origin:c.origin,successUrl:`${c.origin}/payment-return`,cancelUrl:`${c.origin}/payment-return`,accountFingerprint:accountFingerprint(),expiresAt,invoiceNumber:i.invoiceNumber};
     await appendWorkflowEvent(tx,ownerId,requestType,intentId,1,m);
     await recordAudit({ownerId,actorType:'user',actorId:String(ownerId),action:'payment.checkout_requested',resourceType:'invoice',resourceId:invoiceId,metadata:{intentId,amount,currency:i.currency,mode:c.mode}},tx);
     return {...m,createdAt:new Date()};
   });
   const known=await withWorkspaceTransaction(ownerId,tx=>commercialEvent(tx,ownerId,'payment.checkout_created',intent.intentId));
-  if(known) { if(!known.metadata.url)throw fail('Recovered session has no reusable checkout URL; reconcile its status.'); if(known.metadata.expiresAt*1000<=Date.now())throw fail('Checkout has expired. Reconcile its provider status before creating another.'); return {intentId:intent.intentId,url:String(known.metadata.url),expiresAt:known.metadata.expiresAt,mode:c.mode}; }
+  if(known) { await withWorkspaceTransaction(ownerId,tx=>enqueueStripeReconciliation(tx,ownerId,invoiceId,intent.intentId)); if(!known.metadata.url)throw fail('Recovered session has no reusable checkout URL; reconcile its status.'); if(known.metadata.expiresAt*1000<=Date.now())throw fail('Checkout has expired. Reconcile its provider status before creating another.'); return {intentId:intent.intentId,url:String(known.metadata.url),expiresAt:known.metadata.expiresAt,mode:c.mode}; }
   // Stripe may evict idempotency keys after 24 hours. Never reissue an uncertain older command.
   if(Date.now()-new Date(intent.createdAt).getTime()>23*3600000||intent.expiresAt*1000-Date.now()<31*60000)throw fail('Unconfirmed checkout requires provider reconciliation; its original request cannot be safely repeated.');
-  const body=new URLSearchParams({mode:'payment',client_reference_id:intent.intentId,success_url:`${intent.origin}/finance?checkout=returned`,cancel_url:`${intent.origin}/finance?checkout=cancelled`,expires_at:String(intent.expiresAt),'line_items[0][quantity]':'1','line_items[0][price_data][currency]':intent.currency.toLowerCase(),'line_items[0][price_data][unit_amount]':String(intent.amount),'line_items[0][price_data][product_data][name]':`Invoice ${intent.invoiceNumber}`,'metadata[intentId]':intent.intentId,'payment_intent_data[metadata][intentId]':intent.intentId});
+  const body=new URLSearchParams({mode:'payment',client_reference_id:intent.intentId,success_url:intent.successUrl??`${intent.origin}/finance?checkout=returned`,cancel_url:intent.cancelUrl??`${intent.origin}/finance?checkout=cancelled`,expires_at:String(intent.expiresAt),'line_items[0][quantity]':'1','line_items[0][price_data][currency]':intent.currency.toLowerCase(),'line_items[0][price_data][unit_amount]':String(intent.amount),'line_items[0][price_data][product_data][name]':`Invoice ${intent.invoiceNumber}`,'metadata[intentId]':intent.intentId,'payment_intent_data[metadata][intentId]':intent.intentId});
   let session:any;
   try {session=await stripe('checkout/sessions',body,`freehr-${intent.intentId}`);}catch(error){
     // Authentication/validation rejection confirms no session was created. Network,
@@ -66,7 +66,7 @@ export async function createStripeCheckout(ownerId:number,invoiceId:string) {
   validateSession(session,intent);
   let url:URL;try{url=new URL(session.url);}catch{throw fail('Provider returned no valid checkout URL. Reconcile before retrying.');}
   if(url.protocol!=='https:'||url.hostname!=='checkout.stripe.com'||url.username||url.password)throw fail('Provider checkout URL is invalid.');
-  await withWorkspaceTransaction(ownerId,async tx=>{await appendWorkflowEvent(tx,ownerId,'payment.checkout_created',intent.intentId,1,{invoiceId,sessionId:session.id,url:url.href,expiresAt:session.expires_at});});
+  await withWorkspaceTransaction(ownerId,async tx=>{await appendWorkflowEvent(tx,ownerId,'payment.checkout_created',intent.intentId,1,{invoiceId,sessionId:session.id,url:url.href,expiresAt:session.expires_at});await enqueueStripeReconciliation(tx,ownerId,invoiceId,intent.intentId);});
   return {intentId:intent.intentId,url:url.href,expiresAt:session.expires_at,mode:c.mode};
 }
 function validateSession(s:any,i:any){if(!s||typeof s.id!=='string'||!/^cs_(test_|live_)?[A-Za-z0-9_]+$/.test(s.id)||s.object!=='checkout.session'||s.mode!=='payment'||s.client_reference_id!==i.intentId||s.metadata?.intentId!==i.intentId||s.amount_total!==i.amount||s.currency!==i.currency.toLowerCase()||s.livemode!==(i.mode==='live')||!Number.isSafeInteger(s.expires_at))throw fail('Provider session does not match the persisted invoice checkout.');}
@@ -81,8 +81,9 @@ export function verifyStripeSignature(raw:Buffer,header:string|undefined,secret:
 async function requestForIntent(intentId:string){if(!/^chk_[A-Za-z0-9_-]+$/.test(intentId))return null;const db=await requireDb();return (await db.select().from(workflowEvents).where(and(eq(workflowEvents.eventType,requestType),eq(workflowEvents.aggregateId,intentId))).limit(1))[0]??null;}
 
 /** Provider receipt and canonical invoice allocation commit together under the owner lock. */
-async function observeSession(ownerId:number,intentId:string,session:any,eventId:string,outcome?:string) {
+async function observeSession(ownerId:number,intentId:string,session:any,eventId:string,outcome?:string,automatic=false) {
   return withWorkspaceTransaction(ownerId,async tx=>{
+    if(automatic){const workspace=(await tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId,ownerId)).limit(1))[0];if(!workspace?.backgroundEnabled||workspace.emergencyStop)return {status:'paused'};}
     const req=await commercialEvent(tx,ownerId,requestType,intentId);if(!req)throw fail('Checkout request was not found.');const intent=req.metadata;if(intent.accountFingerprint!==accountFingerprint())throw fail('Provider credential changed; reconcile using the original account credential.');
     validateSession(session,intent);
     const known=await commercialEvent(tx,ownerId,'payment.checkout_created',intentId);
@@ -115,9 +116,10 @@ export async function processStripeWebhook(raw:Buffer,signature:string|undefined
   if(!['checkout.session.completed','checkout.session.async_payment_succeeded','checkout.session.async_payment_failed','checkout.session.expired'].includes(e.type))return {statusCode:200,body:{status:'ignored'}};
   try {const session=e.data?.object,req=await requestForIntent(session?.metadata?.intentId||'');if(!req)return {statusCode:422,body:{error:'Unknown checkout request.'}};const result=await observeSession(req.ownerId,req.aggregateId,session,e.id,e.type);return {statusCode:200,body:result};}catch{return {statusCode:503,body:{error:'Payment event requires retry or reconciliation.'}};}
 }
-export async function invoiceCheckoutStatus(ownerId:number,invoiceId:string){return withWorkspaceTransaction(ownerId,async tx=>{await owned(tx,ownerId,invoiceId);const rows=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,requestType)));const checkouts=[];for(const r of rows.filter((e:any)=>e.metadata.invoiceId===invoiceId)){const created=await commercialEvent(tx,ownerId,'payment.checkout_created',r.aggregateId),verified=await commercialEvent(tx,ownerId,'payment.provider_verified',r.aggregateId),terminal=await commercialEvent(tx,ownerId,'payment.checkout_terminal',r.aggregateId),observed=await commercialEvent(tx,ownerId,'payment.provider_observed',r.aggregateId);checkouts.push({intentId:r.aggregateId,amount:r.metadata.amount,currency:r.metadata.currency,mode:r.metadata.mode,sessionId:created?.metadata.sessionId??null,url:created?.metadata.url??null,status:verified?'provider_paid':observed?'review_required':terminal?.metadata.status??'pending',bankSettlementVerified:false});}const reviewRows=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.aggregateId,invoiceId),eq(workflowEvents.eventType,'payment.review_required')));const reviews=[];for(const r of reviewRows)if(!await commercialEvent(tx,ownerId,'payment.review_resolved',r.metadata.intentId))reviews.push({reviewId:r.metadata.intentId,reason:String(r.metadata.reason),amount:r.metadata.amount,currency:r.metadata.currency});const c=stripeConfiguration();return {configured:c.configured,mode:c.mode,checkouts,reviews};});}
-export async function reconcileStripeCheckout(ownerId:number,invoiceId:string,intentId:string,sessionId?:string){
+export async function invoiceCheckoutStatus(ownerId:number,invoiceId:string){return withWorkspaceTransaction(ownerId,async tx=>{await owned(tx,ownerId,invoiceId);const rows=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,requestType)));const checkouts=[];for(const r of rows.filter((e:any)=>e.metadata.invoiceId===invoiceId)){const created=await commercialEvent(tx,ownerId,'payment.checkout_created',r.aggregateId),verified=await commercialEvent(tx,ownerId,'payment.provider_verified',r.aggregateId),terminal=await commercialEvent(tx,ownerId,'payment.checkout_terminal',r.aggregateId),observed=await commercialEvent(tx,ownerId,'payment.provider_observed',r.aggregateId);checkouts.push({intentId:r.aggregateId,amount:r.metadata.amount,currency:r.metadata.currency,mode:r.metadata.mode,sessionId:created?.metadata.sessionId??null,url:created?.metadata.url??null,status:verified?'provider_paid':observed?'review_required':terminal?.metadata.status??'pending',bankSettlementVerified:false});}const reviewRows=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.aggregateId,invoiceId),eq(workflowEvents.eventType,'payment.review_required')));const reviews=[];for(const r of reviewRows)if(!await commercialEvent(tx,ownerId,'payment.review_resolved',r.metadata.intentId))reviews.push({reviewId:r.metadata.intentId,reason:String(r.metadata.reason),amount:r.metadata.amount,currency:r.metadata.currency});const recovery=await tx.select().from(automationQueue).where(and(eq(automationQueue.ownerId,ownerId),eq(automationQueue.jobType,'stripe_payment_reconcile')));const recoveryTasks=recovery.filter((j:any)=>j.payload?.invoiceId===invoiceId).map((j:any)=>({intentId:j.payload.intentId,status:j.status,scheduledAt:j.scheduledAt,attempts:j.attempts,lastError:j.lastError}));const c=stripeConfiguration();return {configured:c.configured,mode:c.mode,checkouts,reviews,recoveryTasks};});}
+export async function reconcileStripeCheckout(ownerId:number,invoiceId:string,intentId:string,sessionId?:string,automatic=false){
   const req=await requestForIntent(intentId);if(!req||req.ownerId!==ownerId||req.metadata.invoiceId!==invoiceId)throw new TRPCError({code:'NOT_FOUND',message:'Owned checkout was not found.'});
+  if(automatic){const workspace=(await (await requireDb()).select().from(workspaceSettings).where(eq(workspaceSettings.ownerId,ownerId)).limit(1))[0];if(!workspace?.backgroundEnabled||workspace.emergencyStop)return {status:'paused'};}
   const c=config();if(req.metadata.mode!==c.mode)throw fail('Provider account mode differs from the original checkout.');
   const created=await withWorkspaceTransaction(ownerId,tx=>commercialEvent(tx,ownerId,'payment.checkout_created',intentId));
   const providerSession=created?.metadata.sessionId??sessionId;
@@ -125,7 +127,9 @@ export async function reconcileStripeCheckout(ownerId:number,invoiceId:string,in
   const session=await stripe(`checkout/sessions/${encodeURIComponent(providerSession)}`);
   validateSession(session,req.metadata);
   if(!created)await withWorkspaceTransaction(ownerId,tx=>appendWorkflowEvent(tx,ownerId,'payment.checkout_created',intentId,1,{invoiceId,sessionId:session.id,url:null,expiresAt:session.expires_at}));
-  return observeSession(ownerId,intentId,session,'owner_provider_reconciliation');
+  const result=await observeSession(ownerId,intentId,session,automatic?'managed_provider_reconciliation':'owner_provider_reconciliation',undefined,automatic);
+  if(!automatic&&result.status==='pending')await withWorkspaceTransaction(ownerId,tx=>enqueueStripeReconciliation(tx,ownerId,invoiceId,intentId,true));
+  return result;
 }
 
 async function observeProviderAdjustment(event:any){
@@ -148,4 +152,26 @@ async function observeProviderAdjustment(event:any){
    await recordAudit({ownerId:source.ownerId,actorType:'system',action:'payment.adjustment_observed',resourceType:'invoice',resourceId:invoiceId,metadata:{eventId:event.id,type:event.type,reviewId,amount,currency:object.currency}},tx);
   });return {statusCode:200,body:{status:'review_required'}};
  }catch{return {statusCode:503,body:{error:'Payment adjustment requires retry or reconciliation.'}};}
+}
+
+/** One durable recovery task per checkout on the existing managed queue. */
+async function enqueueStripeReconciliation(tx:any,ownerId:number,invoiceId:string,intentId:string,ownerRecovered=false){
+ const key=`stripe-reconcile:${intentId}`;
+ const existing=(await tx.select().from(automationQueue).where(eq(automationQueue.idempotencyKey,key)).limit(1))[0];
+ if(existing){if(ownerRecovered&&existing.ownerId===ownerId&&existing.status==='blocked')await tx.update(automationQueue).set({status:'queued',attempts:0,scheduledAt:new Date(Date.now()+5*60000),lastError:null,lockedAt:null,lockToken:null}).where(eq(automationQueue.id,existing.id));return;}
+ if(await commercialEvent(tx,ownerId,'payment.checkout_terminal',intentId))return;
+ await tx.insert(automationQueue).values({id:createId('que_'),ownerId,jobType:'stripe_payment_reconcile',status:'queued',priority:25,attempts:0,maxAttempts:5,scheduledAt:new Date(Date.now()+5*60000),idempotencyKey:key,payload:{invoiceId,intentId}});
+}
+export async function executeStripeReconciliation(ownerId:number,payload:any){
+ if(typeof payload?.invoiceId!=='string'||typeof payload?.intentId!=='string')throw new TRPCError({code:'BAD_REQUEST',message:'Invalid payment recovery source.'});
+ const req=await requestForIntent(payload.intentId);
+ if(!req||req.ownerId!==ownerId||req.metadata.invoiceId!==payload.invoiceId)throw new TRPCError({code:'NOT_FOUND',message:'Owned payment recovery source was not found.'});
+ const terminal=await withWorkspaceTransaction(ownerId,tx=>commercialEvent(tx,ownerId,'payment.checkout_terminal',payload.intentId));
+ if(terminal)return {status:'completed',providerStatus:terminal.metadata.status};
+ if(Date.now()-new Date(req.createdAt).getTime()>7*86400000)throw fail('Automatic payment recovery reached its seven-day limit. Reconcile the original provider session.');
+ try {
+  const result=await reconcileStripeCheckout(ownerId,payload.invoiceId,payload.intentId,undefined,true);
+  if(['pending','paused'].includes(result.status))return {status:'deferred',nextActionAt:new Date(Date.now()+15*60000),providerStatus:result.status};
+  return result;
+ }catch(error){if(error instanceof TRPCError)throw error;throw new TRPCError({code:'BAD_GATEWAY',message:'Provider payment recovery was not confirmed. The existing task will retry within its bounded attempt budget.'});}
 }

@@ -17,6 +17,7 @@ export function InvoiceCheckoutPanel({id,status}:{id:string;status:string}) {
     {q.data.reviews.map(r=><p key={r.reviewId} role="status" className="text-amber-800">{r.reason} {formatMoney(r.amount,r.currency)}</p>)}
     {q.data.configured&&eligible&&<Button size="sm" variant="outline" disabled={create.isPending} onClick={()=>create.mutate({id,provider:'stripe'})}>Create or reuse checkout</Button>}
     <p>Returning from checkout does not mark an invoice paid. Provider payment confirmation and bank settlement are separate.</p>
+    {(q.data.recoveryTasks??[]).map(t=><p key={t.intentId}>Automatic provider check: {t.status}{t.lastError?` · ${t.lastError}`:''}</p>)}
     {q.data.checkouts.map(c=><div key={c.intentId} className="space-y-2 border-t pt-2">
       <p>{formatMoney(c.amount,c.currency)} · {c.mode} · {c.status}</p>
       {c.url&&c.status==='pending'&&<a className="underline" href={c.url} target="_blank" rel="noopener noreferrer">Open Stripe checkout</a>}
