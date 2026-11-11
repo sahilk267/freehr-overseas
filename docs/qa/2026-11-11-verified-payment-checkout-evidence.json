@@ -1,0 +1,42 @@
+{
+  "checkedAt": "2026-11-11T00:25:26.157Z",
+  "syntheticProviderTestsOnly": true,
+  "realChargesCreated": 0,
+  "liveTests": [
+    "Owner-only provider readiness returns sanitized configuration state",
+    "Owned invoice checkout and financial-review history readable without creating a session",
+    "All four provider routes deny anonymous access",
+    "Manual receipt command cannot forge the reserved verified-provider source",
+    "Unknown checkout cannot be reconciled to an owned invoice",
+    "Unconfigured checkout and unsigned webhook fail closed without provider activity",
+    "desktop Finance renders provider readiness without page overflow",
+    "mobile Finance renders provider readiness without page overflow",
+    "Anonymous checkout return ignores forged paid query and does not require owner login",
+    "No browser runtime exceptions"
+  ],
+  "providerConfigured": false,
+  "mode": "test",
+  "buildCommit": "d0c0329da46c688cd9448a086d4981ec22d38de7",
+  "worker": {
+    "enabled": true,
+    "persistent": true,
+    "heartbeatRecent": true,
+    "runtimeLoopActive": true,
+    "lastError": null
+  },
+  "validation": {
+    "unitPassed": 900,
+    "unitSkipped": 87,
+    "mysqlPassed": 668,
+    "mysqlFiles": 36,
+    "targetedPassed": 30,
+    "targetedSqlOnlySkipped": 4,
+    "types": "passed",
+    "productionBuild": "passed",
+    "hostingerEntryChecksPassed": 4,
+    "environmentPreparationChecksPassed": 7,
+    "tracker": "25 modules / 163 packages consistent",
+    "realStripeAcceptance": "not configured / not verified",
+    "bankSettlement": "not verified"
+  }
+}
