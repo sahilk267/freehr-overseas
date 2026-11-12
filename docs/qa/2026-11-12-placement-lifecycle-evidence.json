@@ -16,7 +16,8 @@
     "All seven lifecycle API routes deny anonymous access",
     "Unknown placement is not exposed to the owner scope",
     "Synthetic lifecycle records, future timers, unused approvals and incidents closed; persistent worker healthy",
-    "Retention-only permission leaves a processing-pending profile unchanged"
+    "Retention-only permission leaves a processing-pending profile unchanged",
+    "Archived owner history retains the linked replacement role after client closure without reopening entitlement"
   ],
   "buildCommit": "0269abceee000f4cb2f6bb8150cbbc29b1278879",
   "cleanup": {
@@ -52,5 +53,7 @@
     "identityOrClientSignatureVerified": false,
     "realRecipientDeliveryVerified": false,
     "realEmploymentVerified": false
-  }
+  },
+  "finalReadOnlyBuild": "abffedbda637f88d876e2e8e7ae79d2dce6bea01",
+  "finalCheckedAt": "2026-11-12T08:43:07.485Z"
 }
