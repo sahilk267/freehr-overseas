@@ -1,3 +1,4 @@
+import {careerEvidenceInTransaction,careerClarificationQuestions} from './careerEvidence';
 import {invalidateCandidateMatches} from './candidateEvidenceLifecycle';
 import {randomBytes,timingSafeEqual} from 'node:crypto';
 import {TRPCError} from '@trpc/server';
@@ -38,7 +39,8 @@ export async function createCandidateReviewInTransaction(tx:any,ownerId:number,a
    }
   }
   const known=new Set((d.fresh?d.fields?.skills??[]:[]).map(s=>s.toLowerCase())),skills=(Array.isArray(j.mustHaveSkills)?j.mustHaveSkills:[]).filter((s:any)=>typeof s==='string'&&!known.has(s.toLowerCase()));
-  const all=clarification?.questions??[...(Array.isArray(j.scorecard)?j.scorecard:[]).map((c:any,i:number)=>({id:'criterion_'+i,prompt:'Describe job-related work or an accessible work sample demonstrating: '+c.criterion})),...skills.map((s:string,i:number)=>({id:'skill_'+i,prompt:'Give a concrete job-related example of your experience with '+s+'. If unknown, say what evidence is missing.'}))];
+  const career=await careerEvidenceInTransaction(tx,ownerId,d);
+  const all=clarification?.questions??[...careerClarificationQuestions(career),...(Array.isArray(j.scorecard)?j.scorecard:[]).map((c:any,i:number)=>({id:'criterion_'+i,prompt:'Describe job-related work or an accessible work sample demonstrating: '+c.criterion})),...skills.map((s:string,i:number)=>({id:'skill_'+i,prompt:'Give a concrete job-related example of your experience with '+s+'. If unknown, say what evidence is missing.'}))];
   for(const q of all)ensureSafeAiText(q.prompt);
   const id=createId('crv_'),token=randomBytes(32).toString('base64url'),expiresAt=new Date(Date.now()+input.expiresHours*3600000);
   await appendWorkflowEvent(tx,ownerId,'candidate.review_identity',key,1,{inviteId:id,candidateId:d.candidateId,requestHash});

@@ -1,3 +1,5 @@
+import {createHash} from 'node:crypto';
+import {CAREER_PARSER_VERSION,careerTextHash,careerDocumentSourceHash,groundCareerRecords,careerEvidenceIntegrity} from './careerExtraction';
 import {executeOfferDeadline} from './candidateOffers';
 import {executePlacementCheckpoint} from './placementLifecycle';
 import {executeStripeReconciliation} from './stripePayments';
@@ -45,7 +47,8 @@ export async function handleAiTaskResult(
   result: unknown,
   selectedModel: string,
   ownerId: number,
-  db: Awaited<ReturnType<typeof requireDb>>
+  db: Awaited<ReturnType<typeof requireDb>>,
+  cvSource?: {text:string;documentSourceHash:string;observedAt:string}
 ) {
   const payload = (job.payload ?? {}) as Record<string, unknown>;
 
@@ -53,26 +56,24 @@ export async function handleAiTaskResult(
   } else if (job.jobType === "parse_cv") {
     const documentId = payload.documentId ? String(payload.documentId) : null;
     const candidateId = payload.candidateId ? String(payload.candidateId) : null;
-    const parsed = result as {
-      headline?: string | null;
-      skills?: string[];
-      totalExperienceYears?: number | null;
-      recentRoles?: Array<{ title: string; employer: string | null; years: number | null }>;
-      education?: string[];
-      missingInformation?: string[];
-      confidence?: number;
-    };
+    const {careerEvidence:_untrustedCareer,careerRecords,...parsed}=result as Record<string,any>;
 
     if (documentId) {
       const doc = (await db.select().from(candidateDocuments).where(and(eq(candidateDocuments.id, documentId), eq(candidateDocuments.ownerId, ownerId))).limit(1))[0];
       const candidate = candidateId ? (await db.select().from(candidates).where(and(eq(candidates.id, candidateId), eq(candidates.ownerId, ownerId))).limit(1))[0] : null;
-      if (!doc || doc.scanState !== "clean" || (doc.provenance as any)?.supersededBy || doc.parseState==='superseded' || !candidate || candidateSuppressed(candidate)) throw new NonRetryableJobError("CV result discarded: document or candidate is no longer eligible.");
+      if (!doc || doc.candidateId!==candidateId || doc.scanState !== "clean" || (doc.provenance as any)?.supersededBy || doc.parseState==='superseded' || !candidate || candidateSuppressed(candidate)) throw new NonRetryableJobError("CV result discarded: document or candidate is no longer eligible.");
       if(!await hasGeneralCandidateProcessingConsent(db,ownerId,doc.candidateId))throw new NonRetryableJobError('Candidate CV processing consent changed before result application.');
+      if(cvSource&&careerDocumentSourceHash(doc)!==cvSource.documentSourceHash)throw new NonRetryableJobError('CV source changed during extraction; result discarded.');
+      let careerEvidence:Record<string,unknown>|undefined;
+      if(cvSource&&careerRecords!==undefined){
+        const c={parserVersion:CAREER_PARSER_VERSION,sourceTextHash:careerTextHash(cvSource.text),documentSourceHash:cvSource.documentSourceHash,documentId:doc.id,candidateId:doc.candidateId,documentSha256:doc.sha256??null,model:selectedModel,observedAt:cvSource.observedAt,records:groundCareerRecords(cvSource.text,careerRecords)};
+        careerEvidence={...c,integrityHash:careerEvidenceIntegrity(c)};
+      }
       await db
         .update(candidateDocuments)
         .set({
           parseState: "parsed",
-          parsedData: parsed,
+          parsedData: {...parsed,...(careerEvidence?{careerEvidence}:{})},
           updatedAt: new Date(),
         })
         .where(and(eq(candidateDocuments.id, documentId), eq(candidateDocuments.ownerId, ownerId)));
@@ -477,6 +478,7 @@ export async function processOneQueuedJob(ownerId: number) {
   }
   const route = (await db.select().from(aiModelRoutes).where(and(eq(aiModelRoutes.ownerId, ownerId), eq(aiModelRoutes.taskType, job.jobType), eq(aiModelRoutes.isActive, true))).limit(1))[0];
   const usageId = createId("aiu_");
+  let cvSource:{text:string;documentSourceHash:string;observedAt:string}|undefined;
   try {
     let aiInput = (job.payload ?? {}) as Record<string, unknown>;
     if(job.jobType==="extract_job_requirements"){
@@ -490,14 +492,19 @@ export async function processOneQueuedJob(ownerId: number) {
       const candidate = doc ? (await db.select().from(candidates).where(and(eq(candidates.id, doc.candidateId), eq(candidates.ownerId, ownerId))).limit(1))[0] : null;
       if (!doc || !candidate || candidateSuppressed(candidate)) throw new NonRetryableJobError("CV parsing blocked for an ineligible candidate.");
       if(!await hasGeneralCandidateProcessingConsent(db,ownerId,doc.candidateId))throw new NonRetryableJobError('Current general candidate processing consent is required for CV AI extraction.');
-      aiInput = { candidateId: doc.candidateId, documentId: doc.id, cvText: await extractDocumentText(await readPrivateDocument(doc.storageKey), doc.mimeType,{strictDocx:true,maxPdfPages:100,rejectOverflow:true,maxChars:12000}) };
+      cvSource={text:'',documentSourceHash:careerDocumentSourceHash(doc),observedAt:new Date().toISOString()};
+      const bytes=await readPrivateDocument(doc.storageKey);
+      if(doc.sha256&&createHash('sha256').update(bytes).digest('hex')!==doc.sha256)throw new NonRetryableJobError('CV bytes no longer match the scanned document hash.');
+      const text=await extractDocumentText(bytes,doc.mimeType,{strictDocx:true,maxPdfPages:100,rejectOverflow:true,maxChars:12000});
+      cvSource.text=text;
+      aiInput = { candidateId: doc.candidateId, documentId: doc.id, cvText:text };
     }
     const response = await runControlledAiTask({
       taskType: job.jobType as AiTaskType,
       input: aiInput,
       primaryModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite",
       fallbackModels: (route?.fallbackModels as string[] | null) ?? [],
-      maxOutputTokens: route?.maxOutputTokens ?? (job.jobType==="extract_job_requirements"?3200:1200),
+      maxOutputTokens: route?.maxOutputTokens ?? (["extract_job_requirements","parse_cv"].includes(job.jobType)?3200:1200),
     });
     await db.insert(aiUsage).values({ id: usageId, ownerId, routeId: route?.id ?? null, queueJobId: job.id, taskType: job.jobType, requestedModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite", selectedModel: response.selectedModel, status: "succeeded", latencyMs: response.latencyMs });
     await db.transaction(async (tx: any) => {
@@ -505,7 +512,7 @@ export async function processOneQueuedJob(ownerId: number) {
       const owned = (await lockedSelect(tx.select().from(automationQueue).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken), eq(automationQueue.status, "running"))).limit(1)))[0];
       if (!owned) throw new NonRetryableJobError("Worker no longer owns this task; result discarded.");
       if (job.jobType === "parse_cv" && aiInput.candidateId) await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.id, String(aiInput.candidateId)), eq(candidates.ownerId, ownerId))).limit(1));
-      await handleAiTaskResult(job, response.result, response.selectedModel, ownerId, tx);
+      await handleAiTaskResult(job, response.result, response.selectedModel, ownerId, tx,cvSource);
     });
     await db.update(automationQueue).set({ status: "completed", result: response.result, completedAt: new Date(), lockToken: null, lockedAt: null, lastError: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));
     await recordAudit({ ownerId, actorType: "ai", actorId: response.selectedModel, action: "automation.completed", resourceType: "automation_job", resourceId: job.id, previousState: "running", nextState: "completed", metadata: { taskType: job.jobType, latencyMs: response.latencyMs } });
@@ -526,7 +533,7 @@ export async function processOneQueuedJob(ownerId: number) {
         : "permanently_failed";
     const nextRun = isRetryable ? new Date(Date.now() + calculateBackoff(job.attempts + 1)) : now;
     const message = error instanceof Error ? error.message : "Unknown automation error.";
-    if(job.jobType==='parse_cv'&&job.payload?.documentId){await withWorkspaceTransaction(ownerId,async tx=>{const doc=(await tx.select().from(candidateDocuments).where(and(eq(candidateDocuments.ownerId,ownerId),eq(candidateDocuments.id,String(job.payload.documentId)))).limit(1))[0];const c=doc?(await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.ownerId,ownerId),eq(candidates.id,doc.candidateId))).limit(1)))[0]:null;if(doc&&c&&!candidateSuppressed(c)&&doc.scanState==='clean'&&!(doc.provenance as any)?.supersededBy&&doc.parseState!=='redacted'){await tx.update(candidateDocuments).set({parseState:'failed',provenance:{...(doc.provenance as any??{}),lastParseError:message.slice(0,500)}}).where(eq(candidateDocuments.id,doc.id));await recordCandidateDocumentChange(tx,ownerId,doc.candidateId,{documentId:doc.id,reason:'Document parsing failed'});}});}
+    if(job.jobType==='parse_cv'&&job.payload?.documentId){await withWorkspaceTransaction(ownerId,async tx=>{const doc=(await tx.select().from(candidateDocuments).where(and(eq(candidateDocuments.ownerId,ownerId),eq(candidateDocuments.id,String(job.payload.documentId)))).limit(1))[0];const c=doc?(await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.ownerId,ownerId),eq(candidates.id,doc.candidateId))).limit(1)))[0]:null;if(doc&&c&&!candidateSuppressed(c)&&doc.scanState==='clean'&&!(doc.provenance as any)?.supersededBy&&doc.parseState!=='redacted'&&(!cvSource||careerDocumentSourceHash(doc)===cvSource.documentSourceHash)){await tx.update(candidateDocuments).set({parseState:'failed',provenance:{...(doc.provenance as any??{}),lastParseError:message.slice(0,500)}}).where(eq(candidateDocuments.id,doc.id));await recordCandidateDocumentChange(tx,ownerId,doc.candidateId,{documentId:doc.id,reason:'Document parsing failed'});}});}
 
     await db.insert(aiUsage).values({ id: usageId, ownerId, routeId: route?.id ?? null, queueJobId: job.id, taskType: job.jobType, requestedModel: route?.primaryModel ?? process.env.FREELANCEHR_BUILT_IN_MODEL ?? "manus-1.6-lite", status: nextStatus, errorCode: error instanceof OpenRouterValidationError ? "invalid_output" : isConfig ? "configuration" : "provider" }).onDuplicateKeyUpdate({ set: { status: nextStatus, errorCode: "result_application_failed" } });
     await db.update(automationQueue).set({ status: nextStatus, scheduledAt: nextRun, lastError: message.slice(0, 4000), lockToken: null, lockedAt: null }).where(and(eq(automationQueue.id, job.id), eq(automationQueue.lockToken, lockToken)));

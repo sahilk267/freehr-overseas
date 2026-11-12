@@ -2,6 +2,10 @@
 
 Updated 12 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
 
+## Combined batch: grounded career chronology, source recovery and review
+
+[Career source report](qa/2026-11-12-career-source-evidence.md) records exact CV quotations/hashes, partial-date chronology, union month coverage, cross-source questions, versioned owner decisions, literal outage recovery and stale worker-result fencing. Canonical matching uses grounded current statements and keeps coverage separate from relevant experience; existing candidate questionnaires carry neutral unresolved date questions, and privacy erases new notes/quotes. 979 unit tests (93 skipped), all 753 disposable MySQL tests across 39 files, types, build, four hosting entry checks, seven environment checks and tracker consistency passed. Live synthetic acceptance is pending. M14-F03 is now implementing; full page/layout, multilingual/OCR, external authenticity and the broader advanced roadmap remain open.
+
 ## Combined batch: versioned offers and candidate response
 
 [Offer lifecycle report](qa/2026-11-12-candidate-offers.md) records exact compensation versions, client bounds, mandatory release review, private email-code responses, bounded counter drafts, accepted-offer commercial salary amendments, condition reviews, withdrawal/expiry and guarded joining handoff. Existing approvals/mail/worker/FU21/privacy remain canonical. 950 unit tests (92 skipped), all 723 disposable MySQL tests across 38 files, types, production build, four Hostinger entry checks, seven environment checks and tracker consistency passed. Synthetic owner/API, desktop/mobile, private-entry, version revocation, historical pack and safe cleanup passed live on `a4717ae`; the worker remained healthy and no real mail/invoice/charge occurred. Email possession is distinct from legal identity, client authority and qualified signature. All five M19 packages are implementing; no whole advanced module is complete.

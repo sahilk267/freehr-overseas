@@ -1,3 +1,4 @@
+import {careerEvidenceInTransaction,careerMatchDocument} from './careerEvidence';
 import {assertReplacementCandidateAllowed} from './replacementPolicy';
 import {candidateReviewActivity} from './candidateReview';
 import {weightedScorecardInTransaction} from './weightedScorecard';
@@ -22,13 +23,15 @@ export async function buildMatchContext(tx:any,ownerId:number,candidateId:string
  const grants=await tx.select().from(consents).where(and(eq(consents.ownerId,ownerId),eq(consents.candidateId,candidateId),eq(consents.status,'granted')));
  const processingConsent=grants.some((c:any)=>['platform_processing','recruitment_communication'].includes(c.consentType)&&(!c.jobId||c.jobId===jobId)&&(!c.companyId||c.companyId===job.companyId)&&(!c.expiresAt||new Date(c.expiresAt)>new Date()));
  const reviewActivity=await candidateReviewActivity(tx,ownerId,candidateId,jobId);
+ const career=await careerEvidenceInTransaction(tx,ownerId,d);
  const f=d.fresh?d.fields:null,intake=job.intake as any??{},missing:string[]=[],conflicts:string[]=[];
  if(['submitted','clarification_pending'].includes(reviewActivity?.metadata.status))missing.push('Current candidate questionnaire response or clarification awaits owner evidence review.');
+ if(career.openIssues.length)missing.push('Career source has '+career.openIssues.length+' unresolved chronology/evidence questions. These are clarification prompts, not negative hiring signals; coverage is not relevant-experience verification.');
  const closedPair=Boolean(previousMatch&&['closed','withdrawn'].includes(previousMatch.status));if(closedPair)conflicts.push('This candidate-job match is closed or withdrawn; automated rescoring cannot reopen it.');
  const clean=d.documents.filter((x:any)=>x.scanState==='clean'&&x.parseState==='parsed'&&!x.supersededBy&&x.parsedData);
- const parsedSkills=clean.flatMap((x:any)=>Array.isArray(x.parsedData.skills)?x.parsedData.skills.filter((s:any)=>typeof s==='string'):[]);
+ const parsedSkills=clean.flatMap((x:any)=>{const data=careerMatchDocument(x,career);return Array.isArray(data.skills)?data.skills.filter((s:any)=>typeof s==='string'):[];});
  const skills:string[]=f?f.skills:[...new Set<string>(parsedSkills)].slice(0,80);
- const experienceValues=[...new Set<number>(clean.map((x:any)=>x.parsedData.totalExperienceYears).filter((n:any)=>typeof n==='number'&&n>=0&&n<=60))];
+ const experienceValues=[...new Set<number>(clean.map((x:any)=>careerMatchDocument(x,career).totalExperienceYears).filter((n:any)=>typeof n==='number'&&n>=0&&n<=60))];
  const experience=f?.totalExperienceYears??(experienceValues.length===1?experienceValues[0]:null);
  if(experienceValues.length>1||(f?.totalExperienceYears!==undefined&&experienceValues.some(n=>n!==f.totalExperienceYears)))conflicts.push('Experience statements differ across current profile and parsed documents; clarify the chronology.');
  if(!processingConsent)missing.push('Valid platform-processing or recruitment-communication consent is required before AI processing.');
@@ -63,7 +66,7 @@ export async function buildMatchContext(tx:any,ownerId:number,candidateId:string
   assessment:{eligibility:conflicts.length?'conflict_review' as const:missing.length?'needs_evidence' as const:'review_ready' as const,reviewPriority:priority,components,matchedSkills:matched,missingSkills,missingEvidence:missing,conflicts,compensation,finalDisposition:false as const},
   payload:{candidateId,jobId,requirementFingerprint:jobRequirementFingerprint(job),candidateContextFingerprint:fingerprint,policy:MATCH_POLICY,
    compensationComparison:{...compensation,allowed:compensation.status!=='unknown'},employerScorecard:employerScorecard.current?{revision:employerScorecard.revision,...employerScorecard.result,independentlyVerified:false}:{status:'unassessed_or_stale'},requiredMissingEvidence:scoringMissing.map(s=>s.slice(0,500)),
-   candidate:{headline:d.candidate.headline,location:d.candidate.location,availability:d.candidate.availability,recordedStatement:f,statementSource:d.source+'; not independently verified',skills,experienceYears:experience,evidence:clean.slice(0,3).map((x:any)=>({documentId:x.documentId,sha256:x.sha256,parsedData:x.parsedData})),documentsTruncated:d.documentsTruncated||clean.length>3},
+   candidate:{headline:d.candidate.headline,location:d.candidate.location,availability:d.candidate.availability,recordedStatement:f,statementSource:d.source+'; not independently verified',skills,experienceYears:experience,evidence:clean.slice(0,3).map((x:any)=>({documentId:x.documentId,sha256:x.sha256,parsedData:careerMatchDocument(x,career)})),documentsTruncated:d.documentsTruncated||clean.length>3},
    job:{title:job.title,description:intake.description,location:job.location,mustHaveSkills:must,niceToHaveSkills:job.niceToHaveSkills,scorecard:job.scorecard,experienceMinYears:job.experienceMinYears,experienceMaxYears:job.experienceMaxYears,compensationMin:job.compensationMin,compensationMax:job.compensationMax,currency:job.currency,currencyRecorded:Boolean(intake.currencyExplicit),compensationPeriod:intake.compensationPeriod??null,trainableSkills:intake.trainableSkills??[],responsibilities:intake.responsibilities??[],workModel:job.workModel}},
  };
 }
