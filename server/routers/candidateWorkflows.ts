@@ -1,3 +1,4 @@
+import {eraseInterviewFeedbackContent} from '../services/interviewFeedback';
 import {eraseCandidateOfferContent} from '../services/candidateOffers';
 import {erasePlacementLifecycleContent} from '../services/placementLifecycle';
 import { stopOwnerFollowUps } from "../services/followupEvents";
@@ -296,6 +297,7 @@ export const candidateWorkflowsRouter = router({
         }
       }
 
+      await eraseInterviewFeedbackContent(ctx.user.id,candidate.id);
       // 10. Only after all physical deletions succeed, redact document records
       let documentsDeletedCount = 0;
       for (const doc of docs) {

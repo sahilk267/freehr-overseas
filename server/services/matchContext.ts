@@ -1,3 +1,4 @@
+import {feedbackEvent,interviewFeedbackContext} from './interviewFeedbackState';
 import {careerEvidenceInTransaction,careerMatchDocument} from './careerEvidence';
 import {assertReplacementCandidateAllowed} from './replacementPolicy';
 import {candidateReviewActivity} from './candidateReview';
@@ -22,6 +23,8 @@ export async function buildMatchContext(tx:any,ownerId:number,candidateId:string
  const previousMatch=(await tx.select().from(matches).where(and(eq(matches.ownerId,ownerId),eq(matches.candidateId,candidateId),eq(matches.jobId,jobId))).limit(1))[0];
  const grants=await tx.select().from(consents).where(and(eq(consents.ownerId,ownerId),eq(consents.candidateId,candidateId),eq(consents.status,'granted')));
  const processingConsent=grants.some((c:any)=>['platform_processing','recruitment_communication'].includes(c.consentType)&&(!c.jobId||c.jobId===jobId)&&(!c.companyId||c.companyId===job.companyId)&&(!c.expiresAt||new Date(c.expiresAt)>new Date()));
+ const feedbackActivity=await feedbackEvent(tx,ownerId,'interview.feedback_activity',workflowHash([candidateId,jobId]));
+ const feedbackContext=feedbackActivity?await interviewFeedbackContext(tx,ownerId,feedbackActivity.metadata.interviewId):null;
  const reviewActivity=await candidateReviewActivity(tx,ownerId,candidateId,jobId);
  const career=await careerEvidenceInTransaction(tx,ownerId,d);
  const f=d.fresh?d.fields:null,intake=job.intake as any??{},missing:string[]=[],conflicts:string[]=[];
@@ -61,12 +64,12 @@ export async function buildMatchContext(tx:any,ownerId:number,candidateId:string
  const priority=d.fresh?Object.values(components).reduce((a,b)=>a+b,0):Math.min(50,Object.values(components).reduce((a,b)=>a+b,0));
  const employerScorecard=await weightedScorecardInTransaction(tx,ownerId,job,d);
  const scoringMissing=[...missing,...conflicts,...(employerScorecard.criteria.length&&(!employerScorecard.current||employerScorecard.result?.unknownWeight)?['Employer-weighted scorecard has unknown or stale source ratings.']:[]),...(employerScorecard.result?.reviewRequired?.length?['Required scorecard criteria need owner review; no automatic rejection is authorized.']:[])];
- const fingerprint=workflowHash({candidate:d.fingerprint,processingConsent,...(reviewActivity?{reviewActivity:reviewActivity.revision}:{}),...(employerScorecard.signature?{scorecard:employerScorecard.signature}:{})});
+ const fingerprint=workflowHash({candidate:d.fingerprint,processingConsent,...(feedbackActivity?{feedbackActivity:feedbackActivity.revision}:{}),...(reviewActivity?{reviewActivity:reviewActivity.revision}:{}),...(employerScorecard.signature?{scorecard:employerScorecard.signature}:{})});
  return {job,candidate:d.candidate,evidence:d,processingConsent,canQueueAi:processingConsent&&!closedPair,candidateFingerprint:fingerprint,requirementFingerprint:jobRequirementFingerprint(job),policy:MATCH_POLICY,employerScorecard,
   assessment:{eligibility:conflicts.length?'conflict_review' as const:missing.length?'needs_evidence' as const:'review_ready' as const,reviewPriority:priority,components,matchedSkills:matched,missingSkills,missingEvidence:missing,conflicts,compensation,finalDisposition:false as const},
   payload:{candidateId,jobId,requirementFingerprint:jobRequirementFingerprint(job),candidateContextFingerprint:fingerprint,policy:MATCH_POLICY,
    compensationComparison:{...compensation,allowed:compensation.status!=='unknown'},employerScorecard:employerScorecard.current?{revision:employerScorecard.revision,...employerScorecard.result,independentlyVerified:false}:{status:'unassessed_or_stale'},requiredMissingEvidence:scoringMissing.map(s=>s.slice(0,500)),
-   candidate:{headline:d.candidate.headline,location:d.candidate.location,availability:d.candidate.availability,recordedStatement:f,statementSource:d.source+'; not independently verified',skills,experienceYears:experience,evidence:clean.slice(0,3).map((x:any)=>({documentId:x.documentId,sha256:x.sha256,parsedData:careerMatchDocument(x,career)})),documentsTruncated:d.documentsTruncated||clean.length>3},
+   candidate:{interviewFeedback:feedbackContext?.current?{scope:'latest_updated_panel_only',interviewId:feedbackContext.interview.id,panelRevision:feedbackContext.panel.revision,observations:feedbackContext.active.slice(0,6).map((f:any)=>({feedbackId:f.id,reviewerKey:f.scorecard.reviewerKey,ratings:f.scorecard.ratings.map((r:any)=>({criterionIndex:r.criterionIndex,score:r.score,quote:r.quote?.slice(0,200)??null}))})),missingReviewers:feedbackContext.comparison.missingReviewers,ownerNextAction:feedbackContext.resolution?.metadata.nextAction??null,identityVerified:false,finalDisposition:false}:undefined,headline:d.candidate.headline,location:d.candidate.location,availability:d.candidate.availability,recordedStatement:f,statementSource:d.source+'; not independently verified',skills,experienceYears:experience,evidence:clean.slice(0,3).map((x:any)=>({documentId:x.documentId,sha256:x.sha256,parsedData:careerMatchDocument(x,career)})),documentsTruncated:d.documentsTruncated||clean.length>3},
    job:{title:job.title,description:intake.description,location:job.location,mustHaveSkills:must,niceToHaveSkills:job.niceToHaveSkills,scorecard:job.scorecard,experienceMinYears:job.experienceMinYears,experienceMaxYears:job.experienceMaxYears,compensationMin:job.compensationMin,compensationMax:job.compensationMax,currency:job.currency,currencyRecorded:Boolean(intake.currencyExplicit),compensationPeriod:intake.compensationPeriod??null,trainableSkills:intake.trainableSkills??[],responsibilities:intake.responsibilities??[],workModel:job.workModel}},
  };
 }

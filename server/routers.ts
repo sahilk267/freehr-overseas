@@ -1,3 +1,4 @@
+import {interviewFeedbackRouter} from './routers/interviewFeedback';
 import {careerEvidenceRouter} from './routers/careerEvidence';
 import {candidateOffersRouter} from './routers/candidateOffers';
 import {placementLifecycleRouter} from './routers/placementLifecycle';
@@ -24,6 +25,7 @@ import { recordAudit } from "./db";
 export const appRouter = router({
   candidateOffers:candidateOffersRouter,
   careerEvidence:careerEvidenceRouter,
+  interviewFeedback:interviewFeedbackRouter,
   placementLifecycle:placementLifecycleRouter,
   candidateReviews:candidateReviewsRouter,
   clientDiscovery: clientDiscoveryRouter,

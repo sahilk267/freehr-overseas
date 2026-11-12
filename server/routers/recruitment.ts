@@ -1,3 +1,4 @@
+import {feedbackEvent} from '../services/interviewFeedbackState';
 import {assertLegacyOfferAllowed,assertCurrentOfferAcceptance,currentOffer} from '../services/candidateOfferState';
 import {lifecyclePlanId,placementLifecycleFingerprint} from '../services/placementLifecycleState';
 import {commercialEvent as lifecycleEvent} from '../services/commercialAgreements';
@@ -800,6 +801,7 @@ export const feedbackRouter = router({
     const interview = (await db.select().from(interviews).where(and(eq(interviews.id, input.interviewId), eq(interviews.ownerId, ctx.user.id))).limit(1))[0];
     if (!interview) throw new TRPCError({ code: "NOT_FOUND", message: "Interview was not found." });
     if (!["completed", "feedback_pending", "feedback_received"].includes(interview.status)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Feedback can only be recorded for a completed interview." });
+    if(await feedbackEvent(db,ctx.user.id,'interview.feedback_panel',interview.id))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Use the current structured feedback panel and its exact reviewer response/correction workflow.'});
     const id = createId("fbk_");
     await db.insert(feedback).values({ id, ownerId: ctx.user.id, interviewId: interview.id, authorName: input.authorName, rawFeedback: input.rawFeedback, scorecard: { technicalScore: input.technicalScore ?? null, communicationScore: input.communicationScore ?? null, roleEvidence: input.roleEvidence } });
     if (interview.status !== "feedback_received") await db.update(interviews).set({ status: "feedback_received" }).where(eq(interviews.id, interview.id));

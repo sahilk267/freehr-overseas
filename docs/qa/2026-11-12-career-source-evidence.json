@@ -1,0 +1,55 @@
+{
+  "syntheticOnly": true,
+  "checkedAt": "2026-11-12T13:17:50.672Z",
+  "tests": [
+    "Existing physical scanner and worker produced structured career records using a real configured free model",
+    "Actual private-file SHA-256/read, six exact literal records, idempotent correction, union coverage and gap/overlap review",
+    "Persisted review reuses identical receipt and rejects changed stale input",
+    "Existing anonymous candidate questionnaire contains source-bound neutral chronology questions",
+    "Further source review invalidates the older candidate questionnaire capability",
+    "All three career owner routes deny anonymous access",
+    "Desktop career panel shows source records, exact coverage and chronology review",
+    "Owner browser form persists a literal correction through the same source command and updates source coverage",
+    "Mobile source entries/review controls fit viewport",
+    "No browser runtime or transport errors",
+    "Real canonical privacy erasure removes the synthetic private CV, career quotations/notes and current source access",
+    "Synthetic recruiting records/timers closed and persistent worker healthy"
+  ],
+  "realEmailsSent": 0,
+  "realEmploymentDecisions": 0,
+  "buildCommit": "f12e940031d1162553abba72d78866842fd926a6",
+  "freeModelExtraction": {
+    "model": "cohere/north-mini-code:free",
+    "records": 6,
+    "supported": 5
+  },
+  "worker": {
+    "enabled": true,
+    "persistent": true,
+    "heartbeatRecent": true,
+    "lastError": null
+  },
+  "cleanup": {
+    "candidate": "deleted",
+    "cv": "physically deleted and redacted",
+    "careerReviews": "redacted",
+    "questionnaire": "revoked",
+    "job": "cancelled",
+    "company": "closed or suppressed",
+    "queuedSyntheticWork": "cancelled",
+    "realEmailsSent": 0,
+    "realEmploymentDecisions": 0
+  },
+  "localValidation": {
+    "unitPassed": 979,
+    "unitSkipped": 93,
+    "mysqlPassed": 753,
+    "mysqlFiles": 39,
+    "careerCases": 30,
+    "typescript": "passed",
+    "build": "passed",
+    "hostingerEntryChecks": 4,
+    "environmentChecks": 7,
+    "tracker": "passed"
+  }
+}

@@ -1,3 +1,4 @@
+import {interviewFeedbackFollowupState} from './interviewFeedbackState';
 import {offerFollowupState} from './candidateOfferState';
 import {placementCheckpointState} from './placementLifecycleState';
 import {candidateReviewFollowupState,reviewEvent} from './candidateReviewState';
@@ -18,7 +19,7 @@ const scenarioIds = FOLLOW_UP_SCENARIOS.map(scenario => scenario[0]) as [string,
 export const followUpInput = z.object({
   scenarioId: z.enum(scenarioIds), objective: z.string().trim().min(3).max(500),
   conversationId: z.string().min(4).optional(), candidateId: z.string().min(4).optional(), contactId: z.string().min(4).optional(),
-  senderIdentityId: z.string().min(4), resourceType: z.enum(["conversation", "interview", "invoice", "candidate_review", "placement_checkpoint", "candidate_offer"]).default("conversation"), resourceId: z.string().min(4).optional(),
+  senderIdentityId: z.string().min(4), resourceType: z.enum(["conversation", "interview", "invoice", "candidate_review", "placement_checkpoint", "candidate_offer", "interview_feedback"]).default("conversation"), resourceId: z.string().min(4).optional(),
   timezone: z.string().min(2).max(64).default("Asia/Kolkata"), businessDaysOnly: z.boolean().default(false),
   startsAt: z.date().optional(), deadlineAt: z.date(), responseWindowMinutes: z.number().int().min(1).max(43200).default(1440),
   steps: z.array(z.object({ delayMinutes: z.number().int().min(0).max(43200), subject: z.string().trim().min(1).max(255), body: z.string().trim().min(8).max(12000) })).min(1).max(6),
@@ -66,6 +67,10 @@ export async function followUpEligibility(tx: any, plan: FollowUpPlan, now = new
     if(review.state!=="eligible")return review;
     if(conversation.channel!=="email"||conversation.contactId||conversation.candidateId!==review.candidateId||conversation.jobId!==review.jobId||plan.deadlineAt>review.expiresAt)return {state:"cancelled",reason:"Candidate review recipient, role or deadline changed."};
     fingerprint=review.fingerprint;
+  } else if(plan.resourceType==='interview_feedback'){
+    const state=await interviewFeedbackFollowupState(tx,plan.ownerId,plan.resourceId,now);if(state.state!=='eligible')return state;
+    if(plan.scenarioId!=='FU20'||conversation.candidateId||conversation.contactId!==state.contactId||conversation.companyId!==state.companyId||conversation.jobId!==state.jobId||plan.deadlineAt>state.deadlineAt) return {state:'cancelled',reason:'Feedback reviewer, role or response deadline changed.'};
+    fingerprint=state.fingerprint;
   } else if (plan.resourceType === "interview") {
     const interview = (await lockedSelect(tx.select().from(interviews).where(and(eq(interviews.id, plan.resourceId), eq(interviews.ownerId, plan.ownerId))).limit(1)))[0];
     if (!interview || interview.candidateId !== conversation.candidateId || interview.jobId !== conversation.jobId) return { state: "cancelled", reason: "Interview relationship is invalid." };
@@ -104,6 +109,7 @@ export async function enrollFollowUpInTransaction(tx: any, ownerId: number, raw:
   if ((input.scenarioId === "FU18" && input.resourceType !== "interview") || (input.resourceType === "interview" && input.scenarioId !== "FU18") || (["FU26", "FU27"].includes(input.scenarioId) && input.resourceType !== "invoice") || (input.resourceType === "invoice" && !["FU26", "FU27"].includes(input.scenarioId))) throw new TRPCError({ code: "BAD_REQUEST", message: "This scenario requires its interview or invoice resource." });
   if(input.resourceType==="candidate_review"&&!["FU10","FU11","FU13"].includes(input.scenarioId))throw new TRPCError({code:"BAD_REQUEST",message:"Choose a candidate screening follow-up scenario."});
   if(input.resourceType==='placement_checkpoint'&&!['FU22','FU24'].includes(input.scenarioId))throw new TRPCError({code:'BAD_REQUEST',message:'Choose a prejoining or retention checkpoint scenario.'});
+  if(input.scenarioId==='FU20'&&input.resourceType!=='interview_feedback'||input.resourceType==='interview_feedback'&&input.scenarioId!=='FU20')throw new TRPCError({code:'BAD_REQUEST',message:'Interviewer feedback reminders require their exact current reviewer resource.'});
   if(input.resourceType==='candidate_offer'&&input.scenarioId!=='FU21')throw new TRPCError({code:'BAD_REQUEST',message:'Use the offer-response follow-up purpose.'});
   validateTimezone(input.timezone);
   const startsAt = new Date((input.startsAt ?? new Date()).getTime() + input.steps[0].delayMinutes * 60_000);

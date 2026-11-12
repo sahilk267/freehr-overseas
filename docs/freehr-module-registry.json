@@ -1005,7 +1005,9 @@
         {
           "id": "M18-F05",
           "description": "Structured evidence-based feedback, interviewer reminders, differing-feedback reconciliation and explicit next-round/client decision.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-interview-panel-feedback.md",
+          "implementation_note": "Versioned exact-schedule/employer-rubric panels store separate evidence-backed reviewer ratings in canonical feedback rows. Unknowns/ranges/conflicts remain visible, retries/corrections preserve identity/history, owner next actions bind the exact response set, and reviewer-bound FU20 uses the existing sender/queue/permission engine. Legacy bypass and candidate erasure (including historical feedback and client-thread reminders) are guarded; activity invalidates matching context. Independent interviewer/client authentication, real recipient/elapsed acceptance and actual next-round/client disposition remain open."
         },
         {
           "id": "M18-F06",
