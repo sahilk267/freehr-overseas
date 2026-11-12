@@ -68,6 +68,7 @@ function ReviewerObservation({
         Recorded job-related feedback
         <Textarea
           name="raw"
+          aria-label="Recorded job-related feedback"
           required
           minLength={12}
           maxLength={12000}
@@ -103,6 +104,7 @@ function ReviewerObservation({
             Exact supporting quote from the recorded feedback
             <Textarea
               name={"quote_" + i}
+              aria-label={"Supporting feedback quote for "+criterion.criterion}
               maxLength={500}
               defaultValue={
                 active?.scorecard.ratings.find(
@@ -117,6 +119,7 @@ function ReviewerObservation({
         Limitations or missing evidence
         <Textarea
           name="limitations"
+          aria-label="Limitations or missing evidence"
           maxLength={2000}
           defaultValue={active?.scorecard.limitations ?? ""}
         />

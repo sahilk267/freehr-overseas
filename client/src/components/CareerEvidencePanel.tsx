@@ -112,6 +112,7 @@ export function CareerEvidencePanel({ candidateId }: { candidateId: string }) {
         Evidence or explanation
         <Textarea
           name="note"
+          aria-label="Evidence or explanation"
           required
           minLength={8}
           maxLength={2000}
