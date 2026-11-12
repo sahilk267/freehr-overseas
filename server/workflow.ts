@@ -210,6 +210,9 @@ export const CANONICAL_CONSEQUENTIAL_ACTIONS: Record<string, ConsequentialAction
     hasSideEffect: true,
     sideEffectIdempotent: true,
   },
+  offer_release: {
+    key:'offer_release', description:'Release the exact client-evidenced offer version and bounded candidate reply authority', resourceType:'placement', canRequest:true, requiresApproval:true, allowAutoApproval:false, hasSideEffect:true, sideEffectIdempotent:true,
+  },
   placement_confirmation: {
     key: "placement_confirmation",
     description: "Confirm candidate joining and activate placement guarantee",

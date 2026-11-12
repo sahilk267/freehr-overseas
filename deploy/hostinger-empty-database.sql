@@ -1086,3 +1086,9 @@ INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('7e424c1794654
 -- No pre-existing recruitment grant becomes a post-placement communication grant.
 ALTER TABLE `consents` MODIFY COLUMN `consentType` enum('platform_processing','recruitment_communication','client_sharing','interview_processing','recording','background_check','marketing','post_placement_communication') NOT NULL;
 INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('869d883bf14d01b01dbf74495ca02d181aa13176af397be888884cec3ffd1c8e', 1787882800000);
+
+-- 0025_offer_response_permission
+-- Candidate email-confirmed offer-response processing is a distinct purpose.
+-- Existing enum values keep their order; no prior grant is broadened.
+ALTER TABLE `consents` MODIFY COLUMN `consentType` enum('platform_processing','recruitment_communication','client_sharing','interview_processing','recording','background_check','marketing','post_placement_communication','offer_response') NOT NULL;
+INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('1c582b652cffdd2ce1e087e8e3a9bd0be91c3b0ce12f0759555664486efac7a2', 1787882900000);

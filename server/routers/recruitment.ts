@@ -1,3 +1,4 @@
+import {assertLegacyOfferAllowed,assertCurrentOfferAcceptance,currentOffer} from '../services/candidateOfferState';
 import {lifecyclePlanId,placementLifecycleFingerprint} from '../services/placementLifecycleState';
 import {commercialEvent as lifecycleEvent} from '../services/commercialAgreements';
 import {assertReplacementPlacementAllowed} from '../services/replacementPolicy';
@@ -1034,6 +1035,7 @@ export const placementsRouter = router({
         .where(eq(placements.id, input.placementId))
         .limit(1);
       const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
+      await assertLegacyOfferAllowed(db,ctx.user.id,placement);
 
       const commercial=await commercialContext(db,ctx.user.id,placement);if(commercial.enabled&&(input.annualCompensation!==placement.annualCompensation||input.currency!==placement.currency))throw new TRPCError({code:"PRECONDITION_FAILED",message:"The frozen compensation cannot be changed by the legacy offer command."});
       assertTransition("placement", placement.status, "offer_issued");
@@ -1087,6 +1089,7 @@ export const placementsRouter = router({
         .where(eq(placements.id, input.placementId))
         .limit(1);
       const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
+      await assertLegacyOfferAllowed(db,ctx.user.id,placement);
 
       if (input.decision === "accepted") {
         await commercialContext(db,ctx.user.id,placement);
@@ -1152,6 +1155,8 @@ export const placementsRouter = router({
         .where(eq(placements.id, input.id))
         .limit(1);
       const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
+      if(['offer_issued','offer_accepted'].includes(input.state))await assertLegacyOfferAllowed(db,ctx.user.id,placement);
+      if(['joining_pending','joining_confirmed','invoice_eligible','guarantee_active'].includes(input.state))await assertCurrentOfferAcceptance(db,ctx.user.id,placement);
       if(input.state!=="closed")await commercialContext(db,ctx.user.id,placement);
       if(['replacement_requested','replacement_in_progress'].includes(input.state))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Open replacement work through the source-bound owner approval, not a direct state change.'});
       assertTransition("placement", placement.status, input.state);

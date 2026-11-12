@@ -1,3 +1,4 @@
+import OfferResponsePage from './pages/OfferResponsePage';
 import CandidateReviewPage from './pages/CandidateReviewPage';
 import DiscoveryResponsePage from "./pages/DiscoveryResponsePage";
 import InterviewResponsePage from "./pages/InterviewResponsePage";
@@ -41,6 +42,7 @@ function PaymentReturnPage() {
 
 function Router() {
   return <Switch>
+    <Route path="/offer-response" component={OfferResponsePage} />
     <Route path="/payment-return" component={PaymentReturnPage} />
     <Route path="/candidate-review" component={CandidateReviewPage} />
     <Route path="/interview-response" component={InterviewResponsePage} />

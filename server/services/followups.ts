@@ -1,3 +1,4 @@
+import {offerFollowupState} from './candidateOfferState';
 import {placementCheckpointState} from './placementLifecycleState';
 import {candidateReviewFollowupState,reviewEvent} from './candidateReviewState';
 import {hasCandidateCommunicationPermission} from "./communicationPermission";
@@ -17,7 +18,7 @@ const scenarioIds = FOLLOW_UP_SCENARIOS.map(scenario => scenario[0]) as [string,
 export const followUpInput = z.object({
   scenarioId: z.enum(scenarioIds), objective: z.string().trim().min(3).max(500),
   conversationId: z.string().min(4).optional(), candidateId: z.string().min(4).optional(), contactId: z.string().min(4).optional(),
-  senderIdentityId: z.string().min(4), resourceType: z.enum(["conversation", "interview", "invoice", "candidate_review", "placement_checkpoint"]).default("conversation"), resourceId: z.string().min(4).optional(),
+  senderIdentityId: z.string().min(4), resourceType: z.enum(["conversation", "interview", "invoice", "candidate_review", "placement_checkpoint", "candidate_offer"]).default("conversation"), resourceId: z.string().min(4).optional(),
   timezone: z.string().min(2).max(64).default("Asia/Kolkata"), businessDaysOnly: z.boolean().default(false),
   startsAt: z.date().optional(), deadlineAt: z.date(), responseWindowMinutes: z.number().int().min(1).max(43200).default(1440),
   steps: z.array(z.object({ delayMinutes: z.number().int().min(0).max(43200), subject: z.string().trim().min(1).max(255), body: z.string().trim().min(8).max(12000) })).min(1).max(6),
@@ -53,7 +54,8 @@ export async function followUpEligibility(tx: any, plan: FollowUpPlan, now = new
     if (!job || ["cancelled", "archived", "filled", "paused"].includes(job.pipelineState)) return { state: "cancelled", reason: "Related job is no longer active." };
   }
   let fingerprint: string;
-  if(plan.resourceType==='placement_checkpoint'){
+  if(plan.resourceType==='candidate_offer'){const offer=await offerFollowupState(tx,plan.ownerId,plan.resourceId,now);if(offer.state!=='eligible')return offer as any;if(conversation.id!==offer.conversationId||plan.deadlineAt>offer.deadlineAt||plan.senderIdentityId!==offer.senderIdentityId||plan.scenarioId!=='FU21')return {state:'cancelled',reason:'Offer recipient, sender or response window changed.'};fingerprint=offer.fingerprint!;
+  } else if(plan.resourceType==='placement_checkpoint'){
     const checkpoint=await placementCheckpointState(tx,plan.ownerId,plan.resourceId,now);
     if(checkpoint.state!=='eligible')return checkpoint;
     if(conversation.id!==checkpoint.conversationId||plan.deadlineAt>checkpoint.deadlineAt||plan.senderIdentityId!==checkpoint.senderIdentityId||plan.scenarioId!==(checkpoint.stage==='retention'?'FU24':'FU22'))return {state:'cancelled',reason:'Placement checkpoint recipient, sender, purpose or response window changed.'};
@@ -102,6 +104,7 @@ export async function enrollFollowUpInTransaction(tx: any, ownerId: number, raw:
   if ((input.scenarioId === "FU18" && input.resourceType !== "interview") || (input.resourceType === "interview" && input.scenarioId !== "FU18") || (["FU26", "FU27"].includes(input.scenarioId) && input.resourceType !== "invoice") || (input.resourceType === "invoice" && !["FU26", "FU27"].includes(input.scenarioId))) throw new TRPCError({ code: "BAD_REQUEST", message: "This scenario requires its interview or invoice resource." });
   if(input.resourceType==="candidate_review"&&!["FU10","FU11","FU13"].includes(input.scenarioId))throw new TRPCError({code:"BAD_REQUEST",message:"Choose a candidate screening follow-up scenario."});
   if(input.resourceType==='placement_checkpoint'&&!['FU22','FU24'].includes(input.scenarioId))throw new TRPCError({code:'BAD_REQUEST',message:'Choose a prejoining or retention checkpoint scenario.'});
+  if(input.resourceType==='candidate_offer'&&input.scenarioId!=='FU21')throw new TRPCError({code:'BAD_REQUEST',message:'Use the offer-response follow-up purpose.'});
   validateTimezone(input.timezone);
   const startsAt = new Date((input.startsAt ?? new Date()).getTime() + input.steps[0].delayMinutes * 60_000);
   if (input.deadlineAt <= startsAt || input.deadlineAt.getTime() > Date.now() + 366 * 86400000) throw new TRPCError({ code: "BAD_REQUEST", message: "Deadline must follow the start and be within one year." });

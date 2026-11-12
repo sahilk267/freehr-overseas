@@ -1038,27 +1038,37 @@
         {
           "id": "M19-F01",
           "description": "Client-authorized offer terms, compensation breakdown/currency, benefits, role/location, conditions and intended joining date.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-candidate-offers.md",
+          "implementation_note": "Versioned structured base/guaranteed/variable/one-time compensation, benefits, conditions, IANA joining timezone and owner-recorded client bounds. Independent client identity/signature and full cross-jurisdiction terms validation remain open."
         },
         {
           "id": "M19-F02",
           "description": "Generate/review/deliver versioned offer packs; secure signatures, expiry, authenticated candidate acceptance or rejection.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-candidate-offers.md",
+          "implementation_note": "Owner-reviewed versioned offer pack, private links, bounded one-time email verification, exact-version accept/decline/counter and expiry on the existing managed queue. Email possession is not legal identity or a qualified signature; genuine recipient acceptance remains unverified."
         },
         {
           "id": "M19-F03",
           "description": "Negotiation within explicit client-approved bounds, counteroffer/competing-offer handling without invented facts or promises.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-candidate-offers.md",
+          "implementation_note": "Verified candidate counteroffers can prepare a new draft within explicit current client bounds, followed by fresh mandatory release review. Autonomous bargaining, competing-offer verification and externally authenticated client authority remain open."
         },
         {
           "id": "M19-F04",
           "description": "Acceptance linked to exact immutable terms; revised offers supersede older grants and follow-up plans.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-candidate-offers.md",
+          "implementation_note": "Immutable response hash, exact version/terms, stale capability and approval guards, one response per version, cancellation of unused mail/reminders and explicit private agency fee basis with canonical compensation amendment. Post-acceptance mutually signed amendments remain open."
         },
         {
           "id": "M19-F05",
           "description": "Notice/buyout/relocation/credential contingencies, withdrawal/expiry paths and handoff to joining workflow.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-candidate-offers.md",
+          "implementation_note": "Required owner-reviewed condition evidence with validity, withdrawal report, durable expiry, joining gates and existing prejoining handoff. Competent-authority verification, legal termination and full notice/buyout/relocation operations remain open."
         }
       ],
       "events": "offer.released, offer.countered, offer.accepted, offer.declined, offer.expired",

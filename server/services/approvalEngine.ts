@@ -1,3 +1,7 @@
+import {applyOfferRelease} from './candidateOffers';
+import {materializeOfferEmail} from './candidateOfferMail';
+import {assertCurrentOfferAcceptance} from './candidateOfferState';
+import type {OfferMailScope} from './offerMailScope';
 import {placementLifecycleFingerprint,lifecyclePlanId} from './placementLifecycleState';
 import {appendWorkflowEvent} from './workflowStore';
 import {commercialEvent} from './commercialAgreements';
@@ -83,6 +87,7 @@ export async function applySideEffect(
   decidedById: number,
 ) {
   const recognizedSideEffectActions = new Set([
+    "offer_release",
     "client_onboarding",
     "candidate_share",
     "placement_confirmation",
@@ -104,18 +109,21 @@ export async function applySideEffect(
     );
   }
 
+  if(approval.actionType==='offer_release'){await applyOfferRelease(db,approval,decidedAt,decidedById);return;}
+
   // Approval authorizes the immutable message record; it never sends an email.
   if (approval.actionType === "email_send") {
     const message = (await db.select().from(messages).where(and(eq(messages.id, approval.resourceId), eq(messages.ownerId, approval.ownerId))).limit(1))[0];
-    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope; replyScope?:ReplyMailScope } | null;
+    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope; replyScope?:ReplyMailScope;offerScope?:OfferMailScope } | null;
     const identity = payload?.senderIdentityId ? (await db.select().from(emailIdentities).where(and(eq(emailIdentities.id, payload.senderIdentityId), eq(emailIdentities.ownerId, approval.ownerId))).limit(1))[0] : null;
     if (!message || message.status !== "approval_pending" || !identity || identity.status !== "active" || !payload?.recipient) throw new Error("Email authorization is stale or incomplete.");
     if (payload.senderAddress !== identity.email || payload.senderPurpose !== identity.purpose) throw new Error("Sender identity changed; a new approval is required.");
-    if (payload.contentHash !== emailContentHash({ senderIdentityId: identity.id, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink, replyScope:payload.replyScope })) throw new Error("Email content changed; a new approval is required.");
+    if (payload.contentHash !== emailContentHash({ senderIdentityId: identity.id, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink, replyScope:payload.replyScope,offerScope:payload.offerScope })) throw new Error("Email content changed; a new approval is required.");
     const suppressed = (await db.select().from(suppressionList).where(and(eq(suppressionList.ownerId, approval.ownerId), eq(suppressionList.valueHash, hashContactValue(payload.recipient)), eq(suppressionList.active, true))).limit(1))[0];
     if (suppressed) throw new Error("Email recipient is suppressed.");
     await validateReplyEmail(db, approval.ownerId, payload, message, decidedAt);
     await materializeAvailabilityEmail(db,approval.ownerId,payload,message,decidedAt);
+    await materializeOfferEmail(db,approval.ownerId,payload,message,decidedAt);
     const dispatch = (await db.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, approval.ownerId), eq(emailDispatches.approvalId, approval.id))).limit(1))[0];
     if (dispatch) {
       if (dispatch.status !== "queued") throw new Error("Dispatch is no longer pending authorization.");
@@ -176,6 +184,7 @@ export async function applySideEffect(
     const payload = approval.payload as { joiningEvidence?: string[]; joiningAt?:string; placementSourceFingerprint?:string } | null;
     const placement=(await db.select().from(placements).where(and(eq(placements.ownerId,approval.ownerId),eq(placements.id,approval.resourceId))).limit(1))[0];
     if(!placement)throw Error("Owned placement was not found.");
+    await assertCurrentOfferAcceptance(db,approval.ownerId,placement);
     if(placement.status!=='joining_pending'||payload?.placementSourceFingerprint&&payload.placementSourceFingerprint!==placementLifecycleFingerprint(placement))throw new Error('Joining approval is stale; review the current placement and request confirmation again.');
     if(!payload?.joiningEvidence?.length)throw new Error('Current joining evidence is required.');
     const retention=await commercialEvent(db,approval.ownerId,'placement.lifecycle_plan',lifecyclePlanId(placement.id,'retention'));
@@ -356,7 +365,7 @@ export async function applyApprovalDecision(
   const finalReason = note ?? approval.reason;
 
   const runDecisionTransaction = async (tx: any) => {
-    if (["email_send","placement_confirmation","replacement_case"].includes(approval.actionType) || approval.actionType.startsWith("invoice_")) await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, approval.ownerId)).limit(1));
+    if (["email_send","placement_confirmation","replacement_case","offer_release"].includes(approval.actionType) || approval.actionType.startsWith("invoice_")) await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, approval.ownerId)).limit(1));
     // 1. Fetch current status within transaction to enforce concurrency and idempotency
     const current = (
       await lockedSelect(tx

@@ -1,3 +1,5 @@
+import {materializeOfferEmail,recordOfferMailAccepted} from './candidateOfferMail';
+import type {OfferMailScope} from './offerMailScope';
 import {completeAcceptedReply,validateReplyEmail} from "./replyMail";
 import type {ReplyMailScope} from "./replyMailScope";
 import {materializeAvailabilityEmail} from "./availabilityMail";
@@ -29,11 +31,11 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
     const approval = (await lockedSelect(tx.select().from(approvals).where(and(eq(approvals.ownerId, ownerId), eq(approvals.actionType, "email_send"), eq(approvals.resourceId, messageId ?? ""), ...(dispatch ? [eq(approvals.id, dispatch.approvalId)] : []))).limit(1)))[0];
     if (!message || !approval || approval.status !== "approved") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A current approved sender and approved email action are required." });
     if (approval.actionedAt || message.status === "sent" || (dispatch && dispatch.status !== "queued")) throw new TRPCError({ code: "CONFLICT", message: "This email approval has already been consumed or cancelled; reconcile before retrying." });
-    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope; replyScope?:ReplyMailScope };
+    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope; replyScope?:ReplyMailScope;offerScope?:OfferMailScope };
     if (!payload?.senderIdentityId || !payload?.recipient) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Approved email action is missing sender or recipient payload." });
     if (input.senderIdentityId && input.senderIdentityId !== payload.senderIdentityId) throw new TRPCError({ code: "BAD_REQUEST", message: "Supplied sender identity does not match the approved payload." });
     if (input.recipient && input.recipient.trim().toLowerCase() !== payload.recipient.trim().toLowerCase()) throw new TRPCError({ code: "BAD_REQUEST", message: "Supplied recipient does not match the approved payload." });
-    if (payload.contentHash !== emailContentHash({ senderIdentityId: payload.senderIdentityId, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink, replyScope:payload.replyScope })) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Email content changed or has no bound authorization; request a new approval." });
+    if (payload.contentHash !== emailContentHash({ senderIdentityId: payload.senderIdentityId, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink, replyScope:payload.replyScope,offerScope:payload.offerScope })) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Email content changed or has no bound authorization; request a new approval." });
     const identity = (await lockedSelect(tx.select().from(emailIdentities).where(and(eq(emailIdentities.id, payload.senderIdentityId), eq(emailIdentities.ownerId, ownerId))).limit(1)))[0];
     if (!identity || identity.status !== "active") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A current approved sender is required." });
     if (payload.senderAddress !== identity.email || payload.senderPurpose !== identity.purpose) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Sender changed; request a new email approval." });
@@ -57,9 +59,11 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
       dispatch = { id: createId("dsp_"), ownerId, messageId: message.id, approvalId: approval.id, planId: null, planRevision: null, stepIndex: null, grantId: null, recipientHash, status: "queued", scheduledAt: now };
       await tx.insert(emailDispatches).values(dispatch);
     }
+    const offerMail=await materializeOfferEmail(tx,ownerId,payload,message,now);
+    const securityCode=offerMail?.transactionalOtp===true;
     const timezone = plan?.timezone ?? workspace.businessTimezone;
     const window = { timezone, quietStart: workspace.quietHoursStart, quietEnd: workspace.quietHoursEnd, businessDaysOnly: plan?.businessDaysOnly ?? false };
-    let permittedAt = nextContactTime(now, window);
+    let permittedAt = securityCode?now:nextContactTime(now, window);
     const recent = await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, ownerId), gte(emailDispatches.claimedAt, new Date(now.getTime() - 8 * 86400000))));
     const day = localClock(now, workspace.businessTimezone).day;
     const today = recent.filter((row: typeof emailDispatches.$inferSelect) => row.claimedAt && localClock(row.claimedAt, workspace.businessTimezone).day === day);
@@ -68,12 +72,12 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
     const spacingMinutes = Math.max(1, Math.min(1440, Number(policy.minRecipientSpacingMinutes ?? 60)));
     const dailyLimit = Number(workspace.dailyOutboundLimit);
     if (![recipientLimit, spacingMinutes, dailyLimit].every(Number.isFinite) || dailyLimit < 1) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Outbound limits must be configured before delivery." });
-    if (today.length >= dailyLimit || today.filter((row: typeof emailDispatches.$inferSelect) => row.recipientHash === recipientHash).length >= recipientLimit) {
+    if (today.length >= dailyLimit || !securityCode&&today.filter((row: typeof emailDispatches.$inferSelect) => row.recipientHash === recipientHash).length >= recipientLimit) {
       const nextDay = nextContactTime(now, { ...window, nextDay: true, timezone: workspace.businessTimezone });
       permittedAt = nextContactTime(nextDay, window);
     }
     const lastRecipientSend = recent.filter((row: typeof emailDispatches.$inferSelect) => row.recipientHash === recipientHash && row.claimedAt).reduce((latest: number, row: typeof emailDispatches.$inferSelect) => Math.max(latest, row.claimedAt!.getTime()), 0);
-    if (lastRecipientSend && lastRecipientSend + spacingMinutes * 60_000 > permittedAt.getTime()) permittedAt = nextContactTime(new Date(lastRecipientSend + spacingMinutes * 60_000), window);
+    if (!securityCode&&lastRecipientSend && lastRecipientSend + spacingMinutes * 60_000 > permittedAt.getTime()) permittedAt = nextContactTime(new Date(lastRecipientSend + spacingMinutes * 60_000), window);
     if (plan && permittedAt >= plan.deadlineAt) { await stopFollowUp(tx, plan, "cancelled", "No permitted contact window before deadline."); return { status: "cancelled", reason: "No permitted contact window before deadline." }; }
     if (permittedAt > now) {
       await tx.update(emailDispatches).set({ scheduledAt: permittedAt }).where(eq(emailDispatches.id, dispatch.id));
@@ -86,12 +90,12 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
       throw new TRPCError({ code: "PRECONDITION_FAILED", message: "The sending mailbox is not configured; no delivery was attempted." });
     }
     await validateReplyEmail(tx, ownerId, payload, message, now);
-    const deliveryBody=await materializeAvailabilityEmail(tx,ownerId,payload,message,now);
+    const deliveryBody=offerMail?.body??await materializeAvailabilityEmail(tx,ownerId,payload,message,now);
     const claimed = await tx.update(approvals).set({ actionedAt: now }).where(and(eq(approvals.id, approval.id), eq(approvals.ownerId, ownerId), eq(approvals.status, "approved"), isNull(approvals.actionedAt)));
     if (!claimed[0]?.affectedRows) throw new TRPCError({ code: "CONFLICT", message: "This email approval has already been consumed." });
     await tx.update(emailDispatches).set({ status: "dispatching", claimedAt: now }).where(eq(emailDispatches.id, dispatch.id));
     await appendWorkflowEvent(tx, ownerId, "email.dispatch_claimed", dispatch.id, 1, { messageId: message.id, approvalId: approval.id });
-    return { status: "claimed", dispatch, message, identity, deliveryBody, recipient: payload.recipient, replyScope:payload.replyScope };
+    return { status: "claimed", dispatch, message, identity, deliveryBody, recipient: payload.recipient, replyScope:payload.replyScope,offerScope:payload.offerScope };
   });
   if (claim.status !== "claimed") return { success: false, ...claim };
   try {
@@ -103,6 +107,7 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
       await tx.update(emailDispatches).set({ status: "sent", completedAt: acceptedAt }).where(eq(emailDispatches.id, claim.dispatch.id));
       await advanceFollowUp(tx, claim.dispatch, acceptedAt);
       await appendWorkflowEvent(tx, ownerId, "email.provider_accepted", claim.dispatch.id, 1, { messageId: claim.message.id, providerMessageId: receipt.providerMessageId });
+      await recordOfferMailAccepted(tx,ownerId,claim.offerScope,claim.message.id);
       if(claim.replyScope)await completeAcceptedReply(tx,ownerId,{recipient:claim.recipient,replyScope:claim.replyScope},claim.message);
     });
     await recordAudit({ ownerId, actorType: "system", action: "email.sent", resourceType: "message", resourceId: claim.message.id, metadata: { dispatchId: claim.dispatch.id, providerMessageId: receipt.providerMessageId } }).catch(() => {});

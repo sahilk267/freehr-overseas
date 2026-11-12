@@ -28,6 +28,7 @@ export async function placementCheckpointState(tx:any,ownerId:number,id:string,n
  if(!(c.stage==='prejoining'?prejoiningStates:retentionStates).includes(p.status))return {state:'cancelled',reason:'Placement is no longer in this checkpoint stage.'};
  if(await commercialEvent(tx,ownerId,'placement.lifecycle_response',id))return {state:'completed',reason:'A checkpoint response has been recorded.'};
  try{await lifecycleContext(tx,ownerId,p);}catch(e){if(!(e instanceof TRPCError))throw e;return {state:'cancelled',reason:e.message};}
+ const offer=await commercialEvent(tx,ownerId,'offer.placement_registered',p.id);if(offer&&await commercialEvent(tx,ownerId,'offer.withdrawal_reported',offer.metadata.offerId))return {state:'cancelled',reason:'Candidate reported offer withdrawal; owner review is required.'};
  if(await commercialEvent(tx,ownerId,'placement.lifecycle_departure',p.id))return {state:'cancelled',reason:'Departure evidence ended routine placement check-ins.'};
  const thread=(await tx.select().from(conversations).where(and(eq(conversations.ownerId,ownerId),eq(conversations.id,c.conversationId))).limit(1))[0];
  if(!thread||thread.channel!=='email'||thread.companyId!==p.companyId||thread.jobId&&thread.jobId!==p.jobId||c.party==='candidate'&&(thread.candidateId!==p.candidateId||thread.contactId)||c.party==='client'&&(!thread.contactId||thread.candidateId))return {state:'cancelled',reason:'Checkpoint recipient relationship changed.'};

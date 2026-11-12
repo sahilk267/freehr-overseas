@@ -2,7 +2,7 @@
   "version": 1,
   "targetDomain": "freelancehr.overseasjob.in",
   "baseline": "0014_promise_baseline_precision",
-  "through": "0024_post_placement_permission",
+  "through": "0025_offer_response_permission",
   "migrations": [
     {
       "tag": "0015_outreach_campaigns",
@@ -43,6 +43,10 @@
     {
       "tag": "0024_post_placement_permission",
       "sha256": "869d883bf14d01b01dbf74495ca02d181aa13176af397be888884cec3ffd1c8e"
+    },
+    {
+      "tag": "0025_offer_response_permission",
+      "sha256": "1c582b652cffdd2ce1e087e8e3a9bd0be91c3b0ce12f0759555664486efac7a2"
     }
   ]
 }

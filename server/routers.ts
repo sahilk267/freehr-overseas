@@ -1,3 +1,4 @@
+import {candidateOffersRouter} from './routers/candidateOffers';
 import {placementLifecycleRouter} from './routers/placementLifecycle';
 import {candidateReviewsRouter} from './routers/candidateReviews';
 import {clientDiscoveryRouter} from "./routers/clientDiscovery";
@@ -20,6 +21,7 @@ import { getRuntimeLogoutCookie } from "./services/runtimeAuth";
 import { recordAudit } from "./db";
 
 export const appRouter = router({
+  candidateOffers:candidateOffersRouter,
   placementLifecycle:placementLifecycleRouter,
   candidateReviews:candidateReviewsRouter,
   clientDiscovery: clientDiscoveryRouter,

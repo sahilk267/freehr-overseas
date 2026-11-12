@@ -1,9 +1,10 @@
+import {offerTermsSchema,offerFeeBasisAmount} from '../../shared/candidateOffer';
 import {assertReplacementBillingAllowed,replacementGuaranteeDates,replacementJobSource} from './replacementPolicy';
 import {candidateSuppressed} from './candidateEvidence';
 import {TRPCError} from '@trpc/server';
 import {and,desc,eq} from 'drizzle-orm';
 import {z} from 'zod';
-import {candidates,invoices,jobs,placements,workspaceSettings} from '../../drizzle/schema';
+import {candidates,invoices,jobs,placements,workflowEvents,workspaceSettings} from '../../drizzle/schema';
 import {agreementTermsSchema,calculateContractFee} from '../../shared/commercialAgreement';
 import {createId,recordAudit} from '../db';
 import {withWorkspaceTransaction,lockedSelect} from './database';
@@ -17,7 +18,8 @@ export async function commercialContext(tx:any,ownerId:number,p:any){
  if(!jobBinding&&!binding)return {enabled:false as const,binding:null,terms:null,fingerprint:placementCommercialFingerprint(p),fee:null};
  const job=(await tx.select().from(jobs).where(and(eq(jobs.ownerId,ownerId),eq(jobs.id,p.jobId))).limit(1))[0];if(!job||job.companyId!==p.companyId)throw fail('Placement and owned role/client relationship changed.');
  if(!jobBinding||!binding)throw fail('Record the placement’s explicit compensation and commercial binding before progressing this contracted role.');
- const a=await acceptedAgreement(tx,ownerId,String(jobBinding.metadata.proposalId)),m=binding.metadata;
+ const a=await acceptedAgreement(tx,ownerId,String(jobBinding.metadata.proposalId));let m=binding.metadata;
+ const compensation=await commercialEvent(tx,ownerId,'commercial.placement_compensation_confirmed',p.id);if(compensation){const c=compensation.metadata,acceptance=await commercialEvent(tx,ownerId,'offer.accepted',c.offerId);const version=(await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,'offer.version_saved'),eq(workflowEvents.aggregateId,c.offerId),eq(workflowEvents.revision,c.offerVersion))).limit(1))[0];const acceptedTerms=version?.metadata?.terms?offerTermsSchema.parse(version.metadata.terms):null;if(!acceptedTerms||version.metadata.termsHash!==workflowHash({offerId:c.offerId,version:c.offerVersion,terms:acceptedTerms})||offerFeeBasisAmount(acceptedTerms,c.offerFeeBasis)!==c.annualCompensationMinorUnits||acceptance?.metadata.placementFeeBasis!==c.offerFeeBasis||acceptance?.metadata.placementId!==p.id||acceptance?.metadata.candidateId!==p.candidateId||c.baseBindingHash!==workflowHash(binding.metadata)||c.agreementTermsHash!==m.termsHash||c.proposalId!==m.proposalId||!acceptance||acceptance.revision!==c.offerVersion||acceptance.metadata.termsHash!==c.offerTermsHash||acceptance.metadata.emailPossessionVerified!==true)throw fail('Accepted offer compensation source is unavailable or changed.');m={...m,annualCompensationMinorUnits:c.annualCompensationMinorUnits,placementFingerprint:c.placementFingerprint,offerId:c.offerId,offerVersion:c.offerVersion,offerTermsHash:c.offerTermsHash,offerFeeBasis:c.offerFeeBasis};}
  if(job.feeProposalId!==a.proposal.id||a.termsHash!==jobBinding.metadata.termsHash||m.termsHash!==a.termsHash||m.proposalId!==a.proposal.id||m.placementFingerprint!==placementCommercialFingerprint(p)||p.currency!==a.terms.currency)throw fail('Placement compensation, currency or accepted commercial source changed. Review the bound terms.');
  const terms=agreementTermsSchema.parse(m.terms),fee=calculateContractFee(terms,m.annualCompensationMinorUnits);
  if(workflowHash(terms)!==workflowHash(a.terms))throw fail('The immutable placement terms differ from the accepted agreement.');
