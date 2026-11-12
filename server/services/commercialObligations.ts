@@ -1,4 +1,4 @@
-import {assertReplacementBillingAllowed,replacementGuaranteeDates} from './replacementPolicy';
+import {assertReplacementBillingAllowed,replacementGuaranteeDates,replacementJobSource} from './replacementPolicy';
 import {candidateSuppressed} from './candidateEvidence';
 import {TRPCError} from '@trpc/server';
 import {and,desc,eq} from 'drizzle-orm';
@@ -25,10 +25,11 @@ export async function commercialContext(tx:any,ownerId:number,p:any){
 }
 export async function placementCommercialRead(ownerId:number,id:string){return withWorkspaceTransaction(ownerId,async tx=>{
  const p=(await tx.select().from(placements).where(and(eq(placements.ownerId,ownerId),eq(placements.id,id))).limit(1))[0];if(!p)throw new TRPCError({code:'NOT_FOUND',message:'Owned placement was not found.'});
+ const replacement=await replacementJobSource(tx,ownerId,p.jobId);
  const job=(await tx.select().from(jobs).where(and(eq(jobs.ownerId,ownerId),eq(jobs.id,p.jobId))).limit(1))[0],jobBinding=job?await commercialEvent(tx,ownerId,'commercial.job_bound',job.id):null;
  const billingHistory=await tx.select().from(invoices).where(and(eq(invoices.ownerId,ownerId),eq(invoices.placementId,p.id))).orderBy(desc(invoices.createdAt)).limit(100);
  let current=true,error:string|null=null,context:any;try{context=await commercialContext(tx,ownerId,p);}catch(e){if(!(e instanceof TRPCError))throw e;current=false;error=e.message;}
- return {placementId:p.id,placementFingerprint:placementCommercialFingerprint(p),jobBound:Boolean(jobBinding),proposalId:jobBinding?.metadata.proposalId??null,termsHash:jobBinding?.metadata.termsHash??null,terms:jobBinding?.metadata.terms??null,current,error,binding:context?.binding??null,fee:context?.fee??null,billingFingerprint:context?.enabled?context.fingerprint:null,canBind:p.status==='offer_pending'&&Boolean(jobBinding)&&!await commercialEvent(tx,ownerId,'commercial.placement_bound',p.id),canDraftInvoice:!await (await import('./replacementPolicy')).replacementJobSource(tx,ownerId,p.jobId)&&current&&context?.enabled&&['invoice_eligible','guarantee_active'].includes(p.status)&&billingHistory.every((i:any)=>i.status==='cancelled'&&!i.issuedAt&&!i.paidAt),signatureVerified:false};
+ return {placementId:p.id,replacementObligation:replacement?{sourcePlacementId:replacement.metadata.sourcePlacementId,guaranteePolicy:replacement.metadata.guaranteePolicy,originalGuaranteeEndAt:replacement.metadata.originalGuaranteeEndAt,noNewPlacementFee:true}:null,placementFingerprint:placementCommercialFingerprint(p),jobBound:Boolean(jobBinding),proposalId:jobBinding?.metadata.proposalId??null,termsHash:jobBinding?.metadata.termsHash??null,terms:jobBinding?.metadata.terms??null,current,error,binding:context?.binding??null,fee:context?.fee??null,billingFingerprint:context?.enabled?context.fingerprint:null,canBind:p.status==='offer_pending'&&Boolean(jobBinding)&&!await commercialEvent(tx,ownerId,'commercial.placement_bound',p.id),canDraftInvoice:!replacement&&current&&context?.enabled&&['invoice_eligible','guarantee_active'].includes(p.status)&&billingHistory.every((i:any)=>i.status==='cancelled'&&!i.issuedAt&&!i.paidAt),signatureVerified:false};
 });}
 export const placementBindingInput=z.object({placementId:z.string().min(4).max(36),expectedPlacementFingerprint:z.string().length(64),expectedTermsHash:z.string().length(64),currency:z.string().regex(/^[A-Z]{3}$/),annualCompensationMinorUnits:z.number().int().positive().max(2147483647).optional(),reason:z.string().trim().min(8).max(2000)}).strict();
 export async function bindPlacementCommercial(ownerId:number,actorId:number,raw:z.input<typeof placementBindingInput>){const input=placementBindingInput.parse(raw),requestHash=workflowHash(input);return withWorkspaceTransaction(ownerId,async tx=>{

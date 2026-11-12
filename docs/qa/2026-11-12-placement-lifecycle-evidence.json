@@ -1,0 +1,56 @@
+{
+  "checkedAt": "2026-11-12T08:26:44.467Z",
+  "syntheticOnly": true,
+  "realMessagesSent": 0,
+  "realInvoicesIssued": 0,
+  "liveTests": [
+    "Live incremental consent-purpose migration and owner-evidenced retention permission form",
+    "Retention plan waits for joining approval rather than using a planned date",
+    "Actual joining date and approval seed one correctly anchored retention checkpoint",
+    "Managed worker prepares the existing shared outbox with unconsumed owner approval and no delivery",
+    "Owner-recorded concern preserves unverified identity, stops unused mail and does not infer employment termination",
+    "Mobile lifecycle controls render without page overflow",
+    "Source-bound replacement approval opens one linked draft role and identical approval replay is idempotent",
+    "Replacement fee rebinding is denied and the departed candidate is excluded from current ranking",
+    "No browser runtime exceptions",
+    "All seven lifecycle API routes deny anonymous access",
+    "Unknown placement is not exposed to the owner scope",
+    "Synthetic lifecycle records, future timers, unused approvals and incidents closed; persistent worker healthy",
+    "Retention-only permission leaves a processing-pending profile unchanged"
+  ],
+  "buildCommit": "0269abceee000f4cb2f6bb8150cbbc29b1278879",
+  "cleanup": {
+    "placement": "closed",
+    "roles": "cancelled",
+    "candidate": "withdrawn",
+    "checkpointPlan": "disabled",
+    "unfinishedPhysicalTasks": 0,
+    "unusedOutreach": "cancelled",
+    "riskIncidents": "resolved",
+    "company": "closed",
+    "permissionOnlyCandidate": "do_not_contact"
+  },
+  "worker": {
+    "enabled": true,
+    "persistent": true,
+    "heartbeatRecent": true,
+    "lastError": null
+  },
+  "permissionGuardBuild": "7656774cc04fa730b306f5a8f5702d54b48174bd",
+  "validation": {
+    "unitPassed": 925,
+    "unitSkipped": 90,
+    "mysqlPassed": 696,
+    "mysqlFiles": 37,
+    "finalReadOnlyCommercialTargetedPassed": 38,
+    "targetedSqlOnlySkipped": 5,
+    "types": "passed",
+    "productionBuild": "passed",
+    "hostingerEntryChecksPassed": 4,
+    "environmentPreparationChecksPassed": 7,
+    "tracker": "25 modules / 163 packages consistent",
+    "identityOrClientSignatureVerified": false,
+    "realRecipientDeliveryVerified": false,
+    "realEmploymentVerified": false
+  }
+}
