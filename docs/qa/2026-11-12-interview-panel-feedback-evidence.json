@@ -1,0 +1,55 @@
+{
+  "syntheticOnly": true,
+  "checkedAt": "2026-11-12T13:33:43.930Z",
+  "tests": [
+    "Source-bound panel persists against the exact employer rubric and identical retries reuse its version",
+    "Exact permitted reviewer thread is reused and reviewer-bound FU20 enters the existing review queue",
+    "Legacy raw feedback bypass is blocked for governed panels",
+    "First reviewer remains a partial panel response; duplicate identity is fenced and unused FU20 mail is cancelled",
+    "All assigned responses preserve differing/unknown ratings and permit an exact-snapshot owner next-action review",
+    "Five new feedback owner routes deny anonymous access",
+    "Desktop current panel shows separate observations, explicit differing ratings and unknown evidence",
+    "Desktop current panel shows separate observations, explicit differing ratings and unknown evidence",
+    "Browser correction preserves history, fences the previous response snapshot and preserves the owner explanation until explicit review",
+    "Mobile reviewer/correction/next-action controls fit viewport",
+    "No browser runtime or transport errors",
+    "Final live build exposes stable exact accessible names for populated feedback, quote and limitation fields",
+    "An old correction reference cannot replace a newer active reviewer observation",
+    "New panel version preserves history and invalidates prior observations/next actions for current decisions",
+    "Canonical live privacy erasure redacts panel/reviewer/legacy history and cancels pending client-thread reminders without a provider attempt",
+    "Synthetic recruiting records closed and persistent worker remains healthy"
+  ],
+  "realEmailsSent": 0,
+  "realHiringDecisions": 0,
+  "buildCommit": "54a3325c099d4e0718964d27c42335a312601985",
+  "accessibilityBuild": "768091f9f0c1d0b9f97823caa4879832bee674a3",
+  "worker": {
+    "enabled": true,
+    "persistent": true,
+    "heartbeatRecent": true,
+    "lastError": null
+  },
+  "cleanup": {
+    "candidate": "deleted",
+    "interview": "closed",
+    "panel": "redacted",
+    "feedbackHistory": "redacted",
+    "followups": "cancelled",
+    "job": "cancelled",
+    "company": "closed or suppressed",
+    "realEmailsSent": 0,
+    "realHiringDecisions": 0
+  },
+  "localValidation": {
+    "unitPassed": 997,
+    "unitSkipped": 94,
+    "mysqlPassed": 772,
+    "mysqlFiles": 40,
+    "feedbackCases": 19,
+    "typescript": "passed",
+    "build": "passed",
+    "hostingerEntryChecks": 4,
+    "environmentChecks": 7,
+    "tracker": "passed"
+  }
+}

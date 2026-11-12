@@ -780,6 +780,8 @@ export const interviewsRouter = router({
 
 export const feedbackRouter = router({
   list: protectedProcedure.input(z.object({ interviewId: z.string().min(4) })).query(async ({ ctx, input }) => {
+    ctx.res?.setHeader?.('Cache-Control','private, no-store');
+    ctx.res?.setHeader?.('Referrer-Policy','no-referrer');
     const db = await requireDb();
     const interview = (await db.select().from(interviews).where(and(eq(interviews.id, input.interviewId), eq(interviews.ownerId, ctx.user.id))).limit(1))[0];
     if (!interview) throw new TRPCError({ code: "NOT_FOUND", message: "Interview was not found." });

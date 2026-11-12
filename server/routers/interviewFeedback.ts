@@ -26,9 +26,11 @@ export const interviewFeedbackRouter = router({
     ),
   detail: protectedProcedure
     .input(z.object({ interviewId: id }).strict())
-    .query(({ ctx, input }) =>
-      interviewFeedbackDetail(ctx.user.id, input.interviewId)
-    ),
+    .query(({ ctx, input }) => {
+      ctx.res?.setHeader?.("Cache-Control", "private, no-store");
+      ctx.res?.setHeader?.("Referrer-Policy", "no-referrer");
+      return interviewFeedbackDetail(ctx.user.id, input.interviewId);
+    }),
   configure: protectedProcedure
     .input(feedbackPanelInput)
     .mutation(({ ctx, input }) =>
