@@ -489,7 +489,7 @@ export const candidatesRouter = router({
     if (input.consentType === "client_sharing" && (!input.jobId || !input.companyId)) throw new TRPCError({ code: "BAD_REQUEST", message: "Client sharing consent must be linked to both a job and client." });
     const id = createId("cns_");
     await db.insert(consents).values({ id, ownerId: ctx.user.id, candidateId: candidate.id, jobId: input.jobId ?? null, companyId: input.companyId ?? null, consentType: input.consentType, status: "granted", noticeVersion: input.noticeVersion, method: "owner_recorded", grantedAt: new Date(), expiresAt: input.expiresAt ?? null, dataScope: { purpose: input.consentType, ...(input.evidence?{evidence:input.evidence}:{}) } });
-    const nextState = candidate.profileState === "consent_pending" ? "consented" : candidate.profileState;
+    const nextState = candidate.profileState === "consent_pending" && input.consentType!=="post_placement_communication" ? "consented" : candidate.profileState;
     if (nextState !== candidate.profileState) await db.update(candidates).set({ profileState: nextState }).where(eq(candidates.id, candidate.id));
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "candidate.consent_granted", resourceType: "candidate", resourceId: candidate.id, previousState: candidate.profileState, nextState, metadata: { consentType: input.consentType, consentId: id } });
     return { id };
