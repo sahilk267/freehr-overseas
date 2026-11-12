@@ -1,0 +1,95 @@
+{
+  "date": "2026-11-12",
+  "scope": [
+    "M23-F01",
+    "M23-F02",
+    "M23-F03",
+    "M23-F04",
+    "M23-F06"
+  ],
+  "completeAdvancedModule": false,
+  "local": {
+    "unitPassed": 1034,
+    "unitSkipped": 95,
+    "mysqlPassed": 810,
+    "mysqlFiles": 41,
+    "analyticsCases": 38,
+    "typescript": "PASS",
+    "productionBuild": "PASS",
+    "hostingerStartupChecks": 4,
+    "environmentPreparationChecks": 7,
+    "trackerConsistency": "PASS"
+  },
+  "liveApi": {
+    "checkedAt": "2026-11-12T15:39:52.523Z",
+    "build": "cb75d72379a79fb25901083a96e0280d5b11653a",
+    "tests": [
+      "Exact deployed build serves versioned owner analytics",
+      "Read-only source totals reconcile with canonical invoice detail",
+      "Changed source guard rejects a mismatching export digest",
+      "Fresh source CSV matches the current report without private bodies or recipient addresses",
+      "Unknown owner scope and invalid periods are denied explicitly",
+      "Owner scope search and empty recent cohort retain honest unavailable rates",
+      "All three owner analytics routes deny anonymous access",
+      "Sensitive analytics response disables caching and referrer leakage",
+      "Persistent worker remains healthy; no workflow execution was requested"
+    ],
+    "financialSourceRowsCompared": 3,
+    "sourceCounts": {
+      "companies": 25,
+      "jobs": 22,
+      "candidates": 29,
+      "matches": 4,
+      "shortlists": 1,
+      "interviews": 16,
+      "placements": 5,
+      "invoices": 3,
+      "payments": 4,
+      "conversations": 13,
+      "messages": 34,
+      "plans": 13,
+      "dispatches": 12,
+      "queue": 101,
+      "usage": 23,
+      "approvals": 32,
+      "incidents": 6,
+      "audits": 1030,
+      "events": 18
+    },
+    "issues": [],
+    "noRecruitingOrFinancialWrites": true,
+    "noRealMailOrProviderCall": true,
+    "workerHealthy": true
+  },
+  "liveBrowser": {
+    "checkedAt": "2026-11-12T15:40:20.236Z",
+    "build": "cb75d72379a79fb25901083a96e0280d5b11653a",
+    "tests": [
+      "Owner navigation opens the analytics dashboard and source evidence",
+      "Desktop evidence definitions, charts and collection proof levels remain explicit",
+      "Browser source-section selection exports complete CSV with the visible digest",
+      "Invalid timezone preserves entered filters and displays a useful error",
+      "Client and role scope are applied from searchable owner options",
+      "Mobile filters, source table and evidence remain within viewport",
+      "No browser runtime or transport errors"
+    ],
+    "noRecruitingOrFinancialWrites": true
+  },
+  "browserScope": "Browser checks wait for successful report responses and include rendered nonzero chart bars, source CSV download, invalid timezone recovery, searchable scope filters and desktop/mobile viewport fit.",
+  "remaining": [
+    "Historical lead-to-cleared-revenue warehouse",
+    "Bank settlement subledger",
+    "Measured cost/margin/effort and source/experience baselines",
+    "Verified arrival, persona/complaints and controlled causal lift",
+    "SLA/factuality/ranking evaluation baselines",
+    "Controlled experiments and reviewed optimization proposals"
+  ],
+  "safety": {
+    "recruitingOrFinancialRecordsChanged": false,
+    "realRecipientMailSent": false,
+    "providerCheckoutOrChargeCreated": false,
+    "policyOrHiringCriteriaChanged": false,
+    "syntheticCleanupRequired": false,
+    "persistentWorkerHealthy": true
+  }
+}
