@@ -1,0 +1,56 @@
+{
+  "syntheticOnly": true,
+  "checkedAt": "2026-11-12T09:35:21.632Z",
+  "tests": [
+    "Owned bounds, structured versioned draft and identical request deduplication",
+    "Mandatory release and anonymous masked entry without salary/name disclosure",
+    "Disabled OTP and fabricated verification session denied without external mail",
+    "Legacy acceptance bypass and out-of-bounds concession denied",
+    "Owned printable pack matches immutable terms",
+    "Review-only link mail is deduplicated; approval left unconsumed",
+    "Explicit sharing evidence enrolls existing FU21 reminder engine",
+    "Five protected offer routes deny anonymous owner actions",
+    "Live desktop owner controls render current exact version, bounds and release status",
+    "Live mobile owner panel fits viewport without horizontal overflow",
+    "Anonymous mobile entry strips capability fragment, masks email, hides salary/response and disables unauthorized code delivery",
+    "Missing private capability produces a safe public error",
+    "No browser runtime or transport errors",
+    "New version revokes the old public link and preserves historical offer terms",
+    "Supersession cancels shared reminder plan and every unused mail approval; no provider attempt",
+    "All synthetic records, unused approvals and timers closed; persistent worker remains healthy"
+  ],
+  "realEmailsSent": 0,
+  "realInvoicesIssued": 0,
+  "buildCommit": "a4717aeca09af8a306bb48455bed6c8cab871ec4",
+  "worker": {
+    "enabled": true,
+    "persistent": true,
+    "heartbeatRecent": true,
+    "lastError": null
+  },
+  "cleanup": {
+    "offer": "closed",
+    "placement": "closed",
+    "job": "cancelled",
+    "candidate": "withdrawn",
+    "company": "closed",
+    "reminders": "cancelled",
+    "unusedMailApprovals": "cancelled",
+    "queuedOfferTimers": "cancelled",
+    "realEmailsSent": 0,
+    "realInvoicesIssued": 0
+  },
+  "localValidation": {
+    "unitPassed": 950,
+    "unitSkipped": 92,
+    "mysqlPassed": 723,
+    "mysqlFiles": 38,
+    "offerCases": 27,
+    "typescript": "passed",
+    "productionBuild": "passed",
+    "hostingerEntryChecks": 4,
+    "environmentChecks": 7,
+    "tracker": "passed",
+    "positiveOtpTransport": "mocked"
+  }
+}

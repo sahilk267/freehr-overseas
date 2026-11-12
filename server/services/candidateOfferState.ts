@@ -1,23 +1,387 @@
-import {timingSafeEqual} from 'node:crypto';
-import {and,desc,eq} from 'drizzle-orm';
-import {TRPCError} from '@trpc/server';
-import {candidates,companies,conversations,jobs,placements,workflowEvents} from '../../drizzle/schema';
-import {hashContactValue,requireDb} from '../db';
-import {commercialEvent} from './commercialAgreements';
-import {candidateSuppressed} from './candidateEvidence';
-import {jobRequirementFingerprint} from './jobIntake';
-import {hasCandidateCommunicationPermission} from './communicationPermission';
-import {offerTermsSchema,offerFeeBasisAmount} from '../../shared/candidateOffer';
-import {offerKeyId,offerOrigin,offerTokenHash} from './offerMailScope';
-import {workflowHash} from './workflowStore';
-export const offerDenied=()=>new TRPCError({code:'NOT_FOUND',message:'This private offer is unavailable or expired.'});
-export const offerPlacementIdentity=(p:any)=>workflowHash([p.id,p.candidateId,p.companyId,p.jobId,p.currency]);
-export async function offerPlacement(tx:any,ownerId:number,id:string){const p=(await tx.select().from(placements).where(and(eq(placements.ownerId,ownerId),eq(placements.id,id))).limit(1))[0];if(!p)throw new TRPCError({code:'NOT_FOUND',message:'Owned placement was not found.'});return {...p};}
-export async function currentOffer(tx:any,ownerId:number,placementId:string){const identity=await commercialEvent(tx,ownerId,'offer.placement_registered',placementId);if(!identity||identity.metadata?.redacted)return null;const id=identity.metadata.offerId,version=await commercialEvent(tx,ownerId,'offer.version_saved',id);if(!version||version.metadata?.redacted)return null;const terms=offerTermsSchema.parse(version.metadata.terms);if(version.metadata.termsHash!==workflowHash({offerId:id,version:version.revision,terms}))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Stored offer terms do not match their immutable reference.'});const response=await commercialEvent(tx,ownerId,'offer.response_recorded',id),accepted=await commercialEvent(tx,ownerId,'offer.accepted',id),terminal=await commercialEvent(tx,ownerId,'offer.closed',id),release=await commercialEvent(tx,ownerId,'offer.released',id);return {id,version:version.revision,terms,termsHash:version.metadata.termsHash,definition:version.metadata,response:response?.revision===version.revision?response:null,accepted,terminal:terminal?.revision===version.revision?terminal:null,release:release?.revision===version.revision?release:null};}
-export async function offerById(tx:any,ownerId:number,id:string){const record=await commercialEvent(tx,ownerId,'offer.registered',id);if(!record||record.metadata?.redacted)throw offerDenied();const p=await offerPlacement(tx,ownerId,record.metadata.placementId),offer=await currentOffer(tx,ownerId,p.id);if(!offer||offer.id!==id)throw offerDenied();return {p,offer};}
-export async function offerContext(tx:any,ownerId:number,p:any,allowFilled=false){const candidate=(await tx.select().from(candidates).where(and(eq(candidates.ownerId,ownerId),eq(candidates.id,p.candidateId))).limit(1))[0],job=(await tx.select().from(jobs).where(and(eq(jobs.ownerId,ownerId),eq(jobs.id,p.jobId))).limit(1))[0],company=(await tx.select().from(companies).where(and(eq(companies.ownerId,ownerId),eq(companies.id,p.companyId))).limit(1))[0];if(!candidate||candidateSuppressed(candidate)||!candidate.email||!job||job.companyId!==p.companyId||['cancelled','archived',...(!allowFilled?['filled']:[])].includes(job.pipelineState)||!company||['closed','suppressed','suspended','not_fit'].includes(company.pipelineState))throw offerDenied();return {candidate,job,company,sourceHash:workflowHash([offerPlacementIdentity(p),jobRequirementFingerprint(job),hashContactValue(candidate.email)])};}
-export async function releasedOffer(tx:any,ownerId:number,id:string,now=new Date(),acceptedAllowed=false){const {p,offer}=await offerById(tx,ownerId,id),context=await offerContext(tx,ownerId,p,acceptedAllowed),authority=await commercialEvent(tx,ownerId,'offer.link_authority',id);if(!offer.release||offer.terminal||await commercialEvent(tx,ownerId,'offer.withdrawal_reported',id)||(!acceptedAllowed&&offer.accepted)||offer.response&&!(acceptedAllowed&&offer.accepted)||!['offer_issued',...(acceptedAllowed?['offer_accepted','joining_pending','joining_confirmed','guarantee_active','invoice_eligible']:[])].includes(p.status)||new Date(offer.terms.expiresAt)<=now||!authority?.metadata?.tokenHash||authority.metadata.keyId!==offerKeyId()||authority.metadata.origin!==offerOrigin()||authority.metadata.version!==offer.version||authority.metadata.termsHash!==offer.termsHash||!offer.accepted&&offer.release.metadata.sourceHash!==context.sourceHash||offer.release.metadata.recipientHash!==hashContactValue(context.candidate.email))throw offerDenied();const client=await commercialEvent(tx,ownerId,'offer.client_authority',p.id);if(!client||client.revision!==offer.release.metadata.clientAuthorityRevision||!offer.accepted&&(new Date(client.metadata.validUntil)<=now||client.metadata.sourceHash!==context.sourceHash))throw offerDenied();if(!await hasCandidateCommunicationPermission(tx,ownerId,p.candidateId,p.jobId,acceptedAllowed?['recruitment_communication','offer_response']:['recruitment_communication'],now))throw offerDenied();return {p,offer,authority,context,client};}
-export async function authenticateOfferLink(id:string,token:string,tx?:any,ownerId?:number){const db=tx??await requireDb(),row=ownerId?await commercialEvent(db,ownerId,'offer.link_authority',id):(await db.select().from(workflowEvents).where(and(eq(workflowEvents.aggregateId,id),eq(workflowEvents.eventType,'offer.link_authority'))).orderBy(desc(workflowEvents.revision)).limit(1))[0];const h=row?.metadata?.tokenHash;if(!row||!token||!/^[A-Za-z0-9_-]{43}$/.test(token)||typeof h!=='string'||!/^[a-f0-9]{64}$/.test(h)||!timingSafeEqual(Buffer.from(h,'hex'),Buffer.from(offerTokenHash(token),'hex')))throw offerDenied();return row;}
-export async function offerFollowupState(tx:any,ownerId:number,id:string,now=new Date()){try{const r=await releasedOffer(tx,ownerId,id,now);const shared=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,'offer.link_shared'),eq(workflowEvents.aggregateId,id)));if(!shared.some((e:any)=>e.revision===r.offer.version&&e.metadata.authorityRevision===r.authority.revision))return {state:'blocked',reason:'Record sharing of the current private offer link before reminders.'};return {state:'eligible',fingerprint:workflowHash([id,r.offer.version,r.offer.termsHash,r.authority.revision,r.offer.release.metadata.recipientHash]),candidateId:r.p.candidateId,jobId:r.p.jobId,conversationId:r.offer.release.metadata.conversationId,deadlineAt:new Date(r.offer.terms.expiresAt),senderIdentityId:r.offer.release.metadata.senderIdentityId};}catch(e){if(!(e instanceof TRPCError))throw e;return {state:'cancelled',reason:'Offer version, recipient, authority or response window changed.'};}}
-export async function assertCurrentOfferAcceptance(tx:any,ownerId:number,p:any){const offer=await currentOffer(tx,ownerId,p.id);if(!offer)return;const a=offer.accepted;if(!a||a.revision!==offer.version||a.metadata.termsHash!==offer.termsHash||a.metadata.emailPossessionVerified!==true||offer.terminal||await commercialEvent(tx,ownerId,'offer.withdrawal_reported',offer.id)||p.annualCompensation!==offerFeeBasisAmount(offer.terms,offer.release?.metadata.feeBasis)||p.currency!==offer.terms.currency)throw new TRPCError({code:'PRECONDITION_FAILED',message:'The current exact offer needs an email-confirmed candidate acceptance before joining work.'});const confirmations=await tx.select().from(workflowEvents).where(and(eq(workflowEvents.ownerId,ownerId),eq(workflowEvents.eventType,'offer.condition_reviewed'),eq(workflowEvents.aggregateId,offer.id)));for(const c of offer.terms.conditions.filter(c=>c.required)){const latest=confirmations.filter((r:any)=>r.metadata.version===offer.version&&r.metadata.conditionId===c.id).sort((a:any,b:any)=>(b.metadata.sequence??0)-(a.metadata.sequence??0))[0];if(!latest||latest.metadata.state!=='complete'||latest.metadata.validUntil&&new Date(latest.metadata.validUntil)<=new Date())throw new TRPCError({code:'PRECONDITION_FAILED',message:`Required offer condition needs current owner-reviewed evidence: ${c.label}`});}}
-export async function assertLegacyOfferAllowed(tx:any,ownerId:number,p:any){if(await currentOffer(tx,ownerId,p.id))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Use the versioned offer and its authenticated candidate response; a legacy status update cannot accept these terms.'});}
+import { timingSafeEqual } from "node:crypto";
+import { and, desc, eq } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
+import {
+  candidates,
+  companies,
+  conversations,
+  jobs,
+  placements,
+  workflowEvents,
+} from "../../drizzle/schema";
+import { hashContactValue, requireDb } from "../db";
+import { commercialEvent } from "./commercialAgreements";
+import { candidateSuppressed } from "./candidateEvidence";
+import { jobRequirementFingerprint } from "./jobIntake";
+import { hasCandidateCommunicationPermission } from "./communicationPermission";
+import {
+  offerTermsSchema,
+  offerFeeBasisAmount,
+} from "../../shared/candidateOffer";
+import { offerKeyId, offerOrigin, offerTokenHash } from "./offerMailScope";
+import { workflowHash } from "./workflowStore";
+export const offerDenied = () =>
+  new TRPCError({
+    code: "NOT_FOUND",
+    message: "This private offer is unavailable or expired.",
+  });
+export const offerPlacementIdentity = (p: any) =>
+  workflowHash([p.id, p.candidateId, p.companyId, p.jobId, p.currency]);
+export async function offerPlacement(tx: any, ownerId: number, id: string) {
+  const p = (
+    await tx
+      .select()
+      .from(placements)
+      .where(and(eq(placements.ownerId, ownerId), eq(placements.id, id)))
+      .limit(1)
+  )[0];
+  if (!p)
+    throw new TRPCError({
+      code: "NOT_FOUND",
+      message: "Owned placement was not found.",
+    });
+  return { ...p };
+}
+export async function currentOffer(
+  tx: any,
+  ownerId: number,
+  placementId: string
+) {
+  const identity = await commercialEvent(
+    tx,
+    ownerId,
+    "offer.placement_registered",
+    placementId
+  );
+  if (!identity || identity.metadata?.redacted) return null;
+  const id = identity.metadata.offerId,
+    version = await commercialEvent(tx, ownerId, "offer.version_saved", id);
+  if (!version || version.metadata?.redacted) return null;
+  const terms = offerTermsSchema.parse(version.metadata.terms);
+  if (
+    version.metadata.termsHash !==
+    workflowHash({ offerId: id, version: version.revision, terms })
+  )
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message: "Stored offer terms do not match their immutable reference.",
+    });
+  const response = await commercialEvent(
+      tx,
+      ownerId,
+      "offer.response_recorded",
+      id
+    ),
+    accepted = await commercialEvent(tx, ownerId, "offer.accepted", id),
+    terminal = await commercialEvent(tx, ownerId, "offer.closed", id),
+    release = await commercialEvent(tx, ownerId, "offer.released", id);
+  return {
+    id,
+    version: version.revision,
+    terms,
+    termsHash: version.metadata.termsHash,
+    definition: version.metadata,
+    response: response?.revision === version.revision ? response : null,
+    accepted,
+    terminal: terminal?.revision === version.revision ? terminal : null,
+    release: release?.revision === version.revision ? release : null,
+  };
+}
+export async function offerById(tx: any, ownerId: number, id: string) {
+  const record = await commercialEvent(tx, ownerId, "offer.registered", id);
+  if (!record || record.metadata?.redacted) throw offerDenied();
+  const p = await offerPlacement(tx, ownerId, record.metadata.placementId),
+    offer = await currentOffer(tx, ownerId, p.id);
+  if (!offer || offer.id !== id) throw offerDenied();
+  return { p, offer };
+}
+export async function offerContext(
+  tx: any,
+  ownerId: number,
+  p: any,
+  allowFilled = false
+) {
+  const candidate = (
+      await tx
+        .select()
+        .from(candidates)
+        .where(
+          and(eq(candidates.ownerId, ownerId), eq(candidates.id, p.candidateId))
+        )
+        .limit(1)
+    )[0],
+    job = (
+      await tx
+        .select()
+        .from(jobs)
+        .where(and(eq(jobs.ownerId, ownerId), eq(jobs.id, p.jobId)))
+        .limit(1)
+    )[0],
+    company = (
+      await tx
+        .select()
+        .from(companies)
+        .where(
+          and(eq(companies.ownerId, ownerId), eq(companies.id, p.companyId))
+        )
+        .limit(1)
+    )[0];
+  if (
+    !candidate ||
+    candidateSuppressed(candidate) ||
+    !candidate.email ||
+    !job ||
+    job.companyId !== p.companyId ||
+    ["cancelled", "archived", ...(!allowFilled ? ["filled"] : [])].includes(
+      job.pipelineState
+    ) ||
+    !company ||
+    ["closed", "suppressed", "suspended", "not_fit"].includes(
+      company.pipelineState
+    )
+  )
+    throw offerDenied();
+  return {
+    candidate,
+    job,
+    company,
+    sourceHash: workflowHash([
+      offerPlacementIdentity(p),
+      jobRequirementFingerprint(job),
+      hashContactValue(candidate.email),
+    ]),
+  };
+}
+export async function releasedOffer(
+  tx: any,
+  ownerId: number,
+  id: string,
+  now = new Date(),
+  acceptedAllowed = false
+) {
+  const { p, offer } = await offerById(tx, ownerId, id),
+    context = await offerContext(tx, ownerId, p, acceptedAllowed),
+    authority = await commercialEvent(tx, ownerId, "offer.link_authority", id);
+  if (
+    !offer.release ||
+    offer.terminal ||
+    (await commercialEvent(tx, ownerId, "offer.withdrawal_reported", id)) ||
+    (!acceptedAllowed && offer.accepted) ||
+    (offer.response && !(acceptedAllowed && offer.accepted)) ||
+    ![
+      "offer_issued",
+      ...(acceptedAllowed
+        ? [
+            "offer_accepted",
+            "joining_pending",
+            "joining_confirmed",
+            "guarantee_active",
+            "invoice_eligible",
+          ]
+        : []),
+    ].includes(p.status) ||
+    new Date(offer.terms.expiresAt) <= now ||
+    !authority?.metadata?.tokenHash ||
+    authority.metadata.keyId !== offerKeyId() ||
+    authority.metadata.origin !== offerOrigin() ||
+    authority.metadata.version !== offer.version ||
+    authority.metadata.termsHash !== offer.termsHash ||
+    (!offer.accepted &&
+      offer.release.metadata.sourceHash !== context.sourceHash) ||
+    offer.release.metadata.recipientHash !==
+      hashContactValue(context.candidate.email)
+  )
+    throw offerDenied();
+  const client = await commercialEvent(
+    tx,
+    ownerId,
+    "offer.client_authority",
+    p.id
+  );
+  if (
+    !client ||
+    client.revision !== offer.release.metadata.clientAuthorityRevision ||
+    (!offer.accepted &&
+      (new Date(client.metadata.validUntil) <= now ||
+        client.metadata.sourceHash !== context.sourceHash))
+  )
+    throw offerDenied();
+  if (
+    !(await hasCandidateCommunicationPermission(
+      tx,
+      ownerId,
+      p.candidateId,
+      p.jobId,
+      acceptedAllowed
+        ? ["recruitment_communication", "offer_response"]
+        : ["recruitment_communication"],
+      now
+    ))
+  )
+    throw offerDenied();
+  return { p, offer, authority, context, client };
+}
+export async function authenticateOfferLink(
+  id: string,
+  token: string,
+  tx?: any,
+  ownerId?: number
+) {
+  const db = tx ?? (await requireDb()),
+    row = ownerId
+      ? await commercialEvent(db, ownerId, "offer.link_authority", id)
+      : (
+          await db
+            .select()
+            .from(workflowEvents)
+            .where(
+              and(
+                eq(workflowEvents.aggregateId, id),
+                eq(workflowEvents.eventType, "offer.link_authority")
+              )
+            )
+            .orderBy(desc(workflowEvents.revision))
+            .limit(1)
+        )[0];
+  const h = row?.metadata?.tokenHash;
+  if (
+    !row ||
+    !token ||
+    !/^[A-Za-z0-9_-]{43}$/.test(token) ||
+    typeof h !== "string" ||
+    !/^[a-f0-9]{64}$/.test(h) ||
+    !timingSafeEqual(
+      Buffer.from(h, "hex"),
+      Buffer.from(offerTokenHash(token), "hex")
+    )
+  )
+    throw offerDenied();
+  return row;
+}
+export async function offerFollowupState(
+  tx: any,
+  ownerId: number,
+  id: string,
+  now = new Date()
+) {
+  try {
+    const r = await releasedOffer(tx, ownerId, id, now);
+    const shared = await tx
+      .select()
+      .from(workflowEvents)
+      .where(
+        and(
+          eq(workflowEvents.ownerId, ownerId),
+          eq(workflowEvents.eventType, "offer.link_shared"),
+          eq(workflowEvents.aggregateId, id)
+        )
+      );
+    if (
+      !shared.some(
+        (e: any) =>
+          e.revision === r.offer.version &&
+          e.metadata.authorityRevision === r.authority.revision
+      )
+    )
+      return {
+        state: "blocked",
+        reason:
+          "Record sharing of the current private offer link before reminders.",
+      };
+    return {
+      state: "eligible",
+      fingerprint: workflowHash([
+        id,
+        r.offer.version,
+        r.offer.termsHash,
+        r.authority.revision,
+        r.offer.release.metadata.recipientHash,
+      ]),
+      candidateId: r.p.candidateId,
+      jobId: r.p.jobId,
+      conversationId: r.offer.release.metadata.conversationId,
+      deadlineAt: new Date(r.offer.terms.expiresAt),
+      senderIdentityId: r.offer.release.metadata.senderIdentityId,
+    };
+  } catch (e) {
+    if (!(e instanceof TRPCError)) throw e;
+    return {
+      state: "cancelled",
+      reason: "Offer version, recipient, authority or response window changed.",
+    };
+  }
+}
+export async function assertCurrentOfferAcceptance(
+  tx: any,
+  ownerId: number,
+  p: any
+) {
+  const offer = await currentOffer(tx, ownerId, p.id);
+  if (!offer) return;
+  const a = offer.accepted;
+  if (
+    !a ||
+    a.revision !== offer.version ||
+    a.metadata.termsHash !== offer.termsHash ||
+    a.metadata.emailPossessionVerified !== true ||
+    offer.terminal ||
+    (await commercialEvent(
+      tx,
+      ownerId,
+      "offer.withdrawal_reported",
+      offer.id
+    )) ||
+    p.annualCompensation !==
+      offerFeeBasisAmount(offer.terms, offer.release?.metadata.feeBasis) ||
+    p.currency !== offer.terms.currency
+  )
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "The current exact offer needs an email-confirmed candidate acceptance before joining work.",
+    });
+  const confirmations = await tx
+    .select()
+    .from(workflowEvents)
+    .where(
+      and(
+        eq(workflowEvents.ownerId, ownerId),
+        eq(workflowEvents.eventType, "offer.condition_reviewed"),
+        eq(workflowEvents.aggregateId, offer.id)
+      )
+    );
+  for (const c of offer.terms.conditions.filter(c => c.required)) {
+    const latest = confirmations
+      .filter(
+        (r: any) =>
+          r.metadata.version === offer.version &&
+          r.metadata.conditionId === c.id
+      )
+      .sort(
+        (a: any, b: any) =>
+          (b.metadata.sequence ?? 0) - (a.metadata.sequence ?? 0)
+      )[0];
+    if (
+      !latest ||
+      latest.metadata.state !== "complete" ||
+      (latest.metadata.validUntil &&
+        new Date(latest.metadata.validUntil) <= new Date())
+    )
+      throw new TRPCError({
+        code: "PRECONDITION_FAILED",
+        message: `Required offer condition needs current owner-reviewed evidence: ${c.label}`,
+      });
+  }
+}
+export async function assertLegacyOfferAllowed(
+  tx: any,
+  ownerId: number,
+  p: any
+) {
+  if (await currentOffer(tx, ownerId, p.id))
+    throw new TRPCError({
+      code: "PRECONDITION_FAILED",
+      message:
+        "Use the versioned offer and its authenticated candidate response; a legacy status update cannot accept these terms.",
+    });
+}
