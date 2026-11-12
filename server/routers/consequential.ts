@@ -1,3 +1,5 @@
+import {requestReplacementWorkflow} from '../services/placementLifecycle';
+import {commercialEvent} from '../services/commercialAgreements';
 import { stopOwnerFollowUps } from "../services/followupEvents";
 import { assertSharingEligible } from "../services/sharingEligibility";
 import { TRPCError } from "@trpc/server";
@@ -96,6 +98,8 @@ export const consequentialRouter = router({
     .input(
       z.object({
         placementId: z.string().min(4),
+        expectedSourceFingerprint:z.string().length(64).optional(),
+        guaranteePolicy:z.enum(["original_window","no_new_guarantee"]).optional(),
         reason: z.string().trim().min(8).max(2000),
       }),
     )
@@ -112,6 +116,8 @@ export const consequentialRouter = router({
       if (!placement) {
         throw new TRPCError({ code: "NOT_FOUND", message: "Placement was not found." });
       }
+      if(input.expectedSourceFingerprint){if(!input.guaranteePolicy)throw new TRPCError({code:'BAD_REQUEST',message:'Select the reviewed replacement guarantee policy.'});return requestReplacementWorkflow(ownerId,ctx.actor.id,{placementId:input.placementId,expectedSourceFingerprint:input.expectedSourceFingerprint,guaranteePolicy:input.guaranteePolicy,reason:input.reason});}
+      if(await commercialEvent(db,ownerId,'placement.lifecycle_departure',placement.id))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Use the reviewed replacement source and explicit guarantee policy.'});
       return {
         approvalId: await requestApproval(
           ctx,

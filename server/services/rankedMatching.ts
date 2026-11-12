@@ -1,3 +1,4 @@
+import {replacementJobSource} from './replacementPolicy';
 import {TRPCError} from '@trpc/server';
 import {and,asc,desc,eq,like} from 'drizzle-orm';
 import {automationQueue,candidates,jobs,workflowEvents} from '../../drizzle/schema';
@@ -39,8 +40,9 @@ export async function rankedPoolInTransaction(tx:any,ownerId:number,input:PoolIn
  const global=input.scope==='global',bound=global?MAX_GLOBAL_CANDIDATES:input.scanLimit;
  const rows=await tx.select().from(candidates).where(and(...filters)).orderBy(asc(candidates.id)).offset(global?0:input.offset).limit(bound+1);
  if(global&&rows.length>bound)throw new TRPCError({code:'PRECONDITION_FAILED',message:'Global review supports up to 1000 matching owned profiles. Narrow the name filter or use inspected-page review; no records were silently omitted.'});
+ const replacement=await replacementJobSource(tx,ownerId,input.jobId);
  const result:any[]=[];let suppressed=0;
- for(const c of rows.slice(0,bound)){if(candidateSuppressed(c)){suppressed++;continue;}const ctx=await buildMatchContext(tx,ownerId,c.id,input.jobId);result.push({candidateId:c.id,name:c.fullName,headline:c.headline,candidateFingerprint:ctx.candidateFingerprint,evidenceRevision:ctx.evidence.revision,fresh:ctx.evidence.fresh,processingConsent:ctx.processingConsent,canQueueAi:ctx.canQueueAi,...ctx.assessment});}
+ for(const c of rows.slice(0,bound)){if(candidateSuppressed(c)||replacement?.metadata?.excludedCandidateId===c.id){suppressed++;continue;}const ctx=await buildMatchContext(tx,ownerId,c.id,input.jobId);result.push({candidateId:c.id,name:c.fullName,headline:c.headline,candidateFingerprint:ctx.candidateFingerprint,evidenceRevision:ctx.evidence.revision,fresh:ctx.evidence.fresh,processingConsent:ctx.processingConsent,canQueueAi:ctx.canQueueAi,...ctx.assessment});}
  result.sort((a,b)=>a.reviewPriority===b.reviewPriority?a.candidateId.localeCompare(b.candidateId):b.reviewPriority-a.reviewPriority);
  const display=global?result.slice(input.offset,input.offset+input.scanLimit):result;
  const covered={scope:global?'global':'page',fullyInspected:global||(input.offset===0&&rows.length<=bound),scanned:Math.min(rows.length,bound),reviewable:result.length,suppressed,hasMore:global?input.offset+input.scanLimit<result.length:rows.length>bound,nextOffset:global?(input.offset+input.scanLimit<result.length?input.offset+input.scanLimit:null):(rows.length>bound?input.offset+input.scanLimit:null),offset:input.offset,scanLimit:input.scanLimit};

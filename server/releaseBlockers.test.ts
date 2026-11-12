@@ -389,6 +389,7 @@ describe("Release Blocker Remediation Suite (RB-07, RB-08, RB-09, RB-10, RB-11, 
         resourceId: "non_existent_placement_tx",
         status: "pending",
         reason: "Placement confirmation with intentional failure",
+        payload:{joiningEvidence:["Synthetic proof to reach the injected storage failure"]},
       });
 
       // Pass a transactional wrapper delegating to db.transaction where side-effect throws

@@ -1,3 +1,4 @@
+import {placementCheckpointState} from './placementLifecycleState';
 import {candidateReviewFollowupState,reviewEvent} from './candidateReviewState';
 import {hasCandidateCommunicationPermission} from "./communicationPermission";
 import { invoiceCollectionFacts, ACTIVE_COLLECTION_STATES } from "./collectionFacts";
@@ -16,7 +17,7 @@ const scenarioIds = FOLLOW_UP_SCENARIOS.map(scenario => scenario[0]) as [string,
 export const followUpInput = z.object({
   scenarioId: z.enum(scenarioIds), objective: z.string().trim().min(3).max(500),
   conversationId: z.string().min(4).optional(), candidateId: z.string().min(4).optional(), contactId: z.string().min(4).optional(),
-  senderIdentityId: z.string().min(4), resourceType: z.enum(["conversation", "interview", "invoice", "candidate_review"]).default("conversation"), resourceId: z.string().min(4).optional(),
+  senderIdentityId: z.string().min(4), resourceType: z.enum(["conversation", "interview", "invoice", "candidate_review", "placement_checkpoint"]).default("conversation"), resourceId: z.string().min(4).optional(),
   timezone: z.string().min(2).max(64).default("Asia/Kolkata"), businessDaysOnly: z.boolean().default(false),
   startsAt: z.date().optional(), deadlineAt: z.date(), responseWindowMinutes: z.number().int().min(1).max(43200).default(1440),
   steps: z.array(z.object({ delayMinutes: z.number().int().min(0).max(43200), subject: z.string().trim().min(1).max(255), body: z.string().trim().min(8).max(12000) })).min(1).max(6),
@@ -38,7 +39,7 @@ export async function followUpEligibility(tx: any, plan: FollowUpPlan, now = new
   if (conversation.candidateId) {
     const candidate = (await lockedSelect(tx.select().from(candidates).where(and(eq(candidates.id, conversation.candidateId), eq(candidates.ownerId, plan.ownerId))).limit(1)))[0];
     if (!candidate || candidate.deletedAt || candidate.withdrawnAt || candidate.doNotContactAt || ["deleted", "deletion_pending", "withdrawn", "do_not_contact"].includes(candidate.profileState) || candidate.email?.trim().toLowerCase() !== plan.recipient) return { state: "cancelled", reason: "Candidate is withdrawn, unavailable for contact or has changed address." };
-    const allowedTypes = plan.scenarioId === "FU18" || plan.scenarioId === "FU17" || plan.scenarioId === "FU19" ? ["interview_processing", "recruitment_communication"] : ["recruitment_communication"];
+    const allowedTypes = plan.resourceType==='placement_checkpoint'&&plan.scenarioId==='FU24'?['post_placement_communication']:plan.scenarioId === "FU18" || plan.scenarioId === "FU17" || plan.scenarioId === "FU19" ? ["interview_processing", "recruitment_communication"] : ["recruitment_communication"];
     if (!(await hasCandidateCommunicationPermission(tx,plan.ownerId,candidate.id,conversation.jobId,allowedTypes,now))) return { state: "blocked", reason: "Current purpose-appropriate communication permission is required." };
   } else if (conversation.contactId) {
     const contact = (await lockedSelect(tx.select().from(contacts).where(and(eq(contacts.id, conversation.contactId), eq(contacts.ownerId, plan.ownerId))).limit(1)))[0];
@@ -47,12 +48,17 @@ export async function followUpEligibility(tx: any, plan: FollowUpPlan, now = new
     if (permissions[0]?.metadata?.expiresAt && new Date(permissions[0].metadata.expiresAt) <= now) return { state: "blocked", reason: "Documented contact permission expired." };
     if (!["granted", "permitted", "consented"].includes(contact.contactPermission)) return { state: "blocked", reason: "Documented contact permission is required." };
   } else return { state: "blocked", reason: "Conversation must be linked to an owned candidate or business contact." };
-  if (conversation.jobId) {
+  if (conversation.jobId && plan.resourceType!=="placement_checkpoint") {
     const job = (await lockedSelect(tx.select().from(jobs).where(and(eq(jobs.id, conversation.jobId), eq(jobs.ownerId, plan.ownerId))).limit(1)))[0];
     if (!job || ["cancelled", "archived", "filled", "paused"].includes(job.pipelineState)) return { state: "cancelled", reason: "Related job is no longer active." };
   }
   let fingerprint: string;
-  if (plan.resourceType === "candidate_review") {
+  if(plan.resourceType==='placement_checkpoint'){
+    const checkpoint=await placementCheckpointState(tx,plan.ownerId,plan.resourceId,now);
+    if(checkpoint.state!=='eligible')return checkpoint;
+    if(conversation.id!==checkpoint.conversationId||plan.deadlineAt>checkpoint.deadlineAt||plan.senderIdentityId!==checkpoint.senderIdentityId||plan.scenarioId!==(checkpoint.stage==='retention'?'FU24':'FU22'))return {state:'cancelled',reason:'Placement checkpoint recipient, sender, purpose or response window changed.'};
+    fingerprint=checkpoint.fingerprint;
+  } else if (plan.resourceType === "candidate_review") {
     if(!await reviewEvent(tx,plan.ownerId,"candidate.review_link_shared",plan.resourceId))return {state:"blocked",reason:"Record that this private review link was already shared before enrolling screening reminders."};
     const review=await candidateReviewFollowupState(tx,plan.ownerId,plan.resourceId,now);
     if(review.state!=="eligible")return review;
@@ -95,6 +101,7 @@ export async function enrollFollowUpInTransaction(tx: any, ownerId: number, raw:
   const input = followUpInput.parse(raw);
   if ((input.scenarioId === "FU18" && input.resourceType !== "interview") || (input.resourceType === "interview" && input.scenarioId !== "FU18") || (["FU26", "FU27"].includes(input.scenarioId) && input.resourceType !== "invoice") || (input.resourceType === "invoice" && !["FU26", "FU27"].includes(input.scenarioId))) throw new TRPCError({ code: "BAD_REQUEST", message: "This scenario requires its interview or invoice resource." });
   if(input.resourceType==="candidate_review"&&!["FU10","FU11","FU13"].includes(input.scenarioId))throw new TRPCError({code:"BAD_REQUEST",message:"Choose a candidate screening follow-up scenario."});
+  if(input.resourceType==='placement_checkpoint'&&!['FU22','FU24'].includes(input.scenarioId))throw new TRPCError({code:'BAD_REQUEST',message:'Choose a prejoining or retention checkpoint scenario.'});
   validateTimezone(input.timezone);
   const startsAt = new Date((input.startsAt ?? new Date()).getTime() + input.steps[0].delayMinutes * 60_000);
   if (input.deadlineAt <= startsAt || input.deadlineAt.getTime() > Date.now() + 366 * 86400000) throw new TRPCError({ code: "BAD_REQUEST", message: "Deadline must follow the start and be within one year." });

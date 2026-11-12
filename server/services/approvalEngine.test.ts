@@ -164,7 +164,7 @@ describe("approvalEngine and decide() endpoints", () => {
         companyId: "cmp_test_dummy",
         jobId: "job_test_dummy",
         candidateId: "can_test_dummy",
-        status: "offer_accepted",
+        status: "joining_pending",
       });
 
       const approvalId = createId("apr_test_");

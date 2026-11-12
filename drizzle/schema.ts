@@ -243,7 +243,7 @@ export const consents = mysqlTable(
     candidateId: id("candidateId").notNull().references(() => candidates.id),
     jobId: id("jobId").references(() => jobs.id),
     companyId: id("companyId").references(() => companies.id),
-    consentType: mysqlEnum("consentType", ["platform_processing", "recruitment_communication", "client_sharing", "interview_processing", "recording", "background_check", "marketing"]).notNull(),
+    consentType: mysqlEnum("consentType", ["platform_processing", "recruitment_communication", "client_sharing", "interview_processing", "recording", "background_check", "marketing", "post_placement_communication"]).notNull(),
     status: mysqlEnum("status", ["granted", "withdrawn", "expired", "denied"]).notNull(),
     dataScope: json("dataScope"),
     noticeVersion: varchar("noticeVersion", { length: 64 }).notNull(),

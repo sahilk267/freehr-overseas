@@ -1,6 +1,10 @@
 # Automation implementation progress
 
-Updated 11 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+Updated 12 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+
+## Combined batch: prejoining, retention and replacement obligations
+
+[Placement lifecycle report](qa/2026-11-12-placement-lifecycle.md) records opt-in versioned checkpoint plans, approved actual joining-date anchors, shared review outreach, owner-recorded satisfaction/risk evidence, source-bound replacement approval, one linked draft recruiting role, no-extra-fee/guarantee guards and erasure across candidate/client conversations. A reviewed append-only consent-enum migration separates retention permission from general recruitment grants. 924 unit tests passed (90 skipped), all 695 disposable MySQL tests passed across 37 files, and types, build, four Hostinger entry checks, seven environment-preparation checks and tracker consistency passed. Live acceptance, external authenticity, elapsed recipient acceptance and complete advanced modules remain open.
 
 ## Combined batch: provider checkout, signed receipts and financial reconciliation
 

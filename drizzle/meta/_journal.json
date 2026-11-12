@@ -169,6 +169,13 @@
       "when": 1787882700000,
       "tag": "0023_client_discovery",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1787882800000,
+      "tag": "0024_post_placement_permission",
+      "breakpoints": true
     }
   ]
 }

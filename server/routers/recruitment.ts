@@ -1,3 +1,6 @@
+import {lifecyclePlanId,placementLifecycleFingerprint} from '../services/placementLifecycleState';
+import {commercialEvent as lifecycleEvent} from '../services/commercialAgreements';
+import {assertReplacementPlacementAllowed} from '../services/replacementPolicy';
 import { stripeConfiguration, invoiceCheckoutStatus, reconcileStripeCheckout } from "../services/stripePayments";
 import {invoiceDraftLifecycle,cancelInvoiceDraft} from '../services/invoiceDraftLifecycle';
 import {bindPlacementCommercial,placementBindingInput,placementCommercialRead,draftContractInvoice,contractInvoiceInput,commercialContext,commercialGuaranteeDates,checkCommercialInvoice} from '../services/commercialObligations';
@@ -473,13 +476,19 @@ export const candidatesRouter = router({
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "candidate.state_changed", resourceType: "candidate", resourceId: candidate.id, previousState: candidate.profileState, nextState: input.state });
     return { success: true };
   }),
-  grantConsent: protectedProcedure.input(z.object({ candidateId: z.string().min(4), consentType: z.enum(["platform_processing", "recruitment_communication", "client_sharing", "interview_processing", "recording", "background_check", "marketing"]), jobId: z.string().min(4).optional(), companyId: z.string().min(4).optional(), noticeVersion: z.string().trim().min(1).max(64).default("v1"), expiresAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
+  grantConsent: protectedProcedure.input(z.object({ candidateId: z.string().min(4), consentType: z.enum(["platform_processing", "recruitment_communication", "client_sharing", "interview_processing", "recording", "background_check", "marketing", "post_placement_communication"]), jobId: z.string().min(4).optional(), companyId: z.string().min(4).optional(), noticeVersion: z.string().trim().min(1).max(64).default("v1"), evidence:z.string().trim().min(8).max(2000).optional(), expiresAt: z.date().optional() })).mutation(async ({ ctx, input }) => {
     const db = await requireDb();
     const rows = await db.select().from(candidates).where(eq(candidates.id, input.candidateId)).limit(1);
     const candidate = await requireOwned(rows[0], ctx.user.id, "Candidate");
+    if(input.consentType==='post_placement_communication'){
+      if(candidate.deletedAt||candidate.withdrawnAt||candidate.doNotContactAt||['deleted','deletion_pending','withdrawn','do_not_contact'].includes(candidate.profileState))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Restore candidate eligibility through the consent workflow before recording new post-placement permission.'});
+      const role=input.jobId?(await db.select().from(jobs).where(and(eq(jobs.ownerId,ctx.user.id),eq(jobs.id,input.jobId))).limit(1))[0]:null;
+      if(!role||input.companyId&&input.companyId!==role.companyId)throw new TRPCError({code:'BAD_REQUEST',message:'Select an owned role and its exact client for post-placement permission.'});
+    }
+    if(input.consentType==='post_placement_communication'&&(!input.evidence||!input.jobId||!input.expiresAt||input.expiresAt<=new Date()))throw new TRPCError({code:'BAD_REQUEST',message:'Post-placement permission needs the exact role, documented evidence and a future expiry.'});
     if (input.consentType === "client_sharing" && (!input.jobId || !input.companyId)) throw new TRPCError({ code: "BAD_REQUEST", message: "Client sharing consent must be linked to both a job and client." });
     const id = createId("cns_");
-    await db.insert(consents).values({ id, ownerId: ctx.user.id, candidateId: candidate.id, jobId: input.jobId ?? null, companyId: input.companyId ?? null, consentType: input.consentType, status: "granted", noticeVersion: input.noticeVersion, method: "owner_recorded", grantedAt: new Date(), expiresAt: input.expiresAt ?? null, dataScope: { purpose: input.consentType } });
+    await db.insert(consents).values({ id, ownerId: ctx.user.id, candidateId: candidate.id, jobId: input.jobId ?? null, companyId: input.companyId ?? null, consentType: input.consentType, status: "granted", noticeVersion: input.noticeVersion, method: "owner_recorded", grantedAt: new Date(), expiresAt: input.expiresAt ?? null, dataScope: { purpose: input.consentType, ...(input.evidence?{evidence:input.evidence}:{}) } });
     const nextState = candidate.profileState === "consent_pending" ? "consented" : candidate.profileState;
     if (nextState !== candidate.profileState) await db.update(candidates).set({ profileState: nextState }).where(eq(candidates.id, candidate.id));
     await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "candidate.consent_granted", resourceType: "candidate", resourceId: candidate.id, previousState: candidate.profileState, nextState, metadata: { consentType: input.consentType, consentId: id } });
@@ -892,6 +901,7 @@ export const placementsRouter = router({
         });
       }
 
+      await assertReplacementPlacementAllowed(db,ctx.user.id,job.id,candidate.id);
       // 3. Verify candidate is associated with that exact Job (match, shortlist, interview, or screening)
       const [screeningRows, interviewRows, shortlistRows, matchRows] = await Promise.all([
         db
@@ -1130,6 +1140,7 @@ export const placementsRouter = router({
       z.object({
         id: z.string().min(4),
         state: z.string().min(2).max(48),
+        joiningAt:z.date().optional(),
         joiningEvidence: z.array(z.string().trim().min(2).max(500)).max(5).optional(),
       }),
     )
@@ -1142,6 +1153,7 @@ export const placementsRouter = router({
         .limit(1);
       const placement = await requireOwned(rows[0], ctx.user.id, "Placement");
       if(input.state!=="closed")await commercialContext(db,ctx.user.id,placement);
+      if(['replacement_requested','replacement_in_progress'].includes(input.state))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Open replacement work through the source-bound owner approval, not a direct state change.'});
       assertTransition("placement", placement.status, input.state);
 
       if (
@@ -1155,13 +1167,17 @@ export const placementsRouter = router({
       }
 
       if (isConsequentialAction("placement_confirmation") && input.state === "joining_confirmed") {
+        const lifecycle=(await lifecycleEvent(db,ctx.user.id,'placement.lifecycle_plan',lifecyclePlanId(placement.id,'retention')))?.metadata;
+        if(lifecycle?.enabled&&!input.joiningAt)throw new TRPCError({code:'BAD_REQUEST',message:'Enter the actual joining date and evidence in the lifecycle confirmation form.'});
+        if(input.joiningAt&&(input.joiningAt>new Date()||input.joiningAt.getTime()<Date.now()-366*86400000))throw new TRPCError({code:'BAD_REQUEST',message:'Use an actual joining date within the past year, never a future date.'});
+
         const result = await requestOrAutoDecide(
           ctx,
           "placement_confirmation",
           "placement",
           placement.id,
           "Placement confirmation is consequential and requires owner approval.",
-          { requestedState: input.state, joiningEvidence: input.joiningEvidence ?? [] },
+          { requestedState: input.state, joiningEvidence: input.joiningEvidence ?? [], ...(input.joiningAt?{joiningAt:input.joiningAt.toISOString()}:{}), placementSourceFingerprint:placementLifecycleFingerprint(placement) },
         );
         return {
           approvalId: result.approvalId,
@@ -1295,7 +1311,7 @@ export const approvalsRouter = router({
     const db = await requireDb();
     const rows = await db.select().from(approvals).where(eq(approvals.id, input.id)).limit(1);
     const approval = await requireOwned(rows[0], ctx.user.id, "Approval");
-    if (approval.status !== "pending") throw new TRPCError({ code: "BAD_REQUEST", message: "This approval has already been decided." });
+    if (approval.status !== "pending" && approval.status !== input.decision) throw new TRPCError({ code: "BAD_REQUEST", message: "This approval has already been decided." });
     return applyApprovalDecision(db, approval, input.decision, ctx.user.id, input.note, "manual");
   }),
 });

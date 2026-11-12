@@ -1084,34 +1084,44 @@
         {
           "id": "M20-F01",
           "description": "Prejoining checklist, notice period, counteroffer/ghosting risk, joining-date changes and candidate/client check-ins.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-placement-lifecycle.md",
+          "implementation_note": "W9 adds versioned intended-joining plans, dated prejoining support checkpoints, exact participant conversations, current permission gates, bounded shared FU22 review outreach and owner-evidenced outcomes. Rescheduling cancels unused work; future facts cannot be recorded as completed checkpoints. Full credential/relocation checklists, authenticated party responses and validated notice/buyout workflows remain open."
         },
         {
           "id": "M20-F02",
           "description": "Authenticated joining evidence from permitted parties; consume M16 identity/background/license verification outcomes and own overseas relocation/visa milestone evidence when applicable. Only the competent external authority can confirm visa/work authorization.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-placement-lifecycle.md",
+          "implementation_note": "W9 binds newly requested joining approvals to current placement facts and an explicit actual joining date for opted-in retention. Closed/stale requests fail; actual joining and approval time are stored separately, and retention waits for approval. Evidence remains owner-recorded with identity unverified. Independent party authentication, M16 verification adapters and competent-authority visa/work-authorization evidence remain open."
         },
         {
           "id": "M20-F03",
           "description": "Placement creation tied to an authorized positive disposition and accepted offer; correct candidacy history and rehire semantics.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-placement-lifecycle.md",
+          "implementation_note": "W9 excludes the departed candidate from replacement matching and placement, requires review/approval of the cloned replacement role before new placement work, fences stale joining approval and deduplicates identical owner decisions. Legacy placement creation still requires its existing positive disposition. Authenticated exact accepted-offer binding, full rehire/candidacy semantics and concurrent legacy placement-create handling remain open."
         },
         {
           "id": "M20-F04",
           "description": "Guarantee windows, exclusions, replacement/refund eligibility and deadlines derived from accepted engagement, not hard-coded 90 days.",
           "status": "implementing",
-          "evidence_ref": "qa/2026-11-11-commercial-obligations.md",
-          "implementation_note": "Opted-in bound placements derive guarantee dates from frozen agreement days, including zero days; joining confirmation rechecks the source and active candidate. Legacy unbound placements retain the historical 90-day default. Exclusions, refund eligibility, complete replacement execution and legacy migration remain open."
+          "evidence_ref": "qa/2026-11-12-placement-lifecycle.md",
+          "implementation_note": "W9 replacement requests require the frozen accepted placement agreement, unchanged source/contract/billing references, an explicit matching guarantee window and timely departure evidence. Owner selects remaining-original-window or no-new-guarantee treatment. Replacement cannot silently reset ninety days or create another fee. External exclusions/legal entitlement, refund eligibility, legacy commercial migration and repeat replacement cycles remain open."
         },
         {
           "id": "M20-F05",
           "description": "Configurable day-1/7/30/60/90 retention touchpoints, client/candidate satisfaction, attrition signals and escalation.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-placement-lifecycle.md",
+          "implementation_note": "W9 adds opt-in day-based retention schedules anchored to approved actual joining, configurable candidate/client checkpoints, separate expiring post-placement communication permission, shared FU24 review sequences, owner-recorded satisfaction/concerns, internal due/overdue incidents and managed pause/stop. Replies stop shared sequences; no attrition is inferred from silence. Independently authenticated surveys, long elapsed real-recipient acceptance, full escalation/disposition and adaptive cadence remain open."
         },
         {
           "id": "M20-F06",
           "description": "Replacement obligation creates a linked new recruiting workflow with original invoice/contract linkage and prevents double billing.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-12-placement-lifecycle.md",
+          "implementation_note": "W9 owner approval atomically opens one linked draft replacement role with original placement/job/contract/invoice references. The departed person is excluded; all new placement-fee invoice paths and fee rebinding on the replacement role are denied, including after candidate erasure. Existing recruiting commands own subsequent work. Full exclusion/refund adjudication, repeated replacement cycles and elapsed client/provider acceptance remain open."
         },
         {
           "id": "M20-F07",
@@ -2283,5 +2293,5 @@
     "note": "Supported global and candidate-to-many-job ranking plus bounded owner-authorized refresh now share the canonical context and physical worker queue. Explicit dataset support limits, delegated AI budgets and source/authority lifecycle controls do not complete the remaining advanced roadmap.",
     "updated_at": "2026-11-07"
   },
-  "last_implementation_update": "2026-11-11"
+  "last_implementation_update": "2026-11-12"
 }

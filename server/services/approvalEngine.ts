@@ -1,3 +1,7 @@
+import {placementLifecycleFingerprint,lifecyclePlanId} from './placementLifecycleState';
+import {appendWorkflowEvent} from './workflowStore';
+import {commercialEvent} from './commercialAgreements';
+import {activatePlacementRetention,applyReplacementWorkflow} from './placementLifecycle';
 import {commercialGuaranteeDates,commercialInvoiceIssue} from './commercialObligations';
 import {validateReplyEmail} from "./replyMail";
 import type {ReplyMailScope} from "./replyMailScope";
@@ -169,15 +173,23 @@ export async function applySideEffect(
 
   // 3) placement_confirmation
   if (approval.actionType === "placement_confirmation") {
-    const payload = approval.payload as { joiningEvidence?: string[] } | null;
+    const payload = approval.payload as { joiningEvidence?: string[]; joiningAt?:string; placementSourceFingerprint?:string } | null;
     const placement=(await db.select().from(placements).where(and(eq(placements.ownerId,approval.ownerId),eq(placements.id,approval.resourceId))).limit(1))[0];
     if(!placement)throw Error("Owned placement was not found.");
-    const { guaranteeStartAt, guaranteeEndAt } = await commercialGuaranteeDates(db,approval.ownerId,placement,decidedAt);
+    if(placement.status!=='joining_pending'||payload?.placementSourceFingerprint&&payload.placementSourceFingerprint!==placementLifecycleFingerprint(placement))throw new Error('Joining approval is stale; review the current placement and request confirmation again.');
+    if(!payload?.joiningEvidence?.length)throw new Error('Current joining evidence is required.');
+    const retention=await commercialEvent(db,approval.ownerId,'placement.lifecycle_plan',lifecyclePlanId(placement.id,'retention'));
+    if(retention?.metadata?.enabled&&!payload.joiningAt)throw new Error('An explicit actual joining date is required for the configured retention plan.');
+    const joiningDate=payload.joiningAt?new Date(payload.joiningAt):decidedAt;
+    const joiningAt=new Date(Math.floor(joiningDate.getTime()/1000)*1000);
+    if(!Number.isFinite(joiningDate.getTime())||joiningDate>decidedAt||joiningDate.getTime()<decidedAt.getTime()-366*86400000)throw new Error('Actual joining date is invalid.');
+    const { guaranteeStartAt, guaranteeEndAt } = await commercialGuaranteeDates(db,approval.ownerId,placement,joiningAt);
+    await appendWorkflowEvent(db,approval.ownerId,'placement.lifecycle_joining_date',placement.id,1,{candidateId:placement.candidateId,joinedAt:joiningAt.toISOString(),confirmedAt:decidedAt.toISOString(),approvalId:approval.id,dateSource:payload.joiningAt?'explicit_owner_evidence':'legacy_confirmation_time',identityVerified:false});
     await db
       .update(placements)
       .set({
         status: "joining_confirmed",
-        joiningConfirmedAt: decidedAt,
+        joiningConfirmedAt: joiningAt,
         joiningEvidence: payload?.joiningEvidence ?? null,
         guaranteeStartAt,
         guaranteeEndAt,
@@ -188,6 +200,11 @@ export async function applySideEffect(
           eq(placements.ownerId, approval.ownerId),
         ),
       );
+  }
+
+  if(approval.actionType==='placement_confirmation'){
+    const joined=(await db.select().from(placements).where(and(eq(placements.ownerId,approval.ownerId),eq(placements.id,approval.resourceId))).limit(1))[0];
+    if(joined)await activatePlacementRetention(db,approval.ownerId,joined);
   }
 
   // 4) invoice_issue
@@ -225,7 +242,8 @@ export async function applySideEffect(
   }
 
   // 6) replacement_case
-  if (approval.actionType === "replacement_case") {
+  if (approval.actionType === "replacement_case" && !await applyReplacementWorkflow(db,approval,decidedAt,decidedById)) {
+    if(await commercialEvent(db,approval.ownerId,"replacement.workflow_opened",approval.resourceId))throw new Error("A replacement workflow already owns this placement obligation; the legacy approval is stale.");
     await db
       .update(placements)
       .set({
@@ -338,7 +356,7 @@ export async function applyApprovalDecision(
   const finalReason = note ?? approval.reason;
 
   const runDecisionTransaction = async (tx: any) => {
-    if (approval.actionType === "email_send" || approval.actionType.startsWith("invoice_")) await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, approval.ownerId)).limit(1));
+    if (["email_send","placement_confirmation","replacement_case"].includes(approval.actionType) || approval.actionType.startsWith("invoice_")) await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, approval.ownerId)).limit(1));
     // 1. Fetch current status within transaction to enforce concurrency and idempotency
     const current = (
       await lockedSelect(tx
@@ -401,6 +419,7 @@ export async function applyApprovalDecision(
       result = await runDecisionTransaction(db);
     }
 
+    if(result.alreadyDecided)return result;
     // 4. Record audit on successful commit
     await recordAudit({
       ownerId: approval.ownerId,

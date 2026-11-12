@@ -1080,3 +1080,9 @@ CREATE TABLE `clientDiscoveryMeetings` (
  FOREIGN KEY (`ownerId`) REFERENCES `users` (`id`), FOREIGN KEY (`requestId`) REFERENCES `clientDiscoveryRequests` (`id`)
 );
 INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('7e424c1794654a90feb76b6c4154f73a4fc353bf3c4954d32140a08c5086f29b', 1787882700000);
+
+-- 0024_post_placement_permission
+-- Append one consent purpose; existing values and their order are preserved.
+-- No pre-existing recruitment grant becomes a post-placement communication grant.
+ALTER TABLE `consents` MODIFY COLUMN `consentType` enum('platform_processing','recruitment_communication','client_sharing','interview_processing','recording','background_check','marketing','post_placement_communication') NOT NULL;
+INSERT INTO `__drizzle_migrations` (`hash`, `created_at`) VALUES ('869d883bf14d01b01dbf74495ca02d181aa13176af397be888884cec3ffd1c8e', 1787882800000);

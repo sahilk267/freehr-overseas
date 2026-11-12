@@ -1,0 +1,26 @@
+# Prejoining, retention and linked replacement workflows
+
+Date: 12 November 2026 (Asia/Calcutta). Scope: M20-F01 through F06, with existing M04/M05/M06/M21 commands. No whole advanced module is complete.
+
+## Behavior implemented
+
+- Versioned opt-in plans define intended joining milestones or retention day offsets, candidate/client conversations, a response window and optional automatic outreach preparation. Default UI retention days are 1/7/30/60/90; offsets/recipients are bounded and deduplicated. Changing/disabling the plan cancels unused checkpoint timers, follow-ups and message approvals.
+- A configured retention plan waits for the existing joining owner approval. New joining requests bind the current placement facts and explicit actual date; stale/closed approvals, future dates and absent evidence fail. The ledger distinguishes owner-evidenced joining date from approval time. MySQL's second-level placement timestamps are normalized before anchoring checkpoints.
+- M05 stores due/expiry tasks on the existing queue. Managed pause, emergency stop, source revision, candidate/client eligibility, reply, suppression, permission expiry, sender and deadline checks apply. FU22/FU24 use the existing M06 review/outbox path. Automatic preparation does not invent a response or bypass message authorization. A filled source role can still receive valid post-placement check-ins.
+- Retention candidate outreach requires a separate, job-scoped, expiring `post_placement_communication` grant with owner-recorded evidence. General recruitment permission is insufficient; retention permission does not authorize sourcing/AI processing. Owner controls prepare/reuse correctly scoped conversation records without sending messages.
+- Owner-recorded outcomes and satisfaction are immutable per checkpoint and explicitly identity-unverified. Concerns produce review incidents; silence produces a review deadline, never an employment decision. Actual departure requires a dated statement after confirmed joining, rejects future dates, uses evidence revisions and stops routine check-ins. Departure does not create a refund, terminate employment or itself authorize replacement.
+- Replacement requires a frozen accepted placement agreement and an unchanged explicit guarantee matching its dates/duration, timely reported departure, original role snapshot and billing references. The existing `replacement_case` owner approval creates one linked draft role atomically with its audit and original-obligation marker. Repeated requests/approvals add no second role. Source changes and direct replacement-state bypasses fail.
+- The replacement role excludes the departed candidate from matching/ranking/placement, requires review/approval before new placement creation and blocks new placement-fee drafts, invoice issuance and fee rebinding. Owner selects remaining-original-window or no-new-guarantee treatment; the system does not silently restart ninety days. Subsequent recruiting uses the existing job/candidate workflow.
+- Candidate erasure cancels/redacts checkpoint content even on a separate client conversation. New owner evidence and permission details are redacted; minimal original-obligation/guarantee markers remain to prevent rebilling. No parallel candidate, invoice, message sender, scheduler or approval engine was introduced.
+
+## Schema and deployment
+
+`0024_post_placement_permission.sql` appends one value to the canonical consent enum without reordering/removing prior values or broadening existing grants. The journal, reviewed target-specific schema release and empty-database export include it. Existing production databases use the reviewed incremental migration; **do not import the empty-database export into an existing database**. No new environment secret is required.
+
+## Validation
+
+924 unit tests passed (90 skipped), all 695 disposable MySQL tests passed across 37 files, and types, build, four Hostinger entry checks, seven environment-preparation checks and tracker consistency passed. Tests cover typed consent isolation, exact actual joining anchors, stale approvals, due/outbox behavior, pause/stop, immutable risk evidence, source-bound replacement, invoice/guarantee guards, client-side erasure, real SQL duplicate conversation/request/decision races and audit rollback. Production acceptance is pending. Unit/disposable MySQL fixtures use explicitly synthetic candidates, statements, permissions and commercial acceptance. These records are not genuine external identity, client signatures, employment proof, visa clearance, recipient delivery or financial settlement. Live QA must keep outbound approvals unconsumed and close all synthetic work afterward.
+
+## Remaining acceptance
+
+Independent participant authentication and genuine acceptance, validated notice/buyout/relocation/verification checklists, competent-authority visa/work authorization evidence, full rehire and accepted-offer linkage, real recipient/elapsed retention acceptance, complete risk/escalation disposition, contract exclusion/refund adjudication, repeated replacement cycles, legacy commercial-source migration, post-guarantee referral/repeat-hiring closure and the other advanced roadmap packages remain open. Legacy unbound placements do not acquire verified replacement entitlement through a date or status alone.

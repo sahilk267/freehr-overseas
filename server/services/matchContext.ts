@@ -1,3 +1,4 @@
+import {assertReplacementCandidateAllowed} from './replacementPolicy';
 import {candidateReviewActivity} from './candidateReview';
 import {weightedScorecardInTransaction} from './weightedScorecard';
 import {TRPCError} from '@trpc/server';
@@ -11,6 +12,7 @@ import {workflowHash} from './workflowStore';
 export const MATCH_POLICY='evidence-review-v1';
 const norm=(s:string)=>s.trim().replace(/\s+/g,' ').toLowerCase();
 export async function buildMatchContext(tx:any,ownerId:number,candidateId:string,jobId:string){
+ await assertReplacementCandidateAllowed(tx,ownerId,jobId,candidateId);
  const job=(await tx.select().from(jobs).where(and(eq(jobs.ownerId,ownerId),eq(jobs.id,jobId))).limit(1))[0];
  if(!job)throw new TRPCError({code:'NOT_FOUND',message:'Job was not found.'});
  if(['cancelled','filled','archived'].includes(job.pipelineState))throw new TRPCError({code:'PRECONDITION_FAILED',message:'Closed requirements cannot produce new matching work.'});
