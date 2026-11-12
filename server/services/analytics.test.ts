@@ -654,6 +654,23 @@ describe("versioned operational analytics and honest finance semantics", () => {
     copy.payments[0].amount = 2001;
     expect(report(copy).sourceDigest).not.toBe(digest);
   });
+  it("changes the export digest when time alone changes a due-task drilldown", () => {
+    const d = data();
+    d.queue = [
+      row("task1", {
+        jobType: "score_match",
+        status: "queued",
+        payload: { jobId: "job001" },
+        scheduledAt: at("12T12:01:00"),
+        attempts: 0,
+      }),
+    ];
+    const before = report(d),
+      after = buildAnalyticsReport(1, input, d, at("12T12:02:00"));
+    expect(before.sources.workflow).toHaveLength(0);
+    expect(after.sources.workflow).toHaveLength(1);
+    expect(after.sourceDigest).not.toBe(before.sourceDigest);
+  });
   it("fails invalid/future/overlong periods and reports unknown source timestamp coverage", () => {
     for (const override of [
       { from: asOf, to: asOf },
@@ -735,17 +752,15 @@ describe("owner analytics read models and source-bound export", () => {
   it("does not load message bodies, profile names, recipient addresses, errors or arbitrary queue input into reports/CSV", async () => {
     const f = await fixture(),
       id = dbModule.createId("que_");
-    await f.db
-      .insert(schema.automationQueue)
-      .values({
-        id,
-        ownerId: f.ownerId,
-        jobType: "score_match",
-        status: "blocked",
-        payload: { jobId: f.jobId, secret: "PRIVATE_MARKER" },
-        lastError: "PRIVATE_MARKER",
-        idempotencyKey: id,
-      });
+    await f.db.insert(schema.automationQueue).values({
+      id,
+      ownerId: f.ownerId,
+      jobType: "score_match",
+      status: "blocked",
+      payload: { jobId: f.jobId, secret: "PRIVATE_MARKER" },
+      lastError: "PRIVATE_MARKER",
+      idempotencyKey: id,
+    });
     const r = await getAnalyticsReport(f.ownerId, f.input),
       body = JSON.stringify(r);
     expect(body).not.toContain("PRIVATE_MARKER");
@@ -822,19 +837,17 @@ describe("owner analytics read models and source-bound export", () => {
     async () => {
       const f = await fixture(),
         id = dbModule.createId("pay_");
-      await f.db
-        .insert(schema.payments)
-        .values({
-          id,
-          ownerId: f.ownerId,
-          invoiceId: f.invoiceId,
-          amount: 1234,
-          currency: "INR",
-          status: "succeeded",
-          provider: "synthetic_manual",
-          providerEventId: id,
-          createdAt: new Date(Date.now() - 3600000),
-        });
+      await f.db.insert(schema.payments).values({
+        id,
+        ownerId: f.ownerId,
+        invoiceId: f.invoiceId,
+        amount: 1234,
+        currency: "INR",
+        status: "succeeded",
+        provider: "synthetic_manual",
+        providerEventId: id,
+        createdAt: new Date(Date.now() - 3600000),
+      });
       const r = await getAnalyticsReport(f.ownerId, f.input);
       expect(r.finance[0]).toMatchObject({
         recordedReceiptsMinor: "1234",

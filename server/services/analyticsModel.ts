@@ -296,7 +296,7 @@ export function buildAnalyticsReport(
           (scopedIds.has(r.aggregateId) || messageMap.has(r.aggregateId))))
   );
   // Only calculation fields enter the digest; no recipient addresses, message bodies or personal feedback are loaded.
-  const sourceDigest = stableAnalyticsHash({
+  const sourceLedgerDigest = stableAnalyticsHash({
     version: ANALYTICS_VERSION,
     scope: { companyId: companyId ?? null, jobId: input.jobId ?? null },
     data,
@@ -985,6 +985,18 @@ export function buildAnalyticsReport(
           : null,
       })),
   };
+  // Time can change source drilldowns without a ledger write (for example, a queued task becoming due).
+  // Fence the actual exported rows and effective period as well as the source projection.
+  const sourceDigest = stableAnalyticsHash({
+    sourceLedgerDigest,
+    window: {
+      from: input.from.toISOString(),
+      to: new Date(windowEnd).toISOString(),
+      timezone: input.timezone,
+      replyWindowHours: input.replyWindowHours,
+    },
+    sources,
+  });
   return {
     version: ANALYTICS_VERSION,
     asOf: asOf.toISOString(),
