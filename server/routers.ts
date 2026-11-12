@@ -1,3 +1,4 @@
+import {analyticsRouter} from './routers/analytics';
 import {interviewFeedbackRouter} from './routers/interviewFeedback';
 import {careerEvidenceRouter} from './routers/careerEvidence';
 import {candidateOffersRouter} from './routers/candidateOffers';
@@ -26,6 +27,7 @@ export const appRouter = router({
   candidateOffers:candidateOffersRouter,
   careerEvidence:careerEvidenceRouter,
   interviewFeedback:interviewFeedbackRouter,
+  analytics:analyticsRouter,
   placementLifecycle:placementLifecycleRouter,
   candidateReviews:candidateReviewsRouter,
   clientDiscovery: clientDiscoveryRouter,

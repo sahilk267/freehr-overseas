@@ -1,3 +1,4 @@
+import AnalyticsPage from './pages/AnalyticsPage';
 import OfferResponsePage from './pages/OfferResponsePage';
 import CandidateReviewPage from './pages/CandidateReviewPage';
 import DiscoveryResponsePage from "./pages/DiscoveryResponsePage";
@@ -22,6 +23,7 @@ function withDashboard(Page: React.ComponentType) {
   return () => <DashboardLayout><Page /></DashboardLayout>;
 }
 
+const Analytics = withDashboard(AnalyticsPage);
 const CommandCenter = withDashboard(Home);
 const Prospects = withDashboard(ProspectsPage);
 const Jobs = withDashboard(JobsPage);
@@ -50,6 +52,7 @@ function Router() {
     <Route path="/availability" component={AvailabilityResponsePage} />
     <Route path="/login" component={OwnerLoginPage} />
     <Route path="/" component={CommandCenter} />
+    <Route path="/analytics" component={Analytics} />
     <Route path="/prospects" component={Prospects} />
     <Route path="/jobs" component={Jobs} />
     <Route path="/candidates" component={Candidates} />
