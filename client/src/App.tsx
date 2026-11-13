@@ -1,3 +1,4 @@
+import MarketEvidencePage from "./pages/MarketEvidencePage";
 import RecruitmentStrategyPage from "./pages/RecruitmentStrategyPage";
 import OwnerBriefPage from './pages/OwnerBriefPage';
 import SubmissionsPage from './pages/SubmissionsPage';
@@ -27,6 +28,7 @@ function withDashboard(Page: React.ComponentType) {
   return () => <DashboardLayout><Page /></DashboardLayout>;
 }
 
+const MarketEvidence = withDashboard(MarketEvidencePage);
 const RecruitmentStrategy = withDashboard(RecruitmentStrategyPage);
 const OwnerBrief = withDashboard(OwnerBriefPage);
 const Submissions = withDashboard(SubmissionsPage);
@@ -52,6 +54,7 @@ function PaymentReturnPage() {
 function Router() {
   return <Switch>
     <Route path="/client-review" component={ClientReviewPage} />
+    <Route path="/market-evidence" component={MarketEvidence} />
     <Route path="/strategy" component={RecruitmentStrategy} />
     <Route path="/briefs" component={OwnerBrief} />
     <Route path="/submissions" component={Submissions} />

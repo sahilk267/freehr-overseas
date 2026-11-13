@@ -1,3 +1,4 @@
+import { marketContextInTransaction } from "./marketEvidence";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -69,8 +70,12 @@ export async function strategyBriefInTransaction(
   ownerId: number,
   now: Date
 ) {
-  const s = await current(tx, ownerId);
+  const s = await current(tx, ownerId),
+    market = await marketContextInTransaction(tx, ownerId, now);
   return {
+    reportedMarket: market.summary,
+    reportedMarketSourceDigest: market.sourceDigest,
+    configurationDigest: s.fields ? canonicalHash(s.fields) : null,
     configured: s.fields !== null,
     revision: s.revision,
     mode: s.mode,
@@ -330,10 +335,13 @@ export async function strategyPlanInTransaction(
         .where(eq(workspaceSettings.ownerId, ownerId))
         .limit(1)
     )[0];
+  const market = await marketContextInTransaction(tx, ownerId, now);
   if (!s.fields)
     return {
       strategy: s,
       model: null,
+      marketEvidence: market.summary,
+      matchingMarketRecords: null,
       roles: [],
       plan: null,
       workspace: workspace ?? null,
@@ -460,6 +468,9 @@ export async function strategyPlanInTransaction(
       allocated: false,
       allocationReason: "not_selected",
       evidenceLevel: "owner_assumptions",
+      marketEvidenceRecords: market.records.filter(
+        r => r.usable && r.companyId === job.companyId
+      ).length,
     };
   });
   roles.sort((a: any, b: any) => {
@@ -500,6 +511,20 @@ export async function strategyPlanInTransaction(
   return {
     strategy: s,
     model,
+    marketEvidence: market.summary,
+    matchingMarketRecords: market.records.filter(
+      r =>
+        r.usable &&
+        f.industries.some(
+          v => v.trim().toLowerCase() === r.fields.industry.toLowerCase()
+        ) &&
+        f.regions.some(
+          v => v.trim().toLowerCase() === r.fields.region.toLowerCase()
+        ) &&
+        f.roleFamilies.some(
+          v => v.trim().toLowerCase() === r.fields.roleFamily.toLowerCase()
+        )
+    ).length,
     roles,
     workspace: workspace ?? null,
     plan: {

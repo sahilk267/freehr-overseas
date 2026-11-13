@@ -101,8 +101,8 @@ function ScenarioView({ model }: { model: any }) {
     >
       <h2 className="text-xl font-semibold">Modeled scenarios</h2>
       <p>
-        Owner assumptions · market evidence unavailable · freshness{" "}
-        {model.freshness}. Hypothetical modeled fee{" "}
+        Owner assumptions · model probabilities are not calibrated from market
+        reports · freshness {model.freshness}. Hypothetical modeled fee{" "}
         {formatAnalyticsMoney(model.feeMinor, model.currency)}. These figures
         are not receipts or guaranteed earnings.
       </p>
@@ -260,8 +260,8 @@ export default function RecruitmentStrategyPage() {
         <p>
           Version {d?.strategy.revision ?? "loading"} ·{" "}
           {d?.strategy.mode ?? "loading"} · evidence: owner assumptions.{" "}
-          {d?.model?.freshness ?? "No strategy configured"}. Market evidence is
-          unavailable.
+          {d?.model?.freshness ?? "No strategy configured"}. Source reports are
+          shown separately and do not verify these assumptions.
         </p>
         {d?.plan && (
           <>
@@ -287,6 +287,20 @@ export default function RecruitmentStrategyPage() {
             </details>
           </>
         )}
+        <p>
+          Current reported market observations:{" "}
+          {d?.marketEvidence.usableRecords ?? 0} across{" "}
+          {d?.marketEvidence.accountsWithEvidence ?? 0} accounts.{" "}
+          {d?.matchingMarketRecords === null
+            ? "Configure strategy criteria to count exact tag matches."
+            : String(d?.matchingMarketRecords ?? 0) +
+              " records match the configured industry/region/role-family tags exactly."}{" "}
+          <a className="underline" href="/market-evidence">
+            Review market evidence and source permissions
+          </a>
+          . Source authentication does not verify demand, legal rights,
+          candidate supply or payment risk.
+        </p>
         <Button
           variant="outline"
           onClick={() => q.refetch()}
@@ -591,7 +605,9 @@ export default function RecruitmentStrategyPage() {
               {r.issues.length
                 ? r.issues.join(", ")
                 : "owner assumptions remain independently unverified"}
-              .
+              . Reported market records for this account:{" "}
+              {r.marketEvidenceRecords}. These do not change the owner-entered
+              model probabilities.
             </p>
             {r.modeledContributionMinor !== null && (
               <p>

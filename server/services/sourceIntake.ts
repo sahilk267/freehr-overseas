@@ -156,20 +156,25 @@ function authenticateSource(source: Source | undefined, token: string) {
   if (!timingSafeEqual(Buffer.from(source.tokenHash, "hex"), Buffer.from(tokenDigest(token), "hex"))) throw unauthorized();
 }
 
+/** Shared machine-source authentication, including a locked rotation/disable recheck. */
+export async function withAuthenticatedIntakeSource<T>(input: { sourceId: string; authorization?: string }, command: (tx: any, source: Source) => Promise<T>): Promise<T> {
+  const token = input.authorization?.startsWith("Bearer ") ? input.authorization.slice(7) : "";
+  if (!token || token.length !== 43) throw unauthorized();
+  const db = await requireDb();
+  const source: Source | undefined = (await db.select().from(intakeSources).where(eq(intakeSources.id, input.sourceId)).limit(1))[0];
+  authenticateSource(source, token);
+  await ensureWorkspace(source!.ownerId);
+  return db.transaction(async (tx: any) => {
+    await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, source!.ownerId)).limit(1));
+    const current = await requireIntakeSource(tx, source!.ownerId, source!.id);
+    authenticateSource(current, token);
+    return command(tx, current);
+  });
+}
+
 export async function processIntakeWebhook(input: { sourceId: string; authorization?: string; body: unknown }) {
   try {
-    const token = input.authorization?.startsWith("Bearer ") ? input.authorization.slice(7) : "";
-    if (!token || token.length !== 43) throw unauthorized();
-    const db = await requireDb();
-    const source: Source | undefined = (await db.select().from(intakeSources).where(eq(intakeSources.id, input.sourceId)).limit(1))[0];
-    authenticateSource(source, token);
-    await ensureWorkspace(source!.ownerId);
-    const result = await db.transaction(async (tx: any) => {
-      await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, source!.ownerId)).limit(1));
-      const current = await requireIntakeSource(tx, source!.ownerId, source!.id);
-      authenticateSource(current, token);
-      return commitIntake(tx, current, parseBatch(current, input.body));
-    });
+    const result = await withAuthenticatedIntakeSource(input, (tx, source) => commitIntake(tx, source, parseBatch(source, input.body)));
     return { statusCode: 200, body: result };
   } catch (error) {
     if (error instanceof TRPCError) return { statusCode: getHTTPStatusCodeFromError(error), body: { error: error.message, code: error.code } };

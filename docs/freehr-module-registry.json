@@ -72,7 +72,9 @@
         {
           "id": "M02-F04",
           "description": "Source licensing/permission and provenance declarations; API/CSV/ATS import/export with field mapping, backfill checkpoints and quarantine.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-market-evidence.md",
+          "implementation_note": "Existing prospect-source keys now support separately versioned owner-declared internal market-use rights, strict structured observation batches, source/permission checks, hashed provenance, immutable receipts/corrections and held-data minimization. This gates the market path only. External rights verification, broader import/export mappings, backfills, physical quarantine/retention and legacy intake licensing remain open."
         },
         {
           "id": "M02-F05",
@@ -469,7 +471,9 @@
         {
           "id": "M09-F02",
           "description": "Licensed hiring signals, employer demand changes, salary/competition intelligence, seasonality and opportunity qualification with freshness.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-market-evidence.md",
+          "implementation_note": "Permission-bound source-reported hiring, salary, competition and historical seasonality observations preserve exact scope/time/currency and current-use freshness. Strategy/brief views expose minimized current context without calibrating owner assumptions. Real licensed providers, external factual verification, learned seasonality and market forecasts remain open."
         },
         {
           "id": "M09-F03",
@@ -520,12 +524,16 @@
         {
           "id": "M10-F01",
           "description": "Approved company discovery/enrichment, hiring-signal intake, contact role identification, contact verification, dedupe and conflict/source tracking.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-market-evidence.md",
+          "implementation_note": "Automated authenticated hiring-signal intake reuses existing prospect source access and canonical account-domain identities; unknown/ambiguous accounts are held and no duplicate company/contact is created. Actual company discovery/enrichment, contact-role identification/verification and real source acceptance remain open."
         },
         {
           "id": "M10-F02",
           "description": "Lead fit, hiring intent, agency openness, credibility and payment-risk qualification; research evidence and disqualification reasons.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-market-evidence.md",
+          "implementation_note": "Evidence-linked account review identifies reported hiring demand and potentially conflicting same-scope observations with current provenance/freshness. Canonical verification state remains distinct; agency openness/payment reliability remain unverified. Semantic lead fit, credibility and independent risk qualification remain open."
         },
         {
           "id": "M10-F03",
@@ -2338,11 +2346,11 @@
     }
   ],
   "implementation_tracking": {
-    "wave": "W0–W17",
+    "wave": "W0–W18",
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Source-bound recruitment strategy, exact assumption-led economics and bounded capacity proposals now share canonical job/account data and minimized owner briefs. All 25 advanced modules retain their full acceptance gates; none is declared complete.",
+    "note": "Permission-bound market evidence now reuses canonical prospect intake/source keys and joins existing strategy/brief views without creating contact or decision authority. All 25 advanced modules retain full acceptance gates; none is declared complete.",
     "updated_at": "2026-11-13"
   },
   "last_implementation_update": "2026-11-13"

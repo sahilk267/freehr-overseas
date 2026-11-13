@@ -1,3 +1,4 @@
+import { processMarketWebhook } from "../services/marketEvidence";
 import {processStripeWebhook} from "../services/stripePayments";
 import { completeGoogleCalendar, GOOGLE_CALENDAR_CALLBACK } from "../services/googleCalendar";
 import "dotenv/config";
@@ -55,6 +56,7 @@ async function startServer() {
     const result = await processIntakeWebhook({ sourceId: req.params.sourceId, authorization: req.headers.authorization, body: req.body });
     res.status(result.statusCode).json(result.body);
   });
+  app.post("/api/integrations/market/:sourceId",express.json({limit:"256kb"}),async(req,res)=>{const result=await processMarketWebhook({sourceId:req.params.sourceId,authorization:req.headers.authorization,body:req.body});res.setHeader("Cache-Control","no-store");res.status(result.statusCode).json(result.body);});
   const server = createServer(app);
   server.once("listening", () => {
     const stopBackground = startManagedBackgroundWorker();

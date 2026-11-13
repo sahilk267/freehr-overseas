@@ -1,3 +1,4 @@
+import { processMarketWebhook } from "./services/marketEvidence";
 import {processStripeWebhook} from "./services/stripePayments";
 import { completeGoogleCalendar, GOOGLE_CALENDAR_CALLBACK } from "./services/googleCalendar";
 import "dotenv/config";
@@ -75,6 +76,7 @@ export async function buildFastifyServer(options: FastifyServerOptions = {}) {
     const result = await processIntakeWebhook({ sourceId: request.params.sourceId, authorization: request.headers.authorization, body: request.body });
     return reply.status(result.statusCode).send(result.body);
   });
+  app.post<{Params:{sourceId:string}}>("/api/integrations/market/:sourceId", {bodyLimit:256*1024}, async(request,reply)=>{const result=await processMarketWebhook({sourceId:request.params.sourceId,authorization:request.headers.authorization,body:request.body});return reply.header("Cache-Control","no-store").status(result.statusCode).send(result.body);});
   await app.register(fastifyTRPCPlugin, {
     prefix: "/api/trpc",
     trpcOptions: { router: appRouter, createContext: createFastifyContext },

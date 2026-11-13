@@ -1,3 +1,4 @@
+import { marketEvidenceRouter } from "./routers/marketEvidence";
 import { recruitmentStrategyRouter } from "./routers/recruitmentStrategy";
 import {ownerBriefRouter} from './routers/ownerBrief';
 import {contactTimingRouter} from './routers/contactTiming';
@@ -82,6 +83,7 @@ export const appRouter = router({
   collections: collectionsRouter,
   campaigns: campaignsRouter,
   intake: intakeRouter,
+  marketEvidence:marketEvidenceRouter,
 
   // TODO: add feature routers here, e.g.
   // todo: router({

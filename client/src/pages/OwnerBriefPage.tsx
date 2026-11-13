@@ -191,6 +191,11 @@ export default function OwnerBriefPage() {
             <a className="underline" href="/strategy">
               Review strategy and modeled capacity
             </a>
+            . Current reported market observations:{" "}
+            {d.summary.strategy?.reportedMarket?.usableRecords ?? 0}.{" "}
+            <a className="underline" href="/market-evidence">
+              Review source-reported market evidence
+            </a>
             . Attention thresholds are your review preferences. They do not
             establish contractual SLA breaches or count unique business
             problems.

@@ -53,6 +53,7 @@ const menuItems = [
   { icon: CalendarDays, label: "Interviews", path: "/interviews" },
   { icon: ShieldCheck, label: "Placements", path: "/placements" },
   { icon: BadgeDollarSign, label: "Finance", path: "/finance" },
+  { icon: Activity, label: "Market evidence", path: "/market-evidence" },
   { icon: Activity, label: "Strategy and capacity", path: "/strategy" },
   { icon: Activity, label: "Operating brief", path: "/briefs" },
   { icon: Activity, label: "Submissions", path: "/submissions" },

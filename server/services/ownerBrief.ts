@@ -411,14 +411,16 @@ export async function ownerOverviewInTransaction(
       a.key.localeCompare(b.key)
   );
   const unique = [...new Map(cases.map(c => [c.key, c])).values()],
+    strategySnapshot = await strategyBriefInTransaction(tx, ownerId, now),
     snapshotDigest = canonicalHash({
       sourceDigest: report.sourceDigest,
       cases: unique,
       attentionHours: fields.attentionHours,
+      strategyDigest: canonicalHash(strategySnapshot),
     });
   const summary = {
     version: OWNER_BRIEF_VERSION,
-    strategy: await strategyBriefInTransaction(tx, ownerId, now),
+    strategy: strategySnapshot,
     asOf: report.asOf,
     window: report.window,
     inventory: report.inventory.map(r => ({
