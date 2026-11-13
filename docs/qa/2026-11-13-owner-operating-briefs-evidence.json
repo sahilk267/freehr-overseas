@@ -1,0 +1,70 @@
+{
+  "date": "2026-11-13",
+  "scope": "Partial M22-F01/F05 owner priorities and scheduled aggregate operating briefs",
+  "implementationCommit": "31aef0a7a8cd09a496948ee7efd09282bb29b52a",
+  "local": {
+    "unitPassed": 1108,
+    "unitSkipped": 98,
+    "mysqlPassed": 887,
+    "mysqlFiles": 44,
+    "typeCheck": true,
+    "productionBuild": true,
+    "hostingerStartupChecks": 4,
+    "environmentPreparationChecks": 7,
+    "trackerConsistent": true,
+    "focusedSqlPassed": 31
+  },
+  "production": {
+    "apiChecks": [
+      "Existing managed worker remains enabled without emergency stop",
+      "Canonical priority overview and aggregate summary load",
+      "Follow-up source filter applies before display pagination",
+      "Anonymous private reads denied",
+      "Private API responses prevent caching",
+      "Manual aggregate record retry reuses original receipt",
+      "Daily 09:00 Asia/Kolkata internal schedule enabled",
+      "Only the internal summary schedule requested",
+      "Private aggregate history contains manual receipt",
+      "Persistent production worker healthy",
+      "Anonymous aggregate, settings and schedule mutations denied",
+      "Final internal daily schedule retained; no duplicate scheduled summary after reviewed settings updates"
+    ],
+    "browserChecks": [
+      "Owner-only operating page and canonical summary render",
+      "Follow-up category refreshes the canonical overview",
+      "Stale save preserves draft and requires explicit current-version review",
+      "Explicit current-version review reloads canonical settings",
+      "Mobile page fits 390px viewport",
+      "No browser runtime or transport errors"
+    ],
+    "settings": {
+      "enabled": true,
+      "cadence": "daily",
+      "time": "09:00",
+      "timezone": "Asia/Kolkata",
+      "retentionDays": 30
+    },
+    "scheduledSummaryObserved": true,
+    "physicalSummaryTasks": 1,
+    "workerHealthy": true,
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "qaInitiatedFinancialOrRecruitingRecordMutations": false,
+    "qaInitiatedRecipientContact": false,
+    "qaInitiatedProviderCharge": false,
+    "globalQueueManuallyProcessed": false
+  },
+  "remaining": {
+    "implementingPackages": 108,
+    "plannedPackages": 55,
+    "wholeAdvancedModulesCompleted": 0,
+    "limits": [
+      "Real elapsed weekly acceptance",
+      "Complete workflow and formal SLA coverage",
+      "Manual takeover and approved consequential actions",
+      "Audience/internal alert routing",
+      "External notification channels",
+      "Business objectives, capacity and economic strategy"
+    ]
+  }
+}
