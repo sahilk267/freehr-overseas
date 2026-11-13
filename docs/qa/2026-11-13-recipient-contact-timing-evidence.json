@@ -1,0 +1,47 @@
+{
+  "checkedAt": "2026-11-13T00:58:29.388Z",
+  "build": "0aad60a902c2444f1cd464a3ebcfae5a9b31abd1",
+  "syntheticOnly": true,
+  "tests": [
+    "Exact received quotation, bounded return hold, language and local contact window persist idempotently on the real database",
+    "Stale corrections and invented received-source quotations are rejected",
+    "Unsupported preferred channel blocks the timing preview and does not resume the reply-paused review sequence or admit a provider attempt",
+    "All timing owner routes deny anonymous requests and private source evidence disables caching/referrer leakage",
+    "Actual concurrent correction preserves the owner reason and requires explicit review of the latest restriction",
+    "Owner browser correction saves the exact received quotation and future local window while the reply-paused plan remains paused",
+    "Desktop/mobile source/window/review controls fit the viewport with stable populated labels and no browser runtime/transport errors",
+    "Actual current-version retirement removes only the timing restriction while stale retirement is rejected and the paused workflow remains paused",
+    "Canonical live candidate privacy fulfillment removes timing-source access, cancels the unused review sequence and leaves the persistent worker healthy without any provider send"
+  ],
+  "realRecipientMailSent": 0,
+  "providerCallsRequested": 0,
+  "liveAdmissionScope": "Timing-only preview, persisted source/guard and reply-pause checks; actual delivery deferral and security-code exception use local/real-MySQL mocked provider receipts.",
+  "browserBuild": "0aad60a902c2444f1cd464a3ebcfae5a9b31abd1",
+  "browserCheckedAt": "2026-11-13T00:58:38.295Z",
+  "cleanup": {
+    "candidate": "deleted",
+    "timingSource": "private access denied after canonical erasure",
+    "timingHistory": "canonical erasure path exercised; raw DB redaction additionally proven in real-MySQL tests",
+    "sequence": "cancelled",
+    "dispatchAttempts": 0,
+    "realEmailsSent": 0
+  },
+  "worker": {
+    "enabled": true,
+    "persistent": true,
+    "heartbeatRecent": true,
+    "lastError": null
+  },
+  "localValidation": {
+    "unitPassed": 1085,
+    "unitSkipped": 97,
+    "mysqlPassed": 863,
+    "mysqlFiles": 43,
+    "targetedMysqlCases": 53,
+    "typecheck": "PASS",
+    "productionBuild": "PASS",
+    "hostingerEntryChecks": 4,
+    "environmentChecks": 7,
+    "trackerConsistency": "PASS"
+  }
+}
