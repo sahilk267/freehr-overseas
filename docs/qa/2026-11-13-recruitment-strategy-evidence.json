@@ -1,0 +1,79 @@
+{
+  "date": "2026-11-13",
+  "scope": "Partial M09-F01/F03/F05/F06 strategy, economics and bounded role capacity",
+  "implementationCommit": "322308a7bd8953df1f621490e534a7290b2dff65",
+  "fullRegressionCommit": "c76a84a75f9eef9ff45580e98203a744332b1324",
+  "local": {
+    "unitPassed": 1145,
+    "unitSkipped": 99,
+    "mysqlPassed": 925,
+    "mysqlFiles": 45,
+    "focusedMemoryPassed": 60,
+    "focusedSqlPassed": 62,
+    "typeCheck": true,
+    "productionBuild": true,
+    "ownerPasswordBuild": true,
+    "hostingerStartupChecks": 4,
+    "environmentPreparationChecks": 7,
+    "trackerConsistent": true,
+    "browserChecks": [
+      "Unsaved scenarios render without persisting or activating a strategy",
+      "Actual strategy form records a private draft version",
+      "Source-bound role form creates a bounded internal capacity proposal",
+      "Concurrent strategy changes preserve stale UI inputs and block overwrite",
+      "Deliberate review loads the current paused strategy and clears the old unsaved preview",
+      "Changed canonical compensation rejects the old role source and preserves the review draft",
+      "Existing owner brief displays minimized strategy state",
+      "Desktop/mobile strategy renders without overflow or JavaScript errors",
+      "No automation task or recipient dispatch created by planning acceptance"
+    ],
+    "browserRuntimeErrors": [],
+    "cleanup": {
+      "disposableDatabaseDropped": true,
+      "localServerStopped": true
+    }
+  },
+  "production": {
+    "apiChecks": [
+      "Private strategy dashboard and history load",
+      "Unsaved sensitivity preview preserves exact contribution and evidence semantics",
+      "Anonymous strategy, preview, version and assessment endpoints denied",
+      "Strategy responses enforce private no-store and no-referrer headers",
+      "Preview creates no strategy version and preserves the existing daily summary schedule",
+      "Existing operating brief contains minimized nonfinancial strategy status",
+      "Persistent production worker remains healthy"
+    ],
+    "browserChecks": [
+      "Actual owner strategy page and current configuration render",
+      "Illustrative unsaved preview renders all sensitivity cases",
+      "Editing assumptions marks previous preview as outdated",
+      "Current-version review clears the illustrative draft, old preview and stale message without saving targets",
+      "Desktop and 390px mobile view render without overflow",
+      "Existing operating review links to the current strategy status",
+      "No browser JavaScript or transport errors"
+    ],
+    "strategyMode": "unconfigured",
+    "workerHealthy": true,
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "ownerStrategyOrHistoryMutated": false,
+    "qaInitiatedFinancialOrRecruitingMutations": false,
+    "qaInitiatedRecipientContact": false,
+    "qaInitiatedProviderCharge": false,
+    "existingDailyBriefSettingsChanged": false
+  },
+  "remaining": {
+    "implementingPackages": 112,
+    "plannedPackages": 51,
+    "wholeAdvancedModulesCompleted": 0,
+    "scopeLimits": [
+      "Actual owner strategy assumptions and activation",
+      "Licensed market intelligence and independently verified supply/payment risk",
+      "Calibrated probabilities and semantic ideal-client qualification",
+      "Automatic objectives, experiments and delegated workflow starts",
+      "Dated optimal resource scheduling and reservations",
+      "Tax, FX, financing and replacement loss modeling",
+      "Actual strategy adaptation and full advanced-module acceptance"
+    ]
+  }
+}
