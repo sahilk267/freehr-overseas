@@ -1,3 +1,4 @@
+import {submissionEvent} from '../services/submissionState';
 import {feedbackEvent} from '../services/interviewFeedbackState';
 import {assertLegacyOfferAllowed,assertCurrentOfferAcceptance,currentOffer} from '../services/candidateOfferState';
 import {lifecyclePlanId,placementLifecycleFingerprint} from '../services/placementLifecycleState';
@@ -666,6 +667,8 @@ export const matchingRouter = router({
 
       if (existingShortlists.length > 0) {
         const existing = existingShortlists[0];
+        if(await submissionEvent(db,ctx.user.id,"pack",existing.id))throw new TRPCError({code:"PRECONDITION_FAILED",message:"A versioned submission governs this shortlist. Review its exact profile and approval instead."});
+        if(existing.status==="release_ready")throw new TRPCError({code:"PRECONDITION_FAILED",message:"Sharing is approved for release; prepare a versioned client submission to release profile access."});
         if (existing.status === "shared" || existing.status === "viewed") {
           throw new TRPCError({
             code: "BAD_REQUEST",

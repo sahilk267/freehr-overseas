@@ -1,3 +1,5 @@
+import SubmissionsPage from './pages/SubmissionsPage';
+import ClientReviewPage from './pages/ClientReviewPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import OfferResponsePage from './pages/OfferResponsePage';
 import CandidateReviewPage from './pages/CandidateReviewPage';
@@ -23,6 +25,7 @@ function withDashboard(Page: React.ComponentType) {
   return () => <DashboardLayout><Page /></DashboardLayout>;
 }
 
+const Submissions = withDashboard(SubmissionsPage);
 const Analytics = withDashboard(AnalyticsPage);
 const CommandCenter = withDashboard(Home);
 const Prospects = withDashboard(ProspectsPage);
@@ -44,6 +47,8 @@ function PaymentReturnPage() {
 
 function Router() {
   return <Switch>
+    <Route path="/client-review" component={ClientReviewPage} />
+    <Route path="/submissions" component={Submissions} />
     <Route path="/offer-response" component={OfferResponsePage} />
     <Route path="/payment-return" component={PaymentReturnPage} />
     <Route path="/candidate-review" component={CandidateReviewPage} />

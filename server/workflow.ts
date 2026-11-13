@@ -79,7 +79,8 @@ const transitions: Record<string, StateMap> = {
   },
   shortlist: {
     prepared: ["approval_pending", "withdrawn", "expired"],
-    approval_pending: ["shared", "prepared", "withdrawn"],
+    approval_pending: ["release_ready", "prepared", "withdrawn"],
+    release_ready: ["shared", "prepared", "withdrawn", "expired"],
     shared: ["viewed", "withdrawn", "expired"],
     viewed: ["withdrawn", "expired"],
     withdrawn: [],

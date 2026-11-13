@@ -159,7 +159,7 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
     });
 
     describe("candidate_share", () => {
-      it("valid shortlist moves prepared → approval_pending, and approved decision transitions to shared", async () => {
+      it("valid shortlist moves prepared → approval_pending, and approved decision authorizes release without claiming external sharing", async () => {
         const db = await requireDb();
         const candId = createId("cnd_sh_1_");
         const compId = createId("cmp_sh_1_");
@@ -208,9 +208,9 @@ describe("P0.3-C Release Blockers Remediation Suite (RB-09, RB-10, RB-05)", () =
         expect(dec.success).toBe(true);
 
         const [shlShared] = await db.select().from(shortlists).where(eq(shortlists.id, shortlistId));
-        expect(shlShared.status).toBe("shared");
-        expect(shlShared.sharedAt).toBeInstanceOf(Date);
-        expect(shlShared.shareExpiresAt).toBeInstanceOf(Date);
+        expect(shlShared.status).toBe("release_ready");
+        expect(shlShared.sharedAt).toBeNull();
+        expect(shlShared.shareExpiresAt).toBeNull();
       });
 
       it("rejects candidate_share if explicit candidate client-sharing consent is missing", async () => {

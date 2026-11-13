@@ -13,7 +13,7 @@ export async function assertSharingEligible(db: any, input: { ownerId: number; c
   }
   const company = (await db.select().from(companies).where(and(eq(companies.id, input.companyId), eq(companies.ownerId, input.ownerId))).limit(1))[0];
   const job = (await db.select().from(jobs).where(and(eq(jobs.id, input.jobId), eq(jobs.ownerId, input.ownerId))).limit(1))[0];
-  if (!company || !job || job.companyId !== input.companyId || ["cancelled", "archived", "filled", "paused"].includes(job.pipelineState)) {
+  if (!company || ["suppressed", "suspended", "closed", "archived"].includes(company.pipelineState) || !job || job.companyId !== input.companyId || ["cancelled", "archived", "filled", "paused"].includes(job.pipelineState)) {
     throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Client or job is no longer eligible for sharing." });
   }
   const hashes = [candidate.emailHash, candidate.phoneHash, candidate.email ? hashContactValue(candidate.email) : null].filter(Boolean) as string[];

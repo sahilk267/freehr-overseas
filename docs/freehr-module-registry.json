@@ -926,32 +926,44 @@
         {
           "id": "M17-F01",
           "description": "Evidence-backed shortlist with candidate-approved profile, anonymization/redaction, job fit and transparent uncertainties.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-client-submissions.md",
+          "implementation_note": "Versioned minimized structured profile packs exclude names, contacts, raw CVs, pay and internal notes; selected evidence, expiry, source and limitations remain explicit. Candidate approval of the exact pack, richer grounded fit narratives, attachment redaction and complete acceptance remain open."
         },
         {
           "id": "M17-F02",
           "description": "Exact job/client/purpose consent plus resource-version authorization; last-moment recheck of withdrawal/DNC/suppression.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-client-submissions.md",
+          "implementation_note": "Exact owned job/client sharing consent and field restrictions, fresh evidence, suppression/contact permission, recipient/sender and immutable source fingerprints are rechecked at approval, release, every private read, feedback, reminders and send admission. Candidate-captured authenticity and complete external authority remain open."
         },
         {
           "id": "M17-F03",
           "description": "Authenticated client review portal and recipient-bound expiring access; download controls, watermarking where needed and revocation.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-client-submissions.md",
+          "implementation_note": "Recipient-bound expiring access with fragment capabilities, revocation, bounded email-code delivery and short-lived email-possession sessions. No identity/provider account is invented; employer decision authority, client-wide accounts, watermark/download policy and broader portal remain open."
         },
         {
           "id": "M17-F04",
           "description": "Actual release/view/feedback evidence with precise semantics; shared means access released, not merely approved.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-client-submissions.md",
+          "implementation_note": "Approval now records release_ready without fabricated sharedAt/viewedAt. Explicit exact-pack access release, provider acceptance and authenticated profile serving have distinct canonical evidence. Historical legacy statuses are not backfilled as genuine delivery/viewing; real recipient/elapsed acceptance remains open."
         },
         {
           "id": "M17-F05",
           "description": "Client compare/review, request clarification, select interview or record authorized disposition; ownership/exclusivity/submission-conflict rules.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-client-submissions.md",
+          "implementation_note": "Email-possession-verified job-specific clarification/interest/non-progression feedback, exact version/recipient binding, idempotent retries and append-only corrections. No interview booking, final disposition, employer authority, comparison board or agency exclusivity/ownership enforcement is inferred."
         },
         {
           "id": "M17-F06",
           "description": "Central follow-ups for unviewed/awaiting-feedback/expired submissions; no parallel shortlist status endpoint can bypass release policy.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-client-submissions.md",
+          "implementation_note": "Source-bound FU15 unviewed review and FU16 feedback reminders reuse canonical follow-up/outbox/worker and stop on authenticated view/feedback, source changes or revocation. A sent canonical invitation is required before chasing an earlier email. Real recipient/elapsed reminders and complete autonomous advancement remain open."
         }
       ],
       "events": "submission.released, submission.viewed, submission.feedback_received, submission.revoked",
@@ -1339,7 +1351,9 @@
         {
           "id": "M24-F02",
           "description": "Client portal for approved requirements/contracts, shortlisted profiles, availability, feedback, offers, joining confirmation and invoices.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-client-submissions.md",
+          "implementation_note": "First private client profile/review page supports assigned-recipient email codes, exact minimized evidence, clarification/interest feedback and corrections. Client-wide identity/session history and requirements/contracts/offers/joining/invoice portal journeys remain open."
         },
         {
           "id": "M24-F03",
@@ -2317,5 +2331,5 @@
     "note": "Supported global and candidate-to-many-job ranking plus bounded owner-authorized refresh now share the canonical context and physical worker queue. Explicit dataset support limits, delegated AI budgets and source/authority lifecycle controls do not complete the remaining advanced roadmap.",
     "updated_at": "2026-11-07"
   },
-  "last_implementation_update": "2026-11-12"
+  "last_implementation_update": "2026-11-13"
 }

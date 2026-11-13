@@ -102,7 +102,7 @@ describe("approvalEngine and decide() endpoints", () => {
       });
     });
 
-    it("2. candidate_share: approves shortlist sharing, updates status and share expiry, records audit", async () => {
+    it("2. candidate_share: approves shortlist for release without fabricating shared access or expiry, records audit", async () => {
       const db = await requireDb();
       const shortlistId = createId("shl_test_");
       const candidateId = createId("can_share_");
@@ -139,10 +139,10 @@ describe("approvalEngine and decide() endpoints", () => {
 
       // Verify shortlist side-effect
       const [shl] = await db.select().from(shortlists).where(eq(shortlists.id, shortlistId));
-      expect(shl.status).toBe("shared");
-      expect(shl.sharedAt).toBeInstanceOf(Date);
-      expect(shl.shareExpiresAt).toBeInstanceOf(Date);
-      expect(shl.shareExpiresAt!.getTime()).toBeGreaterThan(Date.now());
+      expect(shl.status).toBe("release_ready");
+      expect(shl.sharedAt).toBeNull();
+      expect(shl.shareExpiresAt).toBeNull();
+
 
       // Verify audit row
       const audit = await getAuditForApproval(approvalId);

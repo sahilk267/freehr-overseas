@@ -1,6 +1,10 @@
 # Automation implementation progress
 
-Updated 12 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+Updated 13 November 2026 (Asia/Calcutta). This record tracks implementation against [the approved master plan](freehr-module-master-plan.md) and [the code audit](freehr-automation-review.md). It does not declare the 25-module roadmap complete.
+
+## Combined batch: private client submissions, actual release and recipient feedback
+
+[Client submission report](qa/2026-11-13-client-submissions.md) connects exact minimized profiles, mandatory sharing approval, explicit access release, recipient email verification, feedback corrections and shared invitation/verification/FU15/FU16 outbox. Approval no longer invents external sharing timestamps; anonymous entry reveals no profile. Candidate/client permissions, current sources, revocation and erasure fence every public and sending path. 1,063 unit tests passed (96 skipped), all 840 disposable MySQL tests passed across 42 files, and TypeScript, production build, four Hostinger startup checks, seven environment-preparation checks and tracker consistency passed. Safe synthetic live acceptance is pending. No schema or new secret is required. M17-F01 through F06 and M24-F02 are implementing; 105 implementing and 58 planned packages remain, with no whole-module completion claim.
 
 ## Combined batch: source-linked operational analytics and reconciled collection review
 

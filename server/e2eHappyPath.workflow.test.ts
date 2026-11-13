@@ -230,8 +230,8 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
     expect(shareDecision.success).toBe(true);
 
     [shortlist] = await db.select().from(shortlists).where(eq(shortlists.id, shortlistId));
-    expect(shortlist.status).toBe("shared");
-    expect(shortlist.sharedAt).toBeDefined();
+    expect(shortlist.status).toBe("release_ready");
+    expect(shortlist.sharedAt).toBeNull();
 
     // Advance candidate into interview pipeline
     await caller.recruitment.candidates.transition({ id: candidateId, state: "submitted" });
@@ -611,8 +611,8 @@ describe("E2E Recruitment Happy Path Integration Test", () => {
     });
 
     let [shortlist] = await db.select().from(shortlists).where(eq(shortlists.id, shareRes.shortlistId));
-    expect(shortlist.status).toBe("shared");
-    expect(shortlist.sharedAt).toBeDefined();
+    expect(shortlist.status).toBe("release_ready");
+    expect(shortlist.sharedAt).toBeNull();
 
     // Advance candidate to interview
     await caller.recruitment.candidates.transition({ id: candidateId, state: "submitted" });

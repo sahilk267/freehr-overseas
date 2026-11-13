@@ -1,3 +1,6 @@
+import {materializeSubmissionEmail} from './submissionMail';
+import {applySubmissionApproval} from './submissionState';
+import type {SubmissionMailScope} from './submissionMailScope';
 import {applyOfferRelease} from './candidateOffers';
 import {materializeOfferEmail} from './candidateOfferMail';
 import {assertCurrentOfferAcceptance} from './candidateOfferState';
@@ -114,16 +117,17 @@ export async function applySideEffect(
   // Approval authorizes the immutable message record; it never sends an email.
   if (approval.actionType === "email_send") {
     const message = (await db.select().from(messages).where(and(eq(messages.id, approval.resourceId), eq(messages.ownerId, approval.ownerId))).limit(1))[0];
-    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope; replyScope?:ReplyMailScope;offerScope?:OfferMailScope } | null;
+    const payload = approval.payload as { senderIdentityId?: string; recipient?: string; senderAddress?: string; senderPurpose?: string; contentHash?: string; privateLink?:AvailabilityMailScope; replyScope?:ReplyMailScope;offerScope?:OfferMailScope;submissionScope?:SubmissionMailScope } | null;
     const identity = payload?.senderIdentityId ? (await db.select().from(emailIdentities).where(and(eq(emailIdentities.id, payload.senderIdentityId), eq(emailIdentities.ownerId, approval.ownerId))).limit(1))[0] : null;
     if (!message || message.status !== "approval_pending" || !identity || identity.status !== "active" || !payload?.recipient) throw new Error("Email authorization is stale or incomplete.");
     if (payload.senderAddress !== identity.email || payload.senderPurpose !== identity.purpose) throw new Error("Sender identity changed; a new approval is required.");
-    if (payload.contentHash !== emailContentHash({ senderIdentityId: identity.id, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink, replyScope:payload.replyScope,offerScope:payload.offerScope })) throw new Error("Email content changed; a new approval is required.");
+    if (payload.contentHash !== emailContentHash({ senderIdentityId: identity.id, recipient: payload.recipient, subject: message.subject ?? "", body: message.body, privateLink:payload.privateLink, replyScope:payload.replyScope,offerScope:payload.offerScope,submissionScope:payload.submissionScope })) throw new Error("Email content changed; a new approval is required.");
     const suppressed = (await db.select().from(suppressionList).where(and(eq(suppressionList.ownerId, approval.ownerId), eq(suppressionList.valueHash, hashContactValue(payload.recipient)), eq(suppressionList.active, true))).limit(1))[0];
     if (suppressed) throw new Error("Email recipient is suppressed.");
     await validateReplyEmail(db, approval.ownerId, payload, message, decidedAt);
     await materializeAvailabilityEmail(db,approval.ownerId,payload,message,decidedAt);
     await materializeOfferEmail(db,approval.ownerId,payload,message,decidedAt);
+    await materializeSubmissionEmail(db,approval.ownerId,payload,message,decidedAt);
     const dispatch = (await db.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, approval.ownerId), eq(emailDispatches.approvalId, approval.id))).limit(1))[0];
     if (dispatch) {
       if (dispatch.status !== "queued") throw new Error("Dispatch is no longer pending authorization.");
@@ -164,12 +168,13 @@ export async function applySideEffect(
     const shortlist = (await db.select().from(shortlists).where(and(eq(shortlists.id, approval.resourceId), eq(shortlists.ownerId, approval.ownerId))).limit(1))[0];
     if (!shortlist || !["prepared", "approval_pending"].includes(shortlist.status)) throw new Error("Shortlist sharing approval is stale.");
     await assertSharingEligible(db, { ownerId: approval.ownerId, candidateId: shortlist.candidateId, jobId: shortlist.jobId, companyId: shortlist.companyId }, true);
+    await applySubmissionApproval(db,approval);
     await db
       .update(shortlists)
       .set({
-        status: "shared",
-        sharedAt: decidedAt,
-        shareExpiresAt: new Date(decidedAt.getTime() + 1000 * 60 * 60 * 24 * 14),
+        status: "release_ready",
+        sharedAt: null,
+        shareExpiresAt: null,
       })
       .where(
         and(
@@ -178,6 +183,8 @@ export async function applySideEffect(
         ),
       );
   }
+
+  if(approval.actionType==="candidate_share")await db.update(approvals).set({actionedAt:decidedAt}).where(and(eq(approvals.ownerId,approval.ownerId),eq(approvals.id,approval.id)));
 
   // 3) placement_confirmation
   if (approval.actionType === "placement_confirmation") {
@@ -365,7 +372,7 @@ export async function applyApprovalDecision(
   const finalReason = note ?? approval.reason;
 
   const runDecisionTransaction = async (tx: any) => {
-    if (["email_send","placement_confirmation","replacement_case","offer_release"].includes(approval.actionType) || approval.actionType.startsWith("invoice_")) await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, approval.ownerId)).limit(1));
+    if (["candidate_share","email_send","placement_confirmation","replacement_case","offer_release"].includes(approval.actionType) || approval.actionType.startsWith("invoice_")) await lockedSelect(tx.select().from(workspaceSettings).where(eq(workspaceSettings.ownerId, approval.ownerId)).limit(1));
     // 1. Fetch current status within transaction to enforce concurrency and idempotency
     const current = (
       await lockedSelect(tx

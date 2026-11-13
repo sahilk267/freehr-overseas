@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { canonicalHash as stableAnalyticsHash } from "./canonicalHash";
 import {
   ANALYTICS_VERSION,
   ANALYTICS_DEFINITIONS,
@@ -42,23 +42,7 @@ export const ANALYTICS_EVENTS = [
   "email.reconciled",
   "outreach.reply_received",
 ] as const;
-export function stableAnalyticsHash(value: unknown): string {
-  const canonical = (v: any): any =>
-    v instanceof Date
-      ? v.toISOString()
-      : Array.isArray(v)
-        ? v.map(canonical)
-        : v && typeof v === "object"
-          ? Object.fromEntries(
-              Object.keys(v)
-                .sort()
-                .map(k => [k, canonical(v[k])])
-            )
-          : v;
-  return createHash("sha256")
-    .update(JSON.stringify(canonical(value)))
-    .digest("hex");
-}
+export { canonicalHash as stableAnalyticsHash } from "./canonicalHash";
 const time = (value: unknown) =>
   value == null ? NaN : new Date(value as any).getTime();
 const valid = (v: unknown) => Number.isFinite(time(v));

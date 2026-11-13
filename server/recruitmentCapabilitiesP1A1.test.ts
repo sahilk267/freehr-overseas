@@ -241,18 +241,18 @@ describe("P1-A.1 — Core Recruitment Feature Implementation", () => {
       });
 
       const [shortlistAfter] = await db.select().from(shortlists).where(eq(shortlists.id, shareReq.shortlistId));
-      expect(shortlistAfter.status).toBe("shared");
-      expect(shortlistAfter.sharedAt).toBeInstanceOf(Date);
-      expect(shortlistAfter.shareExpiresAt).toBeInstanceOf(Date);
+      expect(shortlistAfter.status).toBe("release_ready");
+      expect(shortlistAfter.sharedAt).toBeNull();
+      expect(shortlistAfter.shareExpiresAt).toBeNull();
 
-      // 6. Attempting to share again after already shared -> Rejected
+      // 6. Approval alone permits release, and cannot be requested as a duplicate share.
       await expect(
         callerA.recruitment.matching.requestShareApproval({
           candidateId: candidate.id,
           jobId: job.id,
           companyId: client.id,
         }),
-      ).rejects.toThrow(/already been shared/i);
+      ).rejects.toThrow(/approved for release/i);
 
       // 7. Cross-owner candidate / job rejection
       await expect(

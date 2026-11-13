@@ -1,3 +1,5 @@
+import {eraseSubmissionContent,revokeSubmissionInTransaction} from '../services/submissions';
+import {submissionEvent} from '../services/submissionState';
 import {eraseInterviewFeedbackContent} from '../services/interviewFeedback';
 import {eraseCandidateOfferContent} from '../services/candidateOffers';
 import {erasePlacementLifecycleContent} from '../services/placementLifecycle';
@@ -91,16 +93,17 @@ export const candidateWorkflowsRouter = router({
       const db = await requireDb();
       const shortlist = (await db.select().from(shortlists).where(and(eq(shortlists.id, input.id), eq(shortlists.ownerId, ctx.user.id))).limit(1))[0];
       if (!shortlist) throw new TRPCError({ code: "NOT_FOUND", message: "Shortlist was not found." });
-      if (shortlist.status === "shared") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A shared shortlist cannot be altered; prepare a new controlled share instead." });
+      if (["shared","viewed"].includes(shortlist.status)||await submissionEvent(db,ctx.user.id,"pack",shortlist.id)) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "A shared shortlist cannot be altered; prepare a new controlled share instead." });
       await db.update(shortlists).set({ clientFeedback: input.clientFeedback }).where(eq(shortlists.id, shortlist.id));
       await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "shortlist.feedback_updated", resourceType: "shortlist", resourceId: shortlist.id });
       return { success: true };
     }),
     updateState: protectedProcedure.input(z.object({ id: z.string().min(4), status: z.enum(["approval_pending", "shared", "viewed", "withdrawn", "expired"]) })).mutation(async ({ ctx, input }) => {
-      if (input.status === "shared") throw new TRPCError({ code: "FORBIDDEN", message: "Sharing requires a current governed approval and consent; direct shared-state changes are forbidden." });
+      if (["shared","viewed"].includes(input.status)) throw new TRPCError({ code: "FORBIDDEN", message: "Sharing requires a current governed approval and consent; direct shared-state changes are forbidden." });
       const db = await requireDb();
       const shortlist = (await db.select().from(shortlists).where(and(eq(shortlists.id, input.id), eq(shortlists.ownerId, ctx.user.id))).limit(1))[0];
       if (!shortlist) throw new TRPCError({ code: "NOT_FOUND", message: "Shortlist was not found." });
+      if(await submissionEvent(db,ctx.user.id,"pack",shortlist.id)){if(!["withdrawn","expired"].includes(input.status))throw new TRPCError({code:"FORBIDDEN",message:"A governed submission must use exact source-bound release and recipient access."});await revokeSubmissionInTransaction(db,ctx.user.id,shortlist.id,"The shortlist was withdrawn or expired.");}
       assertTransition("shortlist", shortlist.status, input.status);
       await db.update(shortlists).set({ status: input.status }).where(eq(shortlists.id, shortlist.id));
       await recordAudit({ ownerId: ctx.user.id, actorType: "user", actorId: String(ctx.user.id), action: "shortlist.state_changed", resourceType: "shortlist", resourceId: shortlist.id, previousState: shortlist.status, nextState: input.status });
@@ -298,6 +301,7 @@ export const candidateWorkflowsRouter = router({
       }
 
       await eraseInterviewFeedbackContent(ctx.user.id,candidate.id);
+      await eraseSubmissionContent(ctx.user.id,candidate.id);
       // 10. Only after all physical deletions succeed, redact document records
       let documentsDeletedCount = 0;
       for (const doc of docs) {
