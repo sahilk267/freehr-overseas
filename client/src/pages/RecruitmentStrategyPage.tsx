@@ -174,11 +174,21 @@ export default function RecruitmentStrategyPage() {
     [notice, setNotice] = useState(""),
     [previewFor, setPreviewFor] = useState(""),
     [roleDraft, setRoleDraft] = useState<any>(null);
-  const load = () => {
+  const load = (explicit = false) => {
     if (d) {
       setFields(d.strategy.fields ?? null);
       setRevision(d.strategy.revision);
       setMode(d.strategy.mode === "unconfigured" ? "draft" : d.strategy.mode);
+      if (explicit) {
+        preview.reset();
+        setPreviewFor("");
+        save.reset();
+        setNotice(
+          d.strategy.fields
+            ? "Recorded assumptions loaded. Previous preview cleared."
+            : "No strategy is configured. Unsaved assumptions and preview cleared."
+        );
+      }
     }
   };
   useEffect(() => {
@@ -299,12 +309,14 @@ export default function RecruitmentStrategyPage() {
           dates use UTC calendar days.
         </p>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={load}>
+          <Button variant="outline" onClick={() => load(true)}>
             Review current strategy version
           </Button>
           <Button
             variant="outline"
             onClick={() => {
+              preview.reset();
+              setPreviewFor("");
               setFields(sample());
               setRevision(d?.strategy.revision ?? 0);
               setMode("draft");
