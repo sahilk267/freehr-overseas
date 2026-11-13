@@ -949,6 +949,43 @@ describe("recipient email verification and correction history", () => {
       ).every((e: any) => e.metadata.redacted)
     ).toBe(true);
   });
+  it("applies recruitment timing restrictions to invitations while preserving exact recipient-requested security-code authority", async () => {
+    const f = await released();
+    await appendWorkflowEvent(
+      f.db,
+      f.ownerId,
+      "contact.timing_saved",
+      (await submissionEvent(f.db, f.ownerId, "pack", f.p.id)).metadata
+        .recipientHash,
+      1,
+      {
+        active: true,
+        fields: {
+          timezone: "UTC",
+          preferredChannel: "whatsapp",
+          validUntil: new Date(Date.now() + 7 * 86400000),
+        },
+      }
+    );
+    const mail = await prepareSubmissionMail(f.ownerId, f.p.id);
+    await f.caller.recruitment.approvals.decide({
+      id: mail.approvalId,
+      decision: "approved",
+    });
+    await expect(
+      deliverApprovedEmail(f.ownerId, { dispatchId: mail.dispatchId })
+    ).rejects.toThrow(/another channel/);
+    expect(send).not.toHaveBeenCalled();
+    const otp = await requestSubmissionOtp(f.cap),
+      c = await submissionEvent(f.db, f.ownerId, "otp", otp.challengeId);
+    await deliverApprovedEmail(f.ownerId, {
+      dispatchId: c.metadata.dispatchId,
+    });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0][0].subject).toBe(
+      "Client review verification code"
+    );
+  });
   it.runIf(process.env.FREEHR_TEST_MYSQL === "1")(
     "serializes competing profile requests into one immutable pack and one exact sharing approval",
     async () => {

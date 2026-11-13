@@ -308,7 +308,9 @@
         {
           "id": "M06-F06",
           "description": "Adaptive cadence from explicit preference/outcome data; out-of-office return-date handling, preferred channel, language, contact windows and escalation ladder.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-recipient-contact-timing.md",
+          "implementation_note": "Source-quoted owner-reviewed return holds, IANA recipient windows and weekday rules intersect existing quiet hours at canonical email admission; budget/spacing recomputation preserves restrictions. Unsupported preferred channels withhold email, expired restrictions require review, and language is recorded without inferred translation. Explicit retirement, optimistic corrections, owner UI and canonical privacy erasure reuse existing ledgers/outbox/worker. Verified automatic OOO ingestion/date interpretation, provider channel switching, translated templates, adaptive outcome optimization and escalation ladders remain open."
         },
         {
           "id": "M06-F07",

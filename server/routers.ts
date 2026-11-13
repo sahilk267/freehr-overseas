@@ -1,3 +1,4 @@
+import {contactTimingRouter} from './routers/contactTiming';
 import {submissionsRouter} from './routers/submissions';
 import {analyticsRouter} from './routers/analytics';
 import {interviewFeedbackRouter} from './routers/interviewFeedback';
@@ -32,6 +33,7 @@ export const appRouter = router({
   placementLifecycle:placementLifecycleRouter,
   candidateReviews:candidateReviewsRouter,
   submissions:submissionsRouter,
+  contactTiming:contactTimingRouter,
   clientDiscovery: clientDiscoveryRouter,
   interviewConfirmations: interviewConfirmationsRouter,
   participantAvailability: participantAvailabilityRouter,

@@ -1,3 +1,4 @@
+import {getRecipientTiming,nextRecipientContactTime} from './contactTiming';
 import {materializeSubmissionEmail} from './submissionMail';
 import type {SubmissionMailScope} from './submissionMailScope';
 import {materializeOfferEmail,recordOfferMailAccepted} from './candidateOfferMail';
@@ -66,7 +67,9 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
     const securityCode=offerMail?.transactionalOtp===true||submissionMail?.transactionalOtp===true;
     const timezone = plan?.timezone ?? workspace.businessTimezone;
     const window = { timezone, quietStart: workspace.quietHoursStart, quietEnd: workspace.quietHoursEnd, businessDaysOnly: plan?.businessDaysOnly ?? false };
-    let permittedAt = securityCode?now:nextContactTime(now, window);
+    const recipientTiming=securityCode?null:await getRecipientTiming(tx,ownerId,recipientHash);
+    const contactAt=(at:Date)=>nextRecipientContactTime(at,window,recipientTiming?.fields??null);
+    let permittedAt = securityCode?now:contactAt(now);
     const recent = await tx.select().from(emailDispatches).where(and(eq(emailDispatches.ownerId, ownerId), gte(emailDispatches.claimedAt, new Date(now.getTime() - 8 * 86400000))));
     const day = localClock(now, workspace.businessTimezone).day;
     const today = recent.filter((row: typeof emailDispatches.$inferSelect) => row.claimedAt && localClock(row.claimedAt, workspace.businessTimezone).day === day);
@@ -77,10 +80,10 @@ export async function deliverApprovedEmail(ownerId: number, input: DeliveryInput
     if (![recipientLimit, spacingMinutes, dailyLimit].every(Number.isFinite) || dailyLimit < 1) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Outbound limits must be configured before delivery." });
     if (today.length >= dailyLimit || !securityCode&&today.filter((row: typeof emailDispatches.$inferSelect) => row.recipientHash === recipientHash).length >= recipientLimit) {
       const nextDay = nextContactTime(now, { ...window, nextDay: true, timezone: workspace.businessTimezone });
-      permittedAt = nextContactTime(nextDay, window);
+      permittedAt = contactAt(nextDay);
     }
     const lastRecipientSend = recent.filter((row: typeof emailDispatches.$inferSelect) => row.recipientHash === recipientHash && row.claimedAt).reduce((latest: number, row: typeof emailDispatches.$inferSelect) => Math.max(latest, row.claimedAt!.getTime()), 0);
-    if (!securityCode&&lastRecipientSend && lastRecipientSend + spacingMinutes * 60_000 > permittedAt.getTime()) permittedAt = nextContactTime(new Date(lastRecipientSend + spacingMinutes * 60_000), window);
+    if (!securityCode&&lastRecipientSend && lastRecipientSend + spacingMinutes * 60_000 > permittedAt.getTime()) permittedAt = contactAt(new Date(lastRecipientSend + spacingMinutes * 60_000));
     if (plan && permittedAt >= plan.deadlineAt) { await stopFollowUp(tx, plan, "cancelled", "No permitted contact window before deadline."); return { status: "cancelled", reason: "No permitted contact window before deadline." }; }
     if (permittedAt > now) {
       await tx.update(emailDispatches).set({ scheduledAt: permittedAt }).where(eq(emailDispatches.id, dispatch.id));

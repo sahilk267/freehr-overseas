@@ -1,3 +1,4 @@
+import {eraseContactTiming} from '../services/contactTiming';
 import {eraseSubmissionContent,revokeSubmissionInTransaction} from '../services/submissions';
 import {submissionEvent} from '../services/submissionState';
 import {eraseInterviewFeedbackContent} from '../services/interviewFeedback';
@@ -302,6 +303,7 @@ export const candidateWorkflowsRouter = router({
 
       await eraseInterviewFeedbackContent(ctx.user.id,candidate.id);
       await eraseSubmissionContent(ctx.user.id,candidate.id);
+      await eraseContactTiming(db,ctx.user.id,candidate.id);
       // 10. Only after all physical deletions succeed, redact document records
       let documentsDeletedCount = 0;
       for (const doc of docs) {
