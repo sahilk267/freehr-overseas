@@ -1130,6 +1130,53 @@ describe("automatic authenticated research intake, revision chains and truthful 
     expect(c.opportunities[0].domain).toBe(f.domain);
     expect(JSON.stringify(c)).not.toContain("DO_NOT_RETURN_LEGACY_QUERY");
   });
+  it("previews accepted original receipts as replays with no new record admission", async () => {
+    const f = await fixture();
+    await f.receive();
+    const p = await previewMarketBatch(f.ownerId, f.sourceId, f.batch);
+    expect(p.receiptOnly).toBe(true);
+    expect(p.results[0].status).toBe("accepted");
+    const r = await recordMarketBatch(
+      f.ownerId,
+      f.sourceId,
+      f.batch,
+      p.previewHash
+    );
+    expect(r).toMatchObject({
+      receiptOnly: true,
+      newlyAccepted: 0,
+      alreadyProcessed: true,
+    });
+    expect(await events(f, "market.signal")).toHaveLength(1);
+  });
+  it("does not promise new acceptance under an old held receipt after its missing account is imported", async () => {
+    const f = await fixture();
+    const domain = "later-imported-" + f.ownerId + ".example.test",
+      batch = { ...f.batch, records: [{ ...f.record, companyDomain: domain }] };
+    await f.receive(batch);
+    await f.caller.recruitment.prospects.create({
+      name: "Canonical account imported after the original receipt",
+      domain,
+    });
+    let p = await previewMarketBatch(f.ownerId, f.sourceId, batch);
+    expect(p.receiptOnly).toBe(true);
+    expect(p.results[0]).toMatchObject({
+      status: "held",
+      reason: "company_not_imported",
+    });
+    p = await previewMarketBatch(f.ownerId, f.sourceId, {
+      ...batch,
+      batchKey: createId("retry_"),
+    });
+    expect(p.receiptOnly).toBe(false);
+    expect(p.results[0].status).toBe("accepted");
+    await expect(
+      previewMarketBatch(f.ownerId, f.sourceId, {
+        ...batch,
+        records: [{ ...batch.records[0], openings: 99 }],
+      })
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+  });
   it.runIf(process.env.FREEHR_TEST_MYSQL === "1")(
     "serializes concurrent same-batch intake into one receipt and one physical observation",
     async () => {

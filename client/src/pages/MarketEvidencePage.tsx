@@ -533,7 +533,12 @@ export default function MarketEvidencePage() {
             Preview market batch
           </Button>
           <Button
-            disabled={!matches || !preview.data || record.isPending}
+            disabled={
+              !matches ||
+              !preview.data ||
+              preview.data.receiptOnly ||
+              record.isPending
+            }
             onClick={() =>
               previewInput &&
               preview.data &&
@@ -550,7 +555,9 @@ export default function MarketEvidencePage() {
           <>
             <p role="status">
               {matches
-                ? "Preview matches the current batch inputs."
+                ? preview.data.receiptOnly
+                  ? "Original receipt outcomes only. No new observation will be recorded. Use a new batch key to retry held records after correcting prerequisites."
+                  : "Preview matches the current batch inputs."
                 : "Inputs changed. Preview the current batch again before recording."}
             </p>
             {preview.data.results.map(r => (

@@ -256,7 +256,12 @@ type Outcome = {
   digest?: string;
   companyId?: string;
 };
-async function assessBatch(tx: any, source: any, batch: Batch, now: Date) {
+async function requireMarketPermission(
+  tx: any,
+  source: any,
+  batch: Batch,
+  now: Date
+) {
   const p = await permission(tx, source.ownerId, source.id),
     issue = permissionIssue(source, p, now);
   if (issue) throw fail("Market intake blocked: " + issue + ".");
@@ -265,6 +270,30 @@ async function assessBatch(tx: any, source: any, batch: Batch, now: Date) {
       "Market permission revision changed. Review the source declaration before retrying.",
       "CONFLICT"
     );
+  return p;
+}
+async function existingMarketReceipt(tx: any, source: any, batch: Batch) {
+  const id = batchId(source.ownerId, source.id, batch.batchKey),
+    prior = await latest(tx, source.ownerId, ["market.batch_received"], id);
+  if (!prior) return null;
+  const data = unseal(prior);
+  if (data.sourceId !== source.id)
+    throw fail("Market receipt scope is inconsistent.");
+  if (data.payloadHash !== canonicalHash(batch))
+    throw fail(
+      "This market batch key already belongs to different content.",
+      "CONFLICT"
+    );
+  return {
+    id,
+    alreadyProcessed: true,
+    results: data.results as Outcome[],
+    receiptOnly: true,
+    newlyAccepted: 0,
+  };
+}
+async function assessBatch(tx: any, source: any, batch: Batch, now: Date) {
+  const p = await requireMarketPermission(tx, source, batch, now);
   const rows = await tx
     .select(companyFields)
     .from(companies)
@@ -420,14 +449,7 @@ async function commitBatch(
   previewHash?: string
 ) {
   const now = new Date(),
-    p = await permission(tx, source.ownerId, source.id),
-    issue = permissionIssue(source, p, now);
-  if (issue) throw fail("Market intake blocked: " + issue + ".");
-  if (batch.permissionRevision !== p.revision)
-    throw fail(
-      "Market permission revision changed. Review the source declaration before retrying.",
-      "CONFLICT"
-    );
+    p = await requireMarketPermission(tx, source, batch, now);
   const workspace = (
     await tx
       .select({ emergencyStop: workspaceSettings.emergencyStop })
@@ -437,24 +459,10 @@ async function commitBatch(
   )[0];
   if (workspace?.emergencyStop)
     throw fail("Emergency stop blocks new market intake.");
+  const existing = await existingMarketReceipt(tx, source, batch);
+  if (existing) return existing;
   const id = batchId(source.ownerId, source.id, batch.batchKey),
-    hash = canonicalHash(batch),
-    prior = await latest(tx, source.ownerId, ["market.batch_received"], id);
-  if (prior) {
-    const data = unseal(prior);
-    if (data.payloadHash !== hash)
-      throw fail(
-        "This market batch key already belongs to different content.",
-        "CONFLICT"
-      );
-    return {
-      id,
-      alreadyProcessed: true,
-      results: data.results as Outcome[],
-      receiptOnly: true,
-      newlyAccepted: 0,
-    };
-  }
+    hash = canonicalHash(batch);
   const recent = await tx
     .select({ id: workflowEvents.id })
     .from(workflowEvents)
@@ -533,10 +541,26 @@ export async function previewMarketBatch(
 ) {
   return withWorkspaceTransaction(ownerId, async tx => {
     const source = await requireIntakeSource(tx, ownerId, sourceId),
-      result = await assessBatch(tx, source, parseBatch(body), new Date());
+      batch = parseBatch(body),
+      now = new Date();
+    await requireMarketPermission(tx, source, batch, now);
+    const receipt = await existingMarketReceipt(tx, source, batch);
+    if (receipt)
+      return {
+        results: receipt.results,
+        previewHash: canonicalHash({
+          id: receipt.id,
+          payloadHash: canonicalHash(batch),
+          receiptOnly: true,
+        }),
+        receiptOnly: true,
+        contactAuthorityGranted: false,
+      };
+    const result = await assessBatch(tx, source, batch, now);
     return {
       results: result.outcomes,
       previewHash: result.previewHash,
+      receiptOnly: false,
       contactAuthorityGranted: false,
     };
   });
