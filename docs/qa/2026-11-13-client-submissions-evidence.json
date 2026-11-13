@@ -1,0 +1,46 @@
+{
+  "checkedAt": "2026-11-13T00:37:22.258Z",
+  "build": "8c50beb09f52de6ddd19267c3bf5714971da57f1",
+  "syntheticOnly": true,
+  "tests": [
+    "Exact minimized profile, source/recipient review and idempotent preparation persist on the real database",
+    "Owner sharing approval records release_ready without fabricated external sharing or viewing",
+    "Explicit access release creates private recipient entry without exposing profile fields before email verification",
+    "Missing recipient session and nonexistent undelivered codes cannot read profiles or create feedback",
+    "Invitation preparation reuses the pending canonical outbox; no raw capability or code is stored and an unsent invitation cannot be chased",
+    "Owner API authorization and legacy viewed-state bypass guards remain enforced",
+    "Source corrections fence older private access, preserve immutable old fields and cancel superseded unused invitation authority",
+    "Private owner evidence uses private/no-store and no-referrer headers",
+    "Owner desktop review shows exact recipient/sender/consent/source and approves without inventing access release",
+    "Actual owner browser release prepares one canonical pending invitation and blocks a chase before provider acceptance",
+    "Desktop/mobile owner profile, recipient and action controls fit the viewport",
+    "Anonymous mobile entry removes the capability from the visible URL, exposes no profile before email verification and keeps credentials out of local storage",
+    "No browser runtime or transport errors",
+    "Canonical live privacy fulfillment redacts both immutable profile versions and revokes private access while cancelling the unused client-thread invitation without provider contact",
+    "Synthetic candidate deleted, role cancelled and company suppressed; persistent worker remains healthy"
+  ],
+  "realMailSent": 0,
+  "codeRequestsCreated": 0,
+  "realHiringDecisions": 0,
+  "providerChargeCreated": 0,
+  "positiveOtpAcceptance": "Local and real-MySQL canonical outbox with mocked provider receipt only; actual recipient delivery remains unverified.",
+  "browserBuild": "8c50beb09f52de6ddd19267c3bf5714971da57f1",
+  "browserCheckedAt": "2026-11-13T00:37:44.780Z",
+  "cleanup": {
+    "candidate": "deleted",
+    "job": "cancelled",
+    "company": "suppressed",
+    "profileHistory": "redacted",
+    "privateAccess": "revoked",
+    "invitation": "cancelled without attempt",
+    "realMailSent": 0,
+    "realCodeRequestsCreated": 0,
+    "realHiringDecisions": 0
+  },
+  "worker": {
+    "enabled": true,
+    "persistent": true,
+    "heartbeatRecent": true,
+    "lastError": null
+  }
+}
