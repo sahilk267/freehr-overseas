@@ -1,3 +1,4 @@
+import OwnerBriefPage from './pages/OwnerBriefPage';
 import SubmissionsPage from './pages/SubmissionsPage';
 import ClientReviewPage from './pages/ClientReviewPage';
 import AnalyticsPage from './pages/AnalyticsPage';
@@ -25,6 +26,7 @@ function withDashboard(Page: React.ComponentType) {
   return () => <DashboardLayout><Page /></DashboardLayout>;
 }
 
+const OwnerBrief = withDashboard(OwnerBriefPage);
 const Submissions = withDashboard(SubmissionsPage);
 const Analytics = withDashboard(AnalyticsPage);
 const CommandCenter = withDashboard(Home);
@@ -48,6 +50,7 @@ function PaymentReturnPage() {
 function Router() {
   return <Switch>
     <Route path="/client-review" component={ClientReviewPage} />
+    <Route path="/briefs" component={OwnerBrief} />
     <Route path="/submissions" component={Submissions} />
     <Route path="/offer-response" component={OfferResponsePage} />
     <Route path="/payment-return" component={PaymentReturnPage} />

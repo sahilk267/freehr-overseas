@@ -1,3 +1,4 @@
+import {scheduleOwnerBrief} from './ownerBrief';
 import {processDueRecoveryDeadlines} from "./interviewRecoveryDeadline";
 import { and, asc, eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -50,6 +51,7 @@ export async function runManagedAutomationCycle(limit = 5) {
         interviews: await processDueInterviewReminders(row.ownerId, Math.min(25, limit)),
         recoveryDeadlines: await processDueRecoveryDeadlines(row.ownerId, Math.min(25,limit)),
         collections: await processDueInvoiceCollections(row.ownerId, Math.min(25, limit)),
+        briefSchedule: await scheduleOwnerBrief(row.ownerId),
         batch: await processDueAutomationBatch(row.ownerId, limit),
       };
       await db.update(workspaceSettings).set({ backgroundLastHeartbeatAt: new Date(), backgroundLastResult: result, backgroundLastError: null }).where(eq(workspaceSettings.ownerId, row.ownerId));

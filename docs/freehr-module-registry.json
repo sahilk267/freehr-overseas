@@ -1242,7 +1242,9 @@
         {
           "id": "M22-F01",
           "description": "Exception-first cockpit showing business objectives, stalled processes, blocked prerequisites, due follow-ups, spend and last verified outcomes.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-owner-operating-briefs.md",
+          "implementation_note": "Owner-only exception-first operating review joins canonical approval, blocked/stale queue, existing incident, due follow-up/deadline, receivable and source-integrity records with deterministic priorities, review-age thresholds, full-source filtering/pagination and exact currency-separated analytics. It creates no duplicate cases or decisions. Business objective/capacity planning, complete workflow coverage and formal SLA orchestration remain open."
         },
         {
           "id": "M22-F02",
@@ -1262,7 +1264,9 @@
         {
           "id": "M22-F05",
           "description": "Daily/weekly operating brief, SLA ladder and internal alert routing; one case links infrastructure incident IDs from M25 rather than duplicate incidents.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-owner-operating-briefs.md",
+          "implementation_note": "Opt-in daily/weekly in-app aggregate briefs use the existing managed worker and deterministic physical queue; source/setting/period/stop checks, manual record idempotency, bounded retention and hash-checked history are implemented. No external notification/LLM is called and raw source IDs/people/bodies are not copied into stored summaries. Full SLA ladders, audience routing, real elapsed weekly acceptance and cross-channel internal alerts remain open."
         },
         {
           "id": "M22-F06",

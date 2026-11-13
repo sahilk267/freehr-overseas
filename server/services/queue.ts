@@ -1,3 +1,4 @@
+import {executeOwnerBrief} from './ownerBrief';
 import {createHash} from 'node:crypto';
 import {CAREER_PARSER_VERSION,careerTextHash,careerDocumentSourceHash,groundCareerRecords,careerEvidenceIntegrity} from './careerExtraction';
 import {executeOfferDeadline} from './candidateOffers';
@@ -37,7 +38,7 @@ import { readPrivateDocument } from "./privateStorage";
 export class NonRetryableJobError extends Error {}
 export class RetryableJobError extends Error {}
 
-const DETERMINISTIC_JOB_TYPES = new Set(["offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh", "client_reply_deadline", "discovery_select", "recovery_auto_select", "google_calendar_sync", "scan_document", "execute_policy_decision", "follow_up", "deliver_email", "send_reminder", "invoice_collection_source"]);
+const DETERMINISTIC_JOB_TYPES = new Set(["owner_operating_brief","offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh", "client_reply_deadline", "discovery_select", "recovery_auto_select", "google_calendar_sync", "scan_document", "execute_policy_decision", "follow_up", "deliver_email", "send_reminder", "invoice_collection_source"]);
 const AI_JOB_TYPES = new Set<AiTaskType>(["extract_job_requirements","classify_reply", "draft_outreach", "parse_cv", "score_match", "send_reminder", "reconcile_invoice"]);
 const calculateBackoff = (attempts: number) => Math.min(60 * 60 * 1000, 30_000 * 2 ** Math.max(0, attempts - 1));
 export const withinDailyAiBudget = (used: number, limit: number) => used < limit;
@@ -268,7 +269,7 @@ export async function processOneQueuedJob(ownerId: number) {
     .where(and(eq(automationQueue.ownerId, ownerId), inArray(automationQueue.status, ["queued", "retryable_failed"]), lte(automationQueue.scheduledAt, now)))
     .orderBy(asc(automationQueue.priority), asc(automationQueue.scheduledAt))
     .limit(25);
-  let job = readyJobs.find(task => workspace?.backgroundEnabled || !((task.payload as any)?.rankingRefreshAuthority) && !["offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType));
+  let job = readyJobs.find(task => workspace?.backgroundEnabled || !((task.payload as any)?.rankingRefreshAuthority) && !["owner_operating_brief","offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType));
   if (!job) return { status: "empty" as const };
 
   // AI daily budget applies only to AI inference job types, not deterministic security scans or policy executions
@@ -276,27 +277,30 @@ export async function processOneQueuedJob(ownerId: number) {
     const budget = Number((workspace?.policyConfig as { aiDailyLimit?: number } | null)?.aiDailyLimit ?? 45);
     const todayUsage = await db.select({ count: sql<number>`count(*)` }).from(aiUsage).where(and(eq(aiUsage.ownerId, ownerId), sql`date(${aiUsage.createdAt}) = curdate()`));
     if (!withinDailyAiBudget(todayUsage[0]?.count ?? 0, budget)) {
-      const deterministic = readyJobs.find((task: typeof automationQueue.$inferSelect) => DETERMINISTIC_JOB_TYPES.has(task.jobType)&&(workspace?.backgroundEnabled||!(task.payload as any)?.rankingRefreshAuthority&&!["offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType)));
+      const deterministicJobs = await db.select().from(automationQueue)
+        .where(and(eq(automationQueue.ownerId, ownerId), inArray(automationQueue.status, ["queued", "retryable_failed"]), lte(automationQueue.scheduledAt, now), inArray(automationQueue.jobType, [...DETERMINISTIC_JOB_TYPES])))
+        .orderBy(asc(automationQueue.priority), asc(automationQueue.scheduledAt)).limit(25);
+      const deterministic = deterministicJobs.find((task: typeof automationQueue.$inferSelect) => DETERMINISTIC_JOB_TYPES.has(task.jobType)&&(workspace?.backgroundEnabled||!(task.payload as any)?.rankingRefreshAuthority&&!["owner_operating_brief","offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(task.jobType)));
       if (!deterministic) return { status: "skipped" as const, reason: `The daily AI budget of ${budget} requests has been reached.` };
       job = deterministic;
     }
   }
   job = { ...job, attempts: job.attempts ?? 0, maxAttempts: job.maxAttempts ?? 3 };
 
-  if (["offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType) && !workspace?.backgroundEnabled) return { status: "skipped" as const, reason: "Managed worker is paused; calendar task remains queued." };
+  if (["owner_operating_brief","offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType) && !workspace?.backgroundEnabled) return { status: "skipped" as const, reason: "Managed worker is paused; calendar task remains queued." };
   const lockToken = createId("lock_");
   const claimed = await db.update(automationQueue).set({ status: "running", lockToken, lockedAt: now, attempts: job.attempts + 1 }).where(and(eq(automationQueue.id, job.id), inArray(automationQueue.status, ["queued", "retryable_failed"])));
   if (!claimed[0]?.affectedRows) return { status: "contended" as const };
 
-  if (["offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType)) {
+  if (["owner_operating_brief","offer_deadline","placement_checkpoint","stripe_payment_reconcile","candidate_review_deadline", "rank_refresh","client_reply_deadline","google_calendar_sync","recovery_auto_select","discovery_select"].includes(job.jobType)) {
     try {
-      const result = job.jobType==="offer_deadline"?await executeOfferDeadline(ownerId,job.payload):job.jobType==="placement_checkpoint"?await executePlacementCheckpoint(ownerId,job.payload):job.jobType==="stripe_payment_reconcile"?await executeStripeReconciliation(ownerId,job.payload):job.jobType==="candidate_review_deadline"?await executeCandidateReviewDeadline(ownerId,job.payload):job.jobType==="rank_refresh"?await executeRankingRefresh(ownerId,job.payload,{id:job.id,lockToken}):job.jobType==="client_reply_deadline"?await executeClientReplyDeadline(ownerId,job.payload):job.jobType==="discovery_select"?await executeDiscoverySelection(ownerId,job.payload):job.jobType==="google_calendar_sync"?await executeCalendarSync(ownerId,job.payload):await executeRecoveryAutoSelection(ownerId,job.payload);
+      const result = job.jobType==="owner_operating_brief"?await executeOwnerBrief(ownerId,job.payload):job.jobType==="offer_deadline"?await executeOfferDeadline(ownerId,job.payload):job.jobType==="placement_checkpoint"?await executePlacementCheckpoint(ownerId,job.payload):job.jobType==="stripe_payment_reconcile"?await executeStripeReconciliation(ownerId,job.payload):job.jobType==="candidate_review_deadline"?await executeCandidateReviewDeadline(ownerId,job.payload):job.jobType==="rank_refresh"?await executeRankingRefresh(ownerId,job.payload,{id:job.id,lockToken}):job.jobType==="client_reply_deadline"?await executeClientReplyDeadline(ownerId,job.payload):job.jobType==="discovery_select"?await executeDiscoverySelection(ownerId,job.payload):job.jobType==="google_calendar_sync"?await executeCalendarSync(ownerId,job.payload):await executeRecoveryAutoSelection(ownerId,job.payload);
       if('status' in result&&result.status==='deferred'&&'nextActionAt' in result){await db.update(automationQueue).set({status:'queued',scheduledAt:result.nextActionAt,attempts:job.attempts,lockToken:null,lockedAt:null}).where(and(eq(automationQueue.id,job.id),eq(automationQueue.lockToken,lockToken)));return {status:'skipped' as const,jobId:job.id,reason:'Waiting for the scheduled action or current participant response.'};}
       await db.update(automationQueue).set({status:"completed",result,completedAt:new Date(),lockToken:null,lockedAt:null,lastError:null}).where(and(eq(automationQueue.id,job.id),eq(automationQueue.lockToken,lockToken)));
       return {status:"completed" as const,jobId:job.id};
     } catch(error) {
       const code = error instanceof TRPCError ? error.code : "BAD_GATEWAY";
-      const reason = error instanceof TRPCError ? error.message : (job.jobType==="google_calendar_sync"?"Google Calendar request failed.":"Automatic recovery selection failed.");
+      const reason = error instanceof TRPCError ? error.message : (job.jobType==="owner_operating_brief"?"Operating brief generation failed. Review source bounds, storage and current settings.":job.jobType==="google_calendar_sync"?"Google Calendar request failed.":"Automatic recovery selection failed.");
       const retry = (["BAD_GATEWAY","TOO_MANY_REQUESTS",...(["recovery_auto_select","discovery_select"].includes(job.jobType)?["CONFLICT"]:[])].includes(code) || reason.includes("request in progress")) && job.attempts+1<job.maxAttempts;
       const status = retry ? "retryable_failed" : "blocked";
       await db.update(automationQueue).set({status,lastError:reason.slice(0,500),scheduledAt:new Date(Date.now()+calculateBackoff(job.attempts+1)),lockToken:null,lockedAt:null}).where(and(eq(automationQueue.id,job.id),eq(automationQueue.lockToken,lockToken)));
