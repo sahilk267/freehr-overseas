@@ -462,7 +462,9 @@
         {
           "id": "M09-F01",
           "description": "Niche/region/industry/role strategy, target client profile, fee model, revenue targets, recruiter capacity and delivery economics.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-recruitment-strategy.md",
+          "implementation_note": "Versioned owner niche/client criteria, capacity, targets, fixed/percentage fee assumptions and exact minor-unit delivery economics are implemented with draft/active-planning/pause modes, freshness and history. These are owner assumptions; real market inputs, measured costs and complete actual operating strategy remain open."
         },
         {
           "id": "M09-F02",
@@ -472,7 +474,9 @@
         {
           "id": "M09-F03",
           "description": "Prioritize roles/accounts using feasibility, candidate supply, expected margin, payment risk and workload rather than raw lead volume.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-recruitment-strategy.md",
+          "implementation_note": "Canonical source-bound role/account assessments rank by exact modeled contribution per minute, owner-declared fit/supply/feasibility/collection assumptions and full-source capacity/category-budget caps. Changed source/strategy versions invalidate proposals. Verified supply/payment risk, semantic qualification and optimal resource allocation remain open."
         },
         {
           "id": "M09-F04",
@@ -482,12 +486,16 @@
         {
           "id": "M09-F05",
           "description": "Scenario planning for low response, scarce talent, budget gaps and changing client demand; explain when to pause or escalate.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-recruitment-strategy.md",
+          "implementation_note": "Five bounded deterministic sensitivity scenarios cover low response, scarce talent, reduced demand and budget cuts with explicit review/capacity/negative-contribution reasons. Live demand intelligence, learned forecasting and automatic delegated escalation or strategy adaptation remain open."
         },
         {
           "id": "M09-F06",
           "description": "Policy/cost-aware daily operating plan and exception-only owner brief with evidence and confidence.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-13-recruitment-strategy.md",
+          "implementation_note": "Current internal capacity proposals respect configured outbound ceilings and stop/mode/freshness gates; existing operating briefs include minimized strategy status. No workflows or budgets are authorized. Dated daily execution planning, measured evidence/confidence and delegated autonomous objectives remain open."
         }
       ],
       "events": "strategy.activated, opportunity.prioritized, capacity.constrained",
@@ -2330,12 +2338,12 @@
     }
   ],
   "implementation_tracking": {
-    "wave": "W0/W1/W2/W3/W4/W5",
+    "wave": "W0–W17",
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Supported global and candidate-to-many-job ranking plus bounded owner-authorized refresh now share the canonical context and physical worker queue. Explicit dataset support limits, delegated AI budgets and source/authority lifecycle controls do not complete the remaining advanced roadmap.",
-    "updated_at": "2026-11-07"
+    "note": "Source-bound recruitment strategy, exact assumption-led economics and bounded capacity proposals now share canonical job/account data and minimized owner briefs. All 25 advanced modules retain their full acceptance gates; none is declared complete.",
+    "updated_at": "2026-11-13"
   },
   "last_implementation_update": "2026-11-13"
 }

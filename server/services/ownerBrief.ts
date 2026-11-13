@@ -1,3 +1,4 @@
+import { strategyBriefInTransaction } from "./recruitmentStrategy";
 import { TRPCError } from "@trpc/server";
 import { and, asc, desc, eq, inArray, lt } from "drizzle-orm";
 import { z } from "zod";
@@ -417,6 +418,7 @@ export async function ownerOverviewInTransaction(
     });
   const summary = {
     version: OWNER_BRIEF_VERSION,
+    strategy: await strategyBriefInTransaction(tx, ownerId, now),
     asOf: report.asOf,
     window: report.window,
     inventory: report.inventory.map(r => ({

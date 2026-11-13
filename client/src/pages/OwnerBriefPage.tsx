@@ -186,7 +186,12 @@ export default function OwnerBriefPage() {
           <h2 className="text-xl font-semibold">Current priorities</h2>
           <Summary summary={d.summary} />
           <p className="text-xs">
-            Attention thresholds are your review preferences. They do not
+            Strategy status: {d.summary.strategy?.mode ?? "unavailable"} ·{" "}
+            {d.summary.strategy?.freshness ?? "unavailable"}.{" "}
+            <a className="underline" href="/strategy">
+              Review strategy and modeled capacity
+            </a>
+            . Attention thresholds are your review preferences. They do not
             establish contractual SLA breaches or count unique business
             problems.
           </p>
