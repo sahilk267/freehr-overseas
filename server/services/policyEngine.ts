@@ -53,129 +53,230 @@ export interface AutoApprovalRule {
 
 export interface PolicyConfig {
   autoApprovalRules?: AutoApprovalRule[];
-  delayedActions?: Record<string, number | boolean | { graceMinutes?: number; delayMinutes?: number }> | string[];
-  delayBeforeExecuting?: Record<string, number | boolean | { graceMinutes?: number; delayMinutes?: number }> | string[];
-  delayedExecution?: Record<string, number | boolean | { graceMinutes?: number; delayMinutes?: number }> | string[];
+  delayedActions?:
+    | Record<
+        string,
+        number | boolean | { graceMinutes?: number; delayMinutes?: number }
+      >
+    | string[];
+  delayBeforeExecuting?:
+    | Record<
+        string,
+        number | boolean | { graceMinutes?: number; delayMinutes?: number }
+      >
+    | string[];
+  delayedExecution?:
+    | Record<
+        string,
+        number | boolean | { graceMinutes?: number; delayMinutes?: number }
+      >
+    | string[];
   actionDelays?: Record<string, number>;
   graceMinutes?: number;
   defaultGraceMinutes?: number;
   [key: string]: unknown;
 }
 
-function evaluateCondition(
+export interface PolicyConditionTrace {
+  field: string | null;
+  operator: string | null;
+  actualType: string;
+  expectedType: string;
+  passed: boolean;
+  code: string;
+}
+const valueType = (v: unknown) =>
+  v === null ? "null" : Array.isArray(v) ? "array" : typeof v;
+/** The live predicate and diagnostic trace share this single evaluation path. Values are never copied to the trace. */
+function conditionResult(
   condition: unknown,
-  payload: Record<string, unknown>,
-): boolean {
-  if (!condition || typeof condition !== "object") return false;
+  payload: Record<string, unknown>
+): PolicyConditionTrace {
+  const base = {
+    field: null as string | null,
+    operator: null as string | null,
+    actualType: "unavailable",
+    expectedType: "unavailable",
+    passed: false,
+    code: "invalid_condition",
+  };
+  if (!condition || typeof condition !== "object") return base;
   const { field, op, value } = condition as RuleCondition;
-
-  if (typeof field !== "string" || !field) return false;
-  if (!payload || typeof payload !== "object") return false;
-
-  // Fail-safe: missing or undefined field fails condition
-  if (!(field in payload) || payload[field] === undefined) {
-    return false;
-  }
-
+  if (typeof field !== "string" || !field)
+    return { ...base, code: "invalid_field" };
+  const trace = {
+    ...base,
+    field: field.slice(0, 160),
+    operator: typeof op === "string" ? op.slice(0, 32) : null,
+    expectedType: valueType(value),
+  };
+  if (
+    !Object.prototype.hasOwnProperty.call(payload, field) ||
+    payload[field] === undefined
+  )
+    return { ...trace, code: "missing_own_field" };
   const actual = payload[field];
-
+  trace.actualType = valueType(actual);
+  if (
+    (typeof actual === "number" && !Number.isFinite(actual)) ||
+    (typeof value === "number" && !Number.isFinite(value))
+  )
+    return { ...trace, code: "non_finite_number" };
+  let passed = false;
   switch (op) {
     case "eq":
-      return actual === value;
-
-    case "lte": {
-      if (
-        typeof actual !== "number" ||
-        typeof value !== "number" ||
-        Number.isNaN(actual) ||
-        Number.isNaN(value)
-      ) {
-        return false;
-      }
-      return actual <= value;
-    }
-
-    case "gte": {
-      if (
-        typeof actual !== "number" ||
-        typeof value !== "number" ||
-        Number.isNaN(actual) ||
-        Number.isNaN(value)
-      ) {
-        return false;
-      }
-      return actual >= value;
-    }
-
-    case "in": {
-      if (!Array.isArray(value)) return false;
-      return value.includes(actual);
-    }
-
+      passed = actual === value;
+      break;
+    case "lte":
+    case "gte":
+      if (typeof actual !== "number" || typeof value !== "number")
+        return { ...trace, code: "numeric_type_mismatch" };
+      passed = op === "lte" ? actual <= value : actual >= value;
+      break;
+    case "in":
+      if (!Array.isArray(value))
+        return { ...trace, code: "membership_requires_array" };
+      passed = value.includes(actual);
+      break;
     default:
-      return false;
+      return { ...trace, code: "unknown_operator" };
   }
+  return { ...trace, passed, code: passed ? "matched" : "comparison_failed" };
 }
-
-export function findMatchingRule(
+export interface PolicyRuleTrace {
+  index: number;
+  status: string;
+  unconditional: boolean;
+  conditions: PolicyConditionTrace[];
+  conditionCount: number;
+  conditionsVisited: number;
+  conditionsNotVisited: number;
+  conditionsOmitted: number;
+}
+export interface PolicyInspection {
+  status: string;
+  matchedRule: AutoApprovalRule | null;
+  matchedIndex: number | null;
+  ruleCount: number;
+  visitedRules: number;
+  traceTruncated: boolean;
+  rules: PolicyRuleTrace[];
+}
+function inspectRules(
   policyConfig: unknown,
   actionType: string,
   payload: Record<string, unknown>,
-): AutoApprovalRule | null {
+  collect: boolean
+): PolicyInspection {
+  const result: PolicyInspection = {
+    status: "no_matching_rule",
+    matchedRule: null,
+    matchedIndex: null,
+    ruleCount: 0,
+    visitedRules: 0,
+    traceTruncated: false,
+    rules: [],
+  };
   try {
-    if (!policyConfig) {
-      return null;
-    }
-
-    let parsedConfig: unknown = policyConfig;
-    if (typeof policyConfig === "string") {
+    if (!policyConfig) return { ...result, status: "no_policy" };
+    let parsed: unknown = policyConfig;
+    if (typeof parsed === "string") {
       try {
-        parsedConfig = JSON.parse(policyConfig);
+        parsed = JSON.parse(parsed);
       } catch {
-        return null;
+        return { ...result, status: "invalid_policy_json" };
       }
     }
-
-    if (!parsedConfig || typeof parsedConfig !== "object") {
-      return null;
-    }
-
-    const rules = (parsedConfig as PolicyConfig).autoApprovalRules;
-    if (!Array.isArray(rules) || rules.length === 0) {
-      return null;
-    }
-
-    if (typeof actionType !== "string" || !actionType) {
-      return null;
-    }
-
-    for (const rule of rules) {
-      if (!rule || typeof rule !== "object") continue;
-      if (rule.actionType !== actionType) continue;
-
-      const conditions = rule.conditions;
-      if (!Array.isArray(conditions)) continue;
-
-      const allPassed = conditions.every((cond) =>
-        evaluateCondition(cond, payload),
-      );
-
-      if (allPassed) {
-        return rule;
+    if (!parsed || typeof parsed !== "object")
+      return { ...result, status: "invalid_policy_shape" };
+    if (typeof actionType !== "string" || !actionType)
+      return { ...result, status: "invalid_action" };
+    if (!payload || typeof payload !== "object" || Array.isArray(payload))
+      return { ...result, status: "invalid_payload_shape" };
+    const rules = (parsed as PolicyConfig).autoApprovalRules;
+    if (!Array.isArray(rules) || !rules.length)
+      return { ...result, status: "no_rules" };
+    result.ruleCount = rules.length;
+    for (let index = 0; index < rules.length; index++) {
+      const rule = rules[index];
+      result.visitedRules++;
+      const trace: PolicyRuleTrace = {
+        index,
+        status: "invalid_rule",
+        unconditional: false,
+        conditions: [],
+        conditionCount: 0,
+        conditionsVisited: 0,
+        conditionsNotVisited: 0,
+        conditionsOmitted: 0,
+      };
+      const retain = collect && result.rules.length < 100;
+      if (rule && typeof rule === "object") {
+        if (rule.actionType !== actionType) trace.status = "different_action";
+        else {
+          const conditions = rule.conditions;
+          if (!Array.isArray(conditions)) trace.status = "invalid_conditions";
+          else {
+            trace.conditionCount = conditions.length;
+            trace.unconditional = conditions.length === 0;
+            let all = true,
+              visited = 0;
+            for (const cond of conditions) {
+              const test = conditionResult(cond, payload);
+              visited++;
+              if (retain && trace.conditions.length < 50)
+                trace.conditions.push(test);
+              if (!test.passed) {
+                all = false;
+                break;
+              }
+            }
+            trace.conditionsVisited = visited;
+            trace.conditionsNotVisited = conditions.length - visited;
+            trace.conditionsOmitted = visited - trace.conditions.length;
+            trace.status = all ? "matched" : "condition_failed";
+            if (all) {
+              result.status = "matched";
+              result.matchedRule = rule;
+              result.matchedIndex = index;
+            }
+          }
+        }
       }
+      if (retain) result.rules.push(trace);
+      if (collect && (!retain || trace.conditionsOmitted > 0))
+        result.traceTruncated = true;
+      if (result.matchedRule) break;
     }
-
-    return null;
+    return result;
   } catch {
-    // Fail-safe: never throw or silently approve on corrupted structures
-    return null;
+    return {
+      ...result,
+      status: "evaluation_error",
+      matchedRule: null,
+      matchedIndex: null,
+    };
   }
+}
+export function inspectPolicyRules(
+  policyConfig: unknown,
+  actionType: string,
+  payload: Record<string, unknown>
+): PolicyInspection {
+  return inspectRules(policyConfig, actionType, payload, true);
+}
+export function findMatchingRule(
+  policyConfig: unknown,
+  actionType: string,
+  payload: Record<string, unknown>
+): AutoApprovalRule | null {
+  return inspectRules(policyConfig, actionType, payload, false).matchedRule;
 }
 
 export function evaluateAutoApproval(
   policyConfig: unknown,
   actionType: string,
-  payload: Record<string, unknown>,
+  payload: Record<string, unknown>
 ): boolean {
   return findMatchingRule(policyConfig, actionType, payload) !== null;
 }
@@ -188,7 +289,7 @@ export function evaluateAutoApproval(
 export function getPolicyGraceMinutes(
   policyConfig: unknown,
   actionType: string,
-  matchedRule?: AutoApprovalRule | null,
+  matchedRule?: AutoApprovalRule | null
 ): number | null {
   try {
     if (!policyConfig && !matchedRule) return null;
@@ -206,9 +307,16 @@ export function getPolicyGraceMinutes(
 
     // 1. Check rule-level configuration first
     if (matchedRule) {
-      const ruleGrace = (matchedRule as { graceMinutes?: number; delayMinutes?: number }).graceMinutes ??
-        (matchedRule as { graceMinutes?: number; delayMinutes?: number }).delayMinutes;
-      if (typeof ruleGrace === "number" && Number.isFinite(ruleGrace) && ruleGrace > 0) {
+      const ruleGrace =
+        (matchedRule as { graceMinutes?: number; delayMinutes?: number })
+          .graceMinutes ??
+        (matchedRule as { graceMinutes?: number; delayMinutes?: number })
+          .delayMinutes;
+      if (
+        typeof ruleGrace === "number" &&
+        Number.isFinite(ruleGrace) &&
+        ruleGrace > 0
+      ) {
         return Math.max(1, Math.round(ruleGrace));
       }
     }
@@ -217,11 +325,15 @@ export function getPolicyGraceMinutes(
 
     // 2. Default workspace grace minutes (if flagged as delayed without an explicit number)
     const defaultGrace =
-      typeof parsedConfig.defaultGraceMinutes === "number" && parsedConfig.defaultGraceMinutes > 0
+      typeof parsedConfig.defaultGraceMinutes === "number" &&
+      Number.isFinite(parsedConfig.defaultGraceMinutes) &&
+      parsedConfig.defaultGraceMinutes > 0
         ? Math.max(1, Math.round(parsedConfig.defaultGraceMinutes))
-        : typeof parsedConfig.graceMinutes === "number" && parsedConfig.graceMinutes > 0
-        ? Math.max(1, Math.round(parsedConfig.graceMinutes))
-        : 15;
+        : typeof parsedConfig.graceMinutes === "number" &&
+            Number.isFinite(parsedConfig.graceMinutes) &&
+            parsedConfig.graceMinutes > 0
+          ? Math.max(1, Math.round(parsedConfig.graceMinutes))
+          : 15;
 
     // 3. Inspect delay containers
     const delayContainers = [
@@ -244,9 +356,18 @@ export function getPolicyGraceMinutes(
           return Math.max(1, Math.round(val));
         }
         if (typeof val === "object" && val !== null) {
-          const nested = (val as { graceMinutes?: number; delayMinutes?: number; minutes?: number });
-          const nestedMinutes = nested.graceMinutes ?? nested.delayMinutes ?? nested.minutes;
-          if (typeof nestedMinutes === "number" && Number.isFinite(nestedMinutes) && nestedMinutes > 0) {
+          const nested = val as {
+            graceMinutes?: number;
+            delayMinutes?: number;
+            minutes?: number;
+          };
+          const nestedMinutes =
+            nested.graceMinutes ?? nested.delayMinutes ?? nested.minutes;
+          if (
+            typeof nestedMinutes === "number" &&
+            Number.isFinite(nestedMinutes) &&
+            nestedMinutes > 0
+          ) {
             return Math.max(1, Math.round(nestedMinutes));
           }
         }

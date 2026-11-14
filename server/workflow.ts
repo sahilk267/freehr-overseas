@@ -307,6 +307,7 @@ export function isConsequentialAction(actionType: string): boolean {
 }
 
 export function getConsequentialActionDefinition(actionType: string): ConsequentialActionDefinition | null {
+  if (!CONSEQUENTIAL_ACTION_TYPES.has(actionType)) return null;
   const def = CANONICAL_CONSEQUENTIAL_ACTIONS[actionType];
   if (!def) return null;
   if (def.aliasOf && CANONICAL_CONSEQUENTIAL_ACTIONS[def.aliasOf]) {
@@ -338,3 +339,21 @@ export function ensureSafeAiText(value: string) {
 }
 
 export const WORKFLOW_STATES = transitions;
+
+/** Supported effects shared by the executor and read-only policy inspection. */
+export const APPROVAL_SIDE_EFFECT_ACTIONS = new Set([
+  "offer_release",
+  "client_onboarding",
+  "candidate_share",
+  "placement_confirmation",
+  "invoice_issue",
+  "candidate_final_decision",
+  "final_candidate_decision",
+  "replacement_case",
+  "invoice_payment_status",
+  "invoice_dispute",
+  "invoice_credit",
+  "invoice_write_off",
+  "automation_stop",
+  "email_send",
+]);

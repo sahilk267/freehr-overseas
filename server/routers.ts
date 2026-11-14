@@ -1,3 +1,4 @@
+import { policyLabRouter } from "./routers/policyLab";
 import { marketEvidenceRouter } from "./routers/marketEvidence";
 import { recruitmentStrategyRouter } from "./routers/recruitmentStrategy";
 import {ownerBriefRouter} from './routers/ownerBrief';
@@ -84,6 +85,7 @@ export const appRouter = router({
   campaigns: campaignsRouter,
   intake: intakeRouter,
   marketEvidence:marketEvidenceRouter,
+  policyLab:policyLabRouter,
 
   // TODO: add feature routers here, e.g.
   // todo: router({

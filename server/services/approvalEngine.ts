@@ -39,6 +39,7 @@ import { emailContentHash } from "./emailAuthorization";
 import { enqueueEmailDispatch, followUpEligibility } from "./followups";
 import { findMatchingRule, getPolicyGraceMinutes } from "./policyEngine";
 import {
+  APPROVAL_SIDE_EFFECT_ACTIONS,
   assertTransition,
   CONSEQUENTIAL_ACTION_TYPES,
   getConsequentialActionDefinition,
@@ -89,24 +90,7 @@ export async function applySideEffect(
   decidedAt: Date,
   decidedById: number,
 ) {
-  const recognizedSideEffectActions = new Set([
-    "offer_release",
-    "client_onboarding",
-    "candidate_share",
-    "placement_confirmation",
-    "invoice_issue",
-    "candidate_final_decision",
-    "final_candidate_decision",
-    "replacement_case",
-    "invoice_payment_status",
-    "invoice_dispute",
-    "invoice_credit",
-    "invoice_write_off",
-    "automation_stop",
-    "email_send",
-  ]);
-
-  if (!recognizedSideEffectActions.has(approval.actionType)) {
+  if (!APPROVAL_SIDE_EFFECT_ACTIONS.has(approval.actionType)) {
     throw new Error(
       `Unsupported consequential action side effect: "${approval.actionType}". Cannot execute unverified domain side effect.`,
     );

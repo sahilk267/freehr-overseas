@@ -197,7 +197,9 @@
         {
           "id": "M04-F08",
           "description": "Action-policy simulator and explanation; quiet-hour exceptions require explicit scoped policy, not hidden bypasses.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-14-policy-lab.md",
+          "implementation_note": "Read-only current/saved/unsaved policy simulation shares the live first-match predicate and grace resolver; redacted bounded traces distinguish failed and unvisited conditions. Canonical mandatory human gates override raw rule matches; workspace quiet windows grant no recipient exception. Full resource/effect and explicit scoped exception-policy simulation remain open."
         }
       ],
       "events": "consent.granted, consent.revoked, authorization.issued, authorization.revoked, erasure.completed",
@@ -823,7 +825,7 @@
           "id": "M15-F02",
           "description": "Deterministic eligibility rules separated from semantic similarity; weighted explainable scorecards and skill equivalence.",
           "status": "implementing",
-          "implementation_note": "Separate employer criteria weights support 0–5 evidence ratings, unknown-weight score intervals and required-criterion review flags. Quotes are source-checked and source changes stale assessments. Fixed retrieval priority remains separate. Semantic equivalence and held-out quality remain open.",
+          "implementation_note": "Separate employer criteria weights support 0\u20135 evidence ratings, unknown-weight score intervals and required-criterion review flags. Quotes are source-checked and source changes stale assessments. Fixed retrieval priority remains separate. Semantic equivalence and held-out quality remain open.",
           "evidence_ref": "qa/2026-11-07-candidate-screening-scorecards.md"
         },
         {
@@ -1265,7 +1267,9 @@
         {
           "id": "M22-F02",
           "description": "Decision inbox with evidence, exact proposed effect, policy reason, resource version, approve/reject/delegate/cancel and grace-period visibility.",
-          "status": "planned"
+          "status": "implementing",
+          "evidence_ref": "qa/2026-11-14-policy-lab.md",
+          "implementation_note": "Owner-scoped stored-approval and recorded grace-job inspection reuses canonical approvals and queue without copying payload values or changing records. Shared policy lab shows registered intent and rule reason only; exact current proposed effect/resource validity, complete evidence, delegation/cancellation and unified decision controls remain open."
         },
         {
           "id": "M22-F03",
@@ -2346,12 +2350,12 @@
     }
   ],
   "implementation_tracking": {
-    "wave": "W0–W18",
+    "wave": "W0\u2013W19",
     "status": "in_progress",
     "record": "IMPLEMENTATION_PROGRESS.md",
     "completed_modules": 0,
-    "note": "Permission-bound market evidence now reuses canonical prospect intake/source keys and joins existing strategy/brief views without creating contact or decision authority. All 25 advanced modules retain full acceptance gates; none is declared complete.",
-    "updated_at": "2026-11-13"
+    "note": "Read-only policy and stored approval/job inspection share canonical predicate, action effects and queue. No new approval authority, quiet exception, policy activation or execution engine. All 25 advanced modules retain full acceptance gates; none is declared complete.",
+    "updated_at": "2026-11-14"
   },
-  "last_implementation_update": "2026-11-13"
+  "last_implementation_update": "2026-11-14"
 }
