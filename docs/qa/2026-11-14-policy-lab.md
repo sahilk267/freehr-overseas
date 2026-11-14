@@ -17,7 +17,7 @@
 
 Eight actual SQL-backed browser checks passed current-policy simulation, unsaved JSON matching/grace, changed-input stale-result warnings, mandatory financial human review, owned saved-version/stored-approval/job inspection, refresh with draft preservation and desktop/mobile rendering without runtime errors or horizontal overflow. Stored approval status and recorded queue state stayed unchanged. The disposable database was dropped and server stopped. The browser used a virtual HTTPS origin routed to the local built server; it does not establish genuine provider or production TLS acceptance.
 
-Production acceptance remains pending rollout. [Sanitized evidence](2026-11-14-policy-lab-evidence.json) excludes credentials, owner/source IDs, actual approval/configuration values and private screenshots.
+Production acceptance passed on `2a00c38` on 14 November 2026: eight owner/API checks and six actual desktop/mobile browser checks covered minimized private catalogs, unsaved hypothetical rule/grace simulation, canonical human-review preservation, anonymous/invalid/unowned denials, no-store/no-referrer headers, changed-input stale results and refresh with draft preservation. Catalog configuration, saved versions and approval metadata stayed unchanged; browser POSTs were solely read-only simulation calls. No policy was activated, approval/job changed or real external/recruiting/financial effect initiated. Stored approval/job positive inspection remains disposable SQL/browser evidence. The persistent production worker stayed healthy. [Sanitized evidence](2026-11-14-policy-lab-evidence.json) excludes credentials, owner/source IDs, actual approval/configuration values and private screenshots.
 
 ## Remaining scope
 

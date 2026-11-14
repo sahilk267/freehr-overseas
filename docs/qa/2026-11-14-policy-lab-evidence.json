@@ -30,7 +30,36 @@
     }
   },
   "production": {
-    "status": "pending_rollout"
+    "status": "verified_readonly_simulations",
+    "apiChecks": [
+      "Private owner catalog loads with minimized approval and saved-policy metadata",
+      "Unsaved hypothetical policy explains a match and grace without changing policy or creating an approval",
+      "A raw matching financial rule retains the canonical human-review gate",
+      "Anonymous catalog and simulation requests are denied",
+      "Malformed/nonfinite hypothetical payloads and absent owned approvals fail closed",
+      "Owner inspection responses use no-store and no-referrer",
+      "Policy configuration, saved policies and recorded approval metadata remain unchanged",
+      "Persistent production worker remains healthy"
+    ],
+    "browserChecks": [
+      "Actual deployed owner page loads and simulates current configuration without executing",
+      "Deployed unsaved what-if form explains rule matching and grace",
+      "Changed input visibly marks the prior result outdated",
+      "Current context refresh clears output and preserves unsaved drafts",
+      "Desktop/mobile layout fits and links to existing governing controls",
+      "Only read-only simulation POSTs occur with no JavaScript or transport errors"
+    ],
+    "browserPostPaths": [
+      "/api/trpc/policyLab.simulate",
+      "/api/trpc/policyLab.simulate"
+    ],
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "workerHealthy": true,
+    "qaActivatedPolicy": false,
+    "qaChangedApprovalOrJob": false,
+    "qaInitiatedRecruitingFinancialOrExternalEffect": false,
+    "realProviderAcceptanceClaimed": false
   },
   "remaining": {
     "implementingPackages": 118,
@@ -42,5 +71,6 @@
       "Scoped quiet-hour exception-policy simulation",
       "Broader M04/M22 and advanced module acceptance"
     ]
-  }
+  },
+  "implementationCommit": "2a00c3830539ba49fe864b708b139cc559600c4a"
 }
