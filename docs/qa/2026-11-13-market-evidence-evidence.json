@@ -1,0 +1,86 @@
+{
+  "implementationDate": "2026-11-13",
+  "productionAcceptanceDate": "2026-11-14",
+  "timezone": "Asia/Calcutta",
+  "scope": "Partial M02-F04 M09-F02 M10-F01/F02 market evidence and account research review",
+  "implementationCommit": "2f6514d7216436b0a7bfc0dade5ddb6eef8265c7",
+  "local": {
+    "unitPassed": 1197,
+    "unitSkipped": 101,
+    "mysqlPassed": 979,
+    "mysqlFiles": 46,
+    "focusedMemoryPassed": 129,
+    "focusedMysqlPassed": 134,
+    "typeCheck": true,
+    "ownerPasswordProductionBuild": true,
+    "hostingerStartupChecks": 4,
+    "environmentPreparationChecks": 7,
+    "trackerConsistent": true,
+    "browserChecks": [
+      "Actual owner permission form records an explicit internal-use declaration without creating a key",
+      "Actual preview validates sources and current permissions without persisting observations",
+      "Changed batch inputs fence the previous preview",
+      "Reviewed owner intake records one canonical account observation without contact authority",
+      "Existing batch preview shows an immutable receipt and disables repeated recording",
+      "Actual HTTP source endpoint authenticates a correction and deduplicates its receipt replay",
+      "Existing strategy and operating review display minimized current source evidence",
+      "Competing permission changes preserve the stale draft and reject overwrite",
+      "New permission versions mask older reports until a new explicitly bound source revision",
+      "Actual owner retirement remains terminal across new authenticated source batches",
+      "Retired historical receipts preserve revisions while masking source fields",
+      "Desktop/mobile research interface fits without overflow or browser errors",
+      "Research intake and retirement create no recruiting queue task or external contact"
+    ],
+    "browserRuntimeErrors": [],
+    "cleanup": {
+      "disposableDatabaseDropped": true,
+      "localServerStopped": true
+    }
+  },
+  "production": {
+    "apiChecks": [
+      "Owner market permission, overview and receipt APIs load without exposing source key hashes",
+      "Anonymous market reads, permission changes, previews, records and retirement denied",
+      "Deployed source HTTP endpoint rejects unsigned and invalid bearer requests without writing observations",
+      "Private market responses enforce no-store and no-referrer headers",
+      "Filtered market display retains full aggregate evidence semantics",
+      "Existing strategy and daily brief settings remain unchanged; only minimized nonfinancial market context is joined",
+      "Read-only and rejected-request acceptance creates no new market receipt or permission",
+      "Persistent production worker remains healthy"
+    ],
+    "browserChecks": [
+      "Actual owner research page, summary, declarations and receipts render",
+      "Source key management reuses the canonical Intake page",
+      "Unconfigured source prerequisites are shown without inventing a provider or key",
+      "Observation-kind filters refresh the deployed protected overview",
+      "Unreviewed batches cannot be recorded through the owner interface",
+      "Desktop and mobile interface fit without horizontal overflow",
+      "Existing strategy and operating brief expose the separate source-evidence view",
+      "Browser acceptance performs no successful or attempted owner mutation and has no runtime/transport errors"
+    ],
+    "ownerMutationRequests": [],
+    "runtimeErrors": [],
+    "transportErrors": [],
+    "workerHealthy": true,
+    "marketDeclarationsPresent": false,
+    "qaCreatedLicenseDeclarations": false,
+    "qaCreatedMarketObservations": false,
+    "qaInitiatedRecruitingOrFinancialChanges": false,
+    "qaInitiatedExternalContact": false,
+    "qaInitiatedProviderCharge": false,
+    "existingStrategyOrDailyBriefSettingsChanged": false,
+    "realLicensedSupplierExercised": false
+  },
+  "remaining": {
+    "implementingPackages": 116,
+    "plannedPackages": 47,
+    "wholeAdvancedModulesCompleted": 0,
+    "limits": [
+      "Genuine licensed-provider and external authenticity/rights acceptance",
+      "Real discovery/contact enrichment and independent lead/payment-risk qualification",
+      "Non-employer-linked regional benchmarks and calibrated forecasts",
+      "Broader mapping/backfill/archival/deletion and enterprise scale",
+      "Delegated autonomous acquisition objectives and complete advanced modules"
+    ]
+  }
+}
